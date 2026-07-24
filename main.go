@@ -14,7 +14,7 @@ func main() {
 	srv := smtp.NewServer(&bck)
 	srv.Addr = ":8080"
 	srv.AllowInsecureAuth = true
-	srv.MaxMessageBytes = 2 << 10
+	srv.MaxMessageBytes = 1 << 10
 	srv.Domain = "foo"
 	srv.ReadTimeout = 10 * time.Second
 	srv.WriteTimeout = 10 * time.Second

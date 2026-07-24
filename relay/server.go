@@ -1,8 +1,8 @@
 package relay
 
 import (
+	"context"
 	"io"
-	"log"
 	"slices"
 	"strings"
 
@@ -12,10 +12,11 @@ import (
 
 type Backend struct {
 	Domains []string
+	Rspamd  *RspamdClient
 }
 
-func (bkd *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
-	return &Session{backend: bkd}, nil
+func (bck *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
+	return &Session{backend: bck}, nil
 }
 
 type Session struct {
@@ -65,7 +66,16 @@ func (s *Session) Data(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	log.Println("Data: ", string(b))
+	_, err = s.backend.Rspamd.Verify(context.Background(), nil, b)
+	if err != nil {
+		return err
+	}
+	//if spam.Messages != nil {
+	//	v, ok := spam.Messages["spam_message"]
+	//	if ok {
+	//
+	//	}
+	//}
 	return nil
 }
 
