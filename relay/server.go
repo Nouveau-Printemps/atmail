@@ -163,7 +163,10 @@ func formatMail(headers map[string][]string, body []byte) []byte {
 	buf.Grow(len(headers) + len(body))
 	for k, arr := range headers {
 		for _, v := range arr {
-			buf.WriteString("\r\n" + k + ": " + v)
+			buf.WriteString("\r\n")
+			buf.WriteString(k)
+			buf.WriteString(": ")
+			buf.WriteString(v)
 		}
 	}
 	if len(headers) > 0 {

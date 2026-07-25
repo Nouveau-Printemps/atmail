@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/emersion/go-smtp"
 	_ "github.com/mattn/go-sqlite3"
@@ -24,7 +25,7 @@ var migrations string
 
 func main() {
 	slog.Info("starting...")
-	database, err := sql.Open("sqlite3", "debug.db")
+	database, err := sql.Open("sqlite3", "debug.db?_journal=WAL")
 	if err != nil {
 		panic(err)
 	}
@@ -42,8 +43,8 @@ func main() {
 	srv.AllowInsecureAuth = true
 	srv.MaxMessageBytes = 1 << 10
 	srv.Domain = "foo"
-	//srv.ReadTimeout = 10 * time.Second
-	//srv.WriteTimeout = 10 * time.Second
+	srv.ReadTimeout = 10 * time.Second
+	srv.WriteTimeout = 10 * time.Second
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill, syscall.SIGINT)
 	defer cancel()

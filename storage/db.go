@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"io"
 	"os"
 	"path"
@@ -16,18 +17,14 @@ import (
 type Index = index.Queries
 
 type Storage struct {
-	Index      *Index
-	LastFile   string
-	LastFinish uint32
-	Folder     string
+	Index  *Index
+	Folder string
 }
 
 func New(i *Index, folder string) *Storage {
 	return &Storage{
-		Index:      i,
-		LastFile:   NewFileName(),
-		LastFinish: 0,
-		Folder:     folder,
+		Index:  i,
+		Folder: folder,
 	}
 }
 
@@ -36,16 +33,35 @@ func NewFileName() string {
 }
 
 func (s *Storage) StoreEmail(ctx context.Context, from, to [2]string, spamScore sql.NullFloat64, b []byte) error {
-	lastFile := s.LastFile
-	if len(b) >= MaxEmailSizeInFile {
-		lastFile = NewFileName()
+	addr := strings.Join(to[:], "@")
+	meta, err := s.Index.GetMeta(ctx)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return err
 	}
-	f, err := os.OpenFile(path.Join(s.Folder, lastFile), os.O_RDWR|os.O_CREATE, 0o660)
+	lastFile := meta.LastFile.String
+	var p string
+	if !meta.LastFile.Valid {
+		lastFile = NewFileName()
+		p = lastFile
+	} else if len(b) < MaxEmailSizeInFile {
+		info, err := os.Stat(path.Join(s.Folder, lastFile))
+		if err != nil {
+			return err
+		}
+		if info.Size() >= MaxFileSize {
+			lastFile = NewFileName()
+		}
+		p = lastFile
+	} else {
+		p = NewFileName()
+	}
+	f, err := os.OpenFile(path.Join(s.Folder, p), os.O_RDWR|os.O_CREATE, 0o660)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	_, err = f.Seek(int64(s.LastFinish), io.SeekStart)
+	offset := meta.Offset.Int64
+	_, err = f.Seek(offset, io.SeekStart)
 	if err != nil {
 		return err
 	}
@@ -55,16 +71,20 @@ func (s *Storage) StoreEmail(ctx context.Context, from, to [2]string, spamScore 
 	}
 	_, err = s.Index.NewEmail(ctx, index.NewEmailParams{
 		MailFrom:  strings.Join(from[:], "@"),
-		RcptTo:    strings.Join(to[:], "@"),
+		RcptTo:    addr,
 		SpamScore: spamScore,
 		Filename:  lastFile,
-		Offset:    int64(s.LastFinish),
+		Offset:    offset,
 	})
 	if err != nil {
 		return err
 	}
-	s.LastFinish += n
-	return nil
+	return s.Index.SetMeta(
+		ctx,
+		0,
+		sql.NullString{String: lastFile, Valid: true},
+		sql.NullInt64{Int64: offset + int64(n), Valid: true},
+	)
 }
 
 func (s *Storage) Read(ctx context.Context, id int64) ([]byte, error) {
