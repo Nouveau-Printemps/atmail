@@ -7,13 +7,13 @@ import (
 
 	"github.com/emersion/go-smtp"
 	_ "github.com/mattn/go-sqlite3"
-	"nouveauprintemps.org/atmail/db"
 	"nouveauprintemps.org/atmail/relay"
+	"nouveauprintemps.org/atmail/storage/index"
 )
 
 //go:generate go tool sqlc generate
 
-//go:embed db/schema.sql
+//go:embed storage/index/schema.sql
 var migrations string
 
 func main() {
@@ -27,7 +27,7 @@ func main() {
 	}
 	bck := relay.Backend{
 		Domains: []string{"foo"},
-		Queries: db.New(database),
+		Storage: index.New(database),
 	}
 	srv := smtp.NewServer(&bck)
 	srv.Addr = ":8080"

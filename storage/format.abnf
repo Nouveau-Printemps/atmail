@@ -1,0 +1,6 @@
+file = [ header content ]
+
+; first contains specific data
+; second is the length of content in big endian
+header = OCTET 4OCTET
+content = *OCTET

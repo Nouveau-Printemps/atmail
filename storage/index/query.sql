@@ -1,13 +1,13 @@
 -- name: ListEmails :many
 SELECT * FROM emails
-WHERE rcpt = ?;
+WHERE rcpt_to = ?;
 
 -- name: GetEmail :one
 SELECT * FROM emails
 WHERE id = ?;
 
--- name: SetEmail :one
-INSERT INTO emails (mail, rcpt, subject, spam_score, content, thread)
+-- name: NewEmail :one
+INSERT INTO emails (mail_from, rcpt_to, spam_score, thread, file_path, offset)
 VALUES (?, ?, ?, ?, ?, ?)
 RETURNING id;
 
@@ -17,4 +17,4 @@ WHERE id = ?;
 
 -- name: ListEmailsFrom :many
 SELECT * FROM emails
-WHERE rcpt = ? AND mail = ?;
+WHERE rcpt_to = ? AND mail_from = ?;

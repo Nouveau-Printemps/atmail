@@ -13,13 +13,13 @@ import (
 
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
-	"nouveauprintemps.org/atmail/db"
+	"nouveauprintemps.org/atmail/storage"
 )
 
 type Backend struct {
 	Domains []string
 	Rspamd  *RspamdClient
-	Queries *db.Queries
+	Storage *storage.Storage
 }
 
 func (bck *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
@@ -137,17 +137,9 @@ valid_email:
 			score.Valid = true
 		}
 		b, _ := io.ReadAll(body)
-		id, err := s.backend.Queries.SetEmail(context.Background(), db.SetEmailParams{
-			Mail:      s.From,
-			Rcpt:      s.To,
-			Subject:   headers["Subject"][0],
-			SpamScore: score,
-			Content:   string(b),
-		})
+		err := s.backend.Storage.StoreEmail(context.Background(), b, s.From, s.To)
 		if err != nil {
 			slog.Error("cannot save email", "error", err)
-		} else {
-			slog.Debug("email saved", "id", id)
 		}
 	}()
 	return nil
