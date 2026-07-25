@@ -1,6 +1,6 @@
 dev:
     go generate
-    go run .
+    go run . -config dev.toml
 
 build:
     go generate

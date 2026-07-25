@@ -1,0 +1,18 @@
+# address to listen to (tcp or unix)
+listen = ":2525"
+#listen = "/run/atmail.sock"
+# use PROXY V2 Protocol by HAProxy
+use_proxy_v2 = false
+
+# location of the main database
+db = "/var/lib/atmail/data.db"
+# directory containing the mails
+directory = "/var/lib/atmail/data"
+
+# domain broadcasted
+main_domain = "mail.example.org"
+# max mail size in KiB
+max_mail_size = 16416
+
+# each key in domains define a domain used
+[domains."example.org"]

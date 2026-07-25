@@ -61,7 +61,7 @@ func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 		return &smtp.SMTPError{
 			Code:         551,
 			EnhancedCode: [3]int{5, 7, 1},
-			Message:      "Forwarding to remote hosts disabled",
+			Message:      "Forwarding to remote hosts is disabled",
 		}
 	}
 	s.To = a

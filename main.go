@@ -4,10 +4,12 @@ import (
 	"context"
 	"database/sql"
 	_ "embed"
+	"flag"
 	"log/slog"
-	"net"
+	"maps"
 	"os"
 	"os/signal"
+	"slices"
 	"syscall"
 	"time"
 
@@ -23,9 +25,23 @@ import (
 //go:embed storage/index/schema.sql
 var migrations string
 
+var (
+	configPath = DefaultConfigPath
+)
+
+func init() {
+	flag.StringVar(&configPath, "config", configPath, "sets the config path")
+}
+
 func main() {
 	slog.Info("starting...")
-	database, err := sql.Open("sqlite3", "debug.db?_journal=WAL")
+	flag.Parse()
+	cfg, err := ParseConfig(configPath)
+	if err != nil {
+		panic(err)
+	}
+	slog.Debug("config parsed", "path", configPath)
+	database, err := sql.Open("sqlite3", cfg.DB+"?_journal=WAL")
 	if err != nil {
 		panic(err)
 	}
@@ -33,17 +49,15 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	st := storage.New(index.New(database), "data")
-
+	st := storage.New(index.New(database), cfg.Directory)
 	bck := relay.Backend{
-		Domains: []string{"foo"},
+		Domains: slices.Collect(maps.Keys(cfg.Domains)),
 		Storage: st,
 	}
 	srv := smtp.NewServer(&bck)
-	srv.Addr = ":8080"
 	srv.AllowInsecureAuth = true
 	srv.MaxMessageBytes = 1 << 10
-	srv.Domain = "foo"
+	srv.Domain = cfg.MainDomain
 	srv.ReadTimeout = 10 * time.Second
 	srv.WriteTimeout = 10 * time.Second
 
@@ -61,10 +75,11 @@ func main() {
 		}
 	}()
 
-	l, err := net.Listen("tcp", ":8080")
+	l, err := cfg.Listen()
 	if err != nil {
 		panic(err)
 	}
+	defer l.Close()
 	errc := make(chan error, 1)
 	go func() {
 		errc <- srv.Serve(l)

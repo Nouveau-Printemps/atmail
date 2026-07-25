@@ -29,3 +29,4 @@ go.work
 storage/index/*.go
 *.db*
 data
+dev.toml
