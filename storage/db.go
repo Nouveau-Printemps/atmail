@@ -66,3 +66,16 @@ func (s *Storage) StoreEmail(ctx context.Context, from, to [2]string, spamScore 
 	s.LastFinish += n
 	return nil
 }
+
+func (s *Storage) Read(ctx context.Context, id int64) ([]byte, error) {
+	email, err := s.Index.GetEmail(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	f, err := os.Open(path.Join(s.Folder, email.Filename))
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return ReadEmailAt(f, uint32(email.Offset))
+}

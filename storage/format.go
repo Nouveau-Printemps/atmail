@@ -6,19 +6,21 @@ import (
 	"os"
 )
 
-// ReadEmail returns the email stored at the beginning of the given bytes.
+// ReadEmailAt returns the email stored at in the file with the given offset.
 // Returns nil if the email was deleted.
-func ReadEmail(b []byte) []byte {
-	if b[0]&EmailDeleted == 1 {
-		return nil
+func ReadEmailAt(f *os.File, offset uint32) ([]byte, error) {
+	var header [5]byte
+	_, err := f.ReadAt(header[:], int64(offset))
+	if err != nil {
+		return nil, err
 	}
-	return b[5 : 5+binary.BigEndian.Uint32(b[1:])]
-}
-
-// ReadEmailAt the given position in the given bytes.
-// See [ReadEmail].
-func ReadEmailAt(b []byte, offset uint32) []byte {
-	return ReadEmail(b[offset:])
+	if header[0]&EmailDeleted == 1 {
+		return nil, nil
+	}
+	ln := binary.BigEndian.Uint32(header[1:])
+	b := make([]byte, ln)
+	_, err = f.ReadAt(b, int64(offset)+int64(len(header)))
+	return b, err
 }
 
 const (

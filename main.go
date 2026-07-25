@@ -1,9 +1,14 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	_ "embed"
 	"log/slog"
+	"net"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/emersion/go-smtp"
 	_ "github.com/mattn/go-sqlite3"
@@ -18,6 +23,7 @@ import (
 var migrations string
 
 func main() {
+	slog.Info("starting...")
 	database, err := sql.Open("sqlite3", "debug.db")
 	if err != nil {
 		panic(err)
@@ -26,9 +32,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	st := storage.New(index.New(database), "data")
 	bck := relay.Backend{
 		Domains: []string{"foo"},
-		Storage: storage.New(index.New(database), "data"),
+		Storage: st,
 	}
 	srv := smtp.NewServer(&bck)
 	srv.Addr = ":8080"
@@ -37,6 +44,22 @@ func main() {
 	srv.Domain = "foo"
 	//srv.ReadTimeout = 10 * time.Second
 	//srv.WriteTimeout = 10 * time.Second
-	slog.Info("starting...")
-	srv.ListenAndServe()
+
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill, syscall.SIGINT)
+	defer cancel()
+	l, err := net.Listen("tcp", ":8080")
+	if err != nil {
+		panic(err)
+	}
+	errc := make(chan error, 1)
+	go func() {
+		errc <- srv.Serve(l)
+	}()
+	slog.Info("started")
+	select {
+	case <-ctx.Done():
+	case err = <-errc:
+		panic(err)
+	}
+	slog.Info("exiting")
 }

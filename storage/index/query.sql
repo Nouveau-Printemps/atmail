@@ -2,6 +2,9 @@
 SELECT * FROM emails
 WHERE rcpt_to = ?;
 
+-- name: ListEveryEmails :many
+SELECT * FROM emails;
+
 -- name: GetEmail :one
 SELECT * FROM emails
 WHERE id = ?;
