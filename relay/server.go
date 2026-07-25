@@ -3,7 +3,9 @@ package relay
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"io"
+	"log/slog"
 	"net/mail"
 	"slices"
 	"strconv"
@@ -11,11 +13,13 @@ import (
 
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
+	"nouveauprintemps.org/atmail/db"
 )
 
 type Backend struct {
 	Domains []string
 	Rspamd  *RspamdClient
+	Queries *db.Queries
 }
 
 func (bck *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
@@ -69,18 +73,25 @@ func (s *Session) Data(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	spam, err := s.backend.Rspamd.Verify(context.Background(), nil, b)
-	if err != nil {
-		return err
-	}
+	println("got " + string(b))
 	msg, err := mail.ReadMessage(bytes.NewBuffer(b))
 	if err != nil {
 		return err
 	}
 	body := msg.Body
 	headers := map[string][]string(msg.Header)
-	if spam.Skipped {
+	var spam *RspamdResponse
+	if s.backend.Rspamd == nil {
 		// this goto avoids an hugly condition that is almost always met
+		// thus, this goto produces a faster assembly because there is no bad branch prediction in the common case
+		goto valid_email
+	}
+	spam, err = s.backend.Rspamd.Verify(context.Background(), nil, b)
+	if err != nil {
+		return err
+	}
+	if spam.Skipped {
+		// see above
 		goto valid_email
 	}
 	if spam.Messages != nil {
@@ -88,7 +99,7 @@ func (s *Session) Data(r io.Reader) error {
 		if ok {
 			return &smtp.SMTPError{
 				Code:         550,
-				EnhancedCode: [3]int{5, 6, 28},
+				EnhancedCode: [3]int{5, 7, 1},
 				Message:      v,
 			}
 		}
@@ -97,13 +108,13 @@ func (s *Session) Data(r io.Reader) error {
 	case RejectResponse:
 		return &smtp.SMTPError{
 			Code:         550,
-			EnhancedCode: [3]int{5, 6, 28},
+			EnhancedCode: [3]int{5, 7, 1},
 			Message:      "Your message is unwanted",
 		}
 	case SoftRejectResponse:
 		return &smtp.SMTPError{
 			Code:         450,
-			EnhancedCode: [3]int{4, 6, 27},
+			EnhancedCode: [3]int{4, 7, 1},
 			Message:      "Your message is temporary unwanted, retry later",
 		}
 	case AddHeaderResponse:
@@ -119,6 +130,26 @@ func (s *Session) Data(r io.Reader) error {
 		body = spam.Body
 	}
 valid_email:
+	go func() {
+		score := sql.NullFloat64{Float64: 0, Valid: false}
+		if spam != nil {
+			score.Float64 = spam.Score
+			score.Valid = true
+		}
+		b, _ := io.ReadAll(body)
+		id, err := s.backend.Queries.SetEmail(context.Background(), db.SetEmailParams{
+			Mail:      s.From,
+			Rcpt:      s.To,
+			Subject:   headers["Subject"][0],
+			SpamScore: score,
+			Content:   string(b),
+		})
+		if err != nil {
+			slog.Error("cannot save email", "error", err)
+		} else {
+			slog.Debug("email saved", "id", id)
+		}
+	}()
 	return nil
 }
 
