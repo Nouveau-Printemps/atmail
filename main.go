@@ -34,6 +34,7 @@ func main() {
 		panic(err)
 	}
 	st := storage.New(index.New(database), "data")
+
 	bck := relay.Backend{
 		Domains: []string{"foo"},
 		Storage: st,
@@ -48,6 +49,18 @@ func main() {
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill, syscall.SIGINT)
 	defer cancel()
+
+	err = storage.Cache.Sync(ctx, st.Index)
+	if err != nil {
+		panic(err)
+	}
+	defer func() {
+		err = storage.Cache.Save(context.TODO(), st.Index)
+		if err != nil {
+			panic(err)
+		}
+	}()
+
 	l, err := net.Listen("tcp", ":8080")
 	if err != nil {
 		panic(err)

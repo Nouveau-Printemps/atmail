@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"io"
 	"os"
 	"path"
@@ -34,13 +33,9 @@ func NewFileName() string {
 
 func (s *Storage) StoreEmail(ctx context.Context, from, to [2]string, spamScore sql.NullFloat64, b []byte) error {
 	addr := strings.Join(to[:], "@")
-	meta, err := s.Index.GetMeta(ctx)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return err
-	}
-	lastFile := meta.LastFile.String
+	lastFile := Cache.LastFile()
 	var p string
-	if !meta.LastFile.Valid {
+	if lastFile == "" {
 		lastFile = NewFileName()
 		p = lastFile
 	} else if len(b) < MaxEmailSizeInFile {
@@ -60,7 +55,7 @@ func (s *Storage) StoreEmail(ctx context.Context, from, to [2]string, spamScore 
 		return err
 	}
 	defer f.Close()
-	offset := meta.Offset.Int64
+	offset := int64(Cache.Offset())
 	_, err = f.Seek(offset, io.SeekStart)
 	if err != nil {
 		return err
@@ -79,12 +74,8 @@ func (s *Storage) StoreEmail(ctx context.Context, from, to [2]string, spamScore 
 	if err != nil {
 		return err
 	}
-	return s.Index.SetMeta(
-		ctx,
-		0,
-		sql.NullString{String: lastFile, Valid: true},
-		sql.NullInt64{Int64: offset + int64(n), Valid: true},
-	)
+	Cache.Update(lastFile, uint32(offset)+n)
+	return nil
 }
 
 func (s *Storage) Read(ctx context.Context, id int64) ([]byte, error) {
