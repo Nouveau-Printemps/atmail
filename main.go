@@ -8,6 +8,7 @@ import (
 	"github.com/emersion/go-smtp"
 	_ "github.com/mattn/go-sqlite3"
 	"nouveauprintemps.org/atmail/relay"
+	"nouveauprintemps.org/atmail/storage"
 	"nouveauprintemps.org/atmail/storage/index"
 )
 
@@ -27,7 +28,7 @@ func main() {
 	}
 	bck := relay.Backend{
 		Domains: []string{"foo"},
-		Storage: index.New(database),
+		Storage: storage.New(index.New(database), "data"),
 	}
 	srv := smtp.NewServer(&bck)
 	srv.Addr = ":8080"

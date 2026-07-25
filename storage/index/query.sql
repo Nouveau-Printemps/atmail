@@ -7,7 +7,7 @@ SELECT * FROM emails
 WHERE id = ?;
 
 -- name: NewEmail :one
-INSERT INTO emails (mail_from, rcpt_to, spam_score, thread, file_path, offset)
+INSERT INTO emails (mail_from, rcpt_to, spam_score, thread, filename, offset)
 VALUES (?, ?, ?, ?, ?, ?)
 RETURNING id;
 

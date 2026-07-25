@@ -73,7 +73,6 @@ func (s *Session) Data(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	println("got " + string(b))
 	msg, err := mail.ReadMessage(bytes.NewBuffer(b))
 	if err != nil {
 		return err
@@ -137,7 +136,8 @@ valid_email:
 			score.Valid = true
 		}
 		b, _ := io.ReadAll(body)
-		err := s.backend.Storage.StoreEmail(context.Background(), b, s.From, s.To)
+		b = formatMail(headers, b)
+		err := s.backend.Storage.StoreEmail(context.Background(), s.From, s.To, score, b)
 		if err != nil {
 			slog.Error("cannot save email", "error", err)
 		}
@@ -156,4 +156,20 @@ func (s *Session) Logout() error {
 func ParseAddress(address string) [2]string {
 	mailbox, domain, _ := strings.Cut(address, "@")
 	return [2]string{mailbox, domain}
+}
+
+func formatMail(headers map[string][]string, body []byte) []byte {
+	var buf bytes.Buffer
+	buf.Grow(len(headers) + len(body))
+	for k, arr := range headers {
+		for _, v := range arr {
+			buf.WriteString("\r\n" + k + ": " + v)
+		}
+	}
+	if len(headers) > 0 {
+		buf.WriteString("\r\n\r\n")
+	}
+	buf.Grow(len(body))
+	buf.Write(body)
+	return buf.Bytes()[2:]
 }

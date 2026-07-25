@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS emails (
 	rcpt_to TEXT NOT NULL,
 	spam_score REAL,
 	thread INTEGER,
-    file_path TEXT NOT NULL,
+    filename TEXT NOT NULL,
     offset INTEGER NOT NULL,
 	FOREIGN KEY(thread) REFERENCES email(id)
 ) strict;
