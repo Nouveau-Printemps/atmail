@@ -1,9 +1,12 @@
 package relay
 
 import (
+	"bytes"
 	"context"
 	"io"
+	"net/mail"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/emersion/go-sasl"
@@ -52,9 +55,9 @@ func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 	if !slices.Contains(s.backend.Domains, a[1]) {
 		s.Reset()
 		return &smtp.SMTPError{
-			Code:         550,
+			Code:         551,
 			EnhancedCode: [3]int{5, 7, 1},
-			Message:      "Relaying denied",
+			Message:      "Forwarding to remote hosts disabled",
 		}
 	}
 	s.To = a
@@ -66,16 +69,56 @@ func (s *Session) Data(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	_, err = s.backend.Rspamd.Verify(context.Background(), nil, b)
+	spam, err := s.backend.Rspamd.Verify(context.Background(), nil, b)
 	if err != nil {
 		return err
 	}
-	//if spam.Messages != nil {
-	//	v, ok := spam.Messages["spam_message"]
-	//	if ok {
-	//
-	//	}
-	//}
+	msg, err := mail.ReadMessage(bytes.NewBuffer(b))
+	if err != nil {
+		return err
+	}
+	body := msg.Body
+	headers := map[string][]string(msg.Header)
+	if spam.Skipped {
+		// this goto avoids an hugly condition that is almost always met
+		goto valid_email
+	}
+	if spam.Messages != nil {
+		v, ok := spam.Messages["spam_message"]
+		if ok {
+			return &smtp.SMTPError{
+				Code:         550,
+				EnhancedCode: [3]int{5, 6, 28},
+				Message:      v,
+			}
+		}
+	}
+	switch spam.Action {
+	case RejectResponse:
+		return &smtp.SMTPError{
+			Code:         550,
+			EnhancedCode: [3]int{5, 6, 28},
+			Message:      "Your message is unwanted",
+		}
+	case SoftRejectResponse:
+		return &smtp.SMTPError{
+			Code:         450,
+			EnhancedCode: [3]int{4, 6, 27},
+			Message:      "Your message is temporary unwanted, retry later",
+		}
+	case AddHeaderResponse:
+		headers["X-Spam-Score"] = []string{strconv.FormatFloat(spam.Score, 'f', 2, 64)}
+	case RewriteSubjectResponse:
+		headers["Subject"] = []string{spam.Subject}
+	case GreylistResponse:
+	case NoActionResponse:
+	default:
+		panic("not implemented")
+	}
+	if spam.Body != nil {
+		body = spam.Body
+	}
+valid_email:
 	return nil
 }
 

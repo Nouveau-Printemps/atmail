@@ -40,7 +40,7 @@ const (
 	AddHeaderResponse      ActionResponse = "add header"
 	RewriteSubjectResponse ActionResponse = "rewrite subject"
 	SoftRejectResponse     ActionResponse = "soft reject"
-	Reject                 ActionResponse = "reject"
+	RejectResponse         ActionResponse = "reject"
 )
 
 type RspamdSymbol struct {
