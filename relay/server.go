@@ -19,7 +19,6 @@ import (
 type Backend struct {
 	Domains map[string]auth.Config
 	Rspamd  *RspamdClient
-	Storage *storage.Storage
 }
 
 func (bck *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
@@ -32,6 +31,8 @@ type Session struct {
 
 	From [2]string
 	To   [2]string
+
+	RedirectTo string
 }
 
 func (s *Session) AuthMechanisms() []string {
@@ -63,13 +64,24 @@ func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 
 func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 	a := ParseAddress(to)
-	if _, ok := s.backend.Domains[a[1]]; !ok {
-		s.Reset()
+	cfg, ok := s.backend.Domains[a[1]]
+	if !ok {
 		return &smtp.SMTPError{
 			Code:         551,
 			EnhancedCode: [3]int{5, 7, 1},
 			Message:      "Forwarding to remote hosts is disabled",
 		}
+	}
+	if cfg.CatchAllPassword == "" {
+		if _, ok := cfg.StaticUsers[a[0]]; !ok {
+			return &smtp.SMTPError{
+				Code:         550,
+				EnhancedCode: [3]int{5, 1, 1},
+				Message:      "Address doesn't exist",
+			}
+		}
+	} else {
+		s.RedirectTo = cfg.CatchAll
 	}
 	s.To = a
 	return nil
@@ -136,6 +148,9 @@ func (s *Session) Data(r io.Reader) error {
 		body = spam.Body
 	}
 valid_email:
+	if s.RedirectTo != "" {
+		s.To[0] = s.RedirectTo
+	}
 	go func() {
 		score := sql.NullFloat64{Float64: 0, Valid: false}
 		if spam != nil {
@@ -144,7 +159,7 @@ valid_email:
 		}
 		b, _ := io.ReadAll(body)
 		b = formatMail(headers, b)
-		err := s.backend.Storage.StoreEmail(context.Background(), s.From, s.To, score, b)
+		err := storage.StoreEmail(context.Background(), s.From, s.To, score, b)
 		if err != nil {
 			slog.Error("cannot save email", "error", err)
 		}

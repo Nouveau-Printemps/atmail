@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -27,13 +28,13 @@ const DefaultConfigPath = "/etc/atmail/config.toml"
 //go:embed default.toml
 var defaultConfig []byte
 
-func ParseConfig(path string) (Config, error) {
+func ParseConfig(p string) (Config, error) {
 	var cfg Config
-	data, err := toml.DecodeFile(path, &cfg)
+	data, err := toml.DecodeFile(p, &cfg)
 	if err != nil {
 		if os.IsNotExist(err) {
-			slog.Warn("config file not found, writing the default config", "path", path)
-			err := os.WriteFile(path, defaultConfig, 0o640)
+			slog.Warn("config file not found, writing the default config", "path", p)
+			err := os.WriteFile(p, defaultConfig, 0o640)
 			if err != nil {
 				panic(err)
 			}
@@ -45,6 +46,13 @@ func ParseConfig(path string) (Config, error) {
 		slog.Warn("decoding config: configuration key not decoded", "key", k)
 	}
 	cfg.MaxMailSize *= 1024
+	if !strings.HasPrefix(cfg.Directory, "/") {
+		base, err := os.Getwd()
+		if err != nil {
+			return cfg, err
+		}
+		cfg.Directory = path.Join(base, cfg.Directory)
+	}
 	return cfg, nil
 }
 

@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	_ "embed"
 	"flag"
 	"log/slog"
 	"os"
 	"os/signal"
+	"path"
 	"syscall"
 	"time"
 
@@ -15,7 +15,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"nouveauprintemps.org/atmail/relay"
 	"nouveauprintemps.org/atmail/storage"
-	"nouveauprintemps.org/atmail/storage/index"
 )
 
 //go:generate go tool sqlc generate
@@ -39,18 +38,24 @@ func main() {
 		panic(err)
 	}
 	slog.Debug("config parsed", "path", configPath)
-	database, err := sql.Open("sqlite3", cfg.DB+"?_journal=WAL")
-	if err != nil {
-		panic(err)
+	for d, v := range cfg.Domains {
+		if v.CatchAllPassword != "" {
+			err = os.Mkdir(path.Join(cfg.Directory, v.CatchAll+"@"+d), 0o750)
+			if err != nil && !os.IsExist(err) {
+				panic(err)
+			}
+			continue
+		}
+		for u := range v.StaticUsers {
+			err = os.Mkdir(path.Join(cfg.Directory, u+"@"+d), 0o750)
+			if err != nil && !os.IsExist(err) {
+				panic(err)
+			}
+		}
 	}
-	_, err = database.Exec(migrations)
-	if err != nil {
-		panic(err)
-	}
-	st := storage.New(index.New(database), cfg.Directory)
+	slog.Debug("users' folders created")
 	bck := relay.Backend{
 		Domains: cfg.Domains,
-		Storage: st,
 	}
 	srv := smtp.NewServer(&bck)
 	srv.AllowInsecureAuth = true
@@ -62,12 +67,10 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill, syscall.SIGINT)
 	defer cancel()
 
-	err = storage.Cache.Sync(ctx, st.Index)
-	if err != nil {
-		panic(err)
-	}
+	storage.Cache.Path = cfg.Directory
+	storage.Cache.Migrations = migrations
 	defer func() {
-		err = storage.Cache.Save(context.TODO(), st.Index)
+		err = storage.Cache.Close(context.TODO())
 		if err != nil {
 			panic(err)
 		}
