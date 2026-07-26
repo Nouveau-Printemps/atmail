@@ -1,8 +1,12 @@
 package storage
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/binary"
 	"errors"
+	"io"
+	"log/slog"
 	"os"
 )
 
@@ -14,26 +18,42 @@ func ReadEmailAt(f *os.File, offset uint32) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if header[0]&EmailDeleted == 1 {
+	if header[0]&EmailDeleted == EmailDeleted {
 		return nil, nil
 	}
 	ln := binary.BigEndian.Uint32(header[1:])
 	b := make([]byte, ln)
 	_, err = f.ReadAt(b, int64(offset)+int64(len(header)))
+	if header[0]&EmailCompressed == EmailCompressed {
+		slog.Debug("email compressed, decompressing")
+		buf := bytes.NewBuffer(b)
+		r, err := gzip.NewReader(buf)
+		if err != nil {
+			return nil, err
+		}
+		b, err = io.ReadAll(r)
+		if err != nil {
+			return nil, err
+		}
+		r.Close()
+	}
 	return b, err
 }
 
 const (
-	// 20MB
+	// 20MiB
 	MaxFileSize = 20 * 1024 * 1024
-	// 5MB
+	// 5MiB
 	MaxEmailSizeInFile = 5 * 1024 * 1024
+	// 1KiB
+	CompressEmailBiggerThan = 1024
 )
 
 var ErrFileIsFull = errors.New("file is full")
 
 const (
 	EmailDeleted = 1 << iota
+	EmailCompressed
 )
 
 func WriteEmail(f *os.File, b []byte) (uint32, error) {
@@ -45,16 +65,25 @@ func WriteEmail(f *os.File, b []byte) (uint32, error) {
 		return 0, ErrFileIsFull
 	}
 	var n uint32
-	// if is stored in file
-	if len(b) < MaxEmailSizeInFile {
-		size := binary.BigEndian.AppendUint32(make([]byte, 1, 5), uint32(len(b)))
-		p, err := f.Write(size)
+	header := make([]byte, 1, 5)
+	if len(b) >= CompressEmailBiggerThan {
+		slog.Debug("compressing email")
+		header[0] |= EmailCompressed
+		var buf bytes.Buffer
+		w, _ := gzip.NewWriterLevel(&buf, 5)
+		_, err := w.Write(b)
 		if err != nil {
 			return 0, err
 		}
-		n += uint32(p)
+		w.Close()
+		b = buf.Bytes()
 	}
-	p, err := f.Write(b)
+	p, err := f.Write(binary.BigEndian.AppendUint32(header, uint32(len(b))))
+	if err != nil {
+		return 0, err
+	}
+	n += uint32(p)
+	p, err = f.Write(b)
 	n += uint32(p)
 	return uint32(n), err
 }

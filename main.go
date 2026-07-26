@@ -59,7 +59,7 @@ func main() {
 	}
 	srv := smtp.NewServer(&bck)
 	srv.AllowInsecureAuth = true
-	srv.MaxMessageBytes = 1 << 10
+	srv.MaxMessageBytes = int64(cfg.MaxMailSize)
 	srv.Domain = cfg.MainDomain
 	srv.ReadTimeout = 10 * time.Second
 	srv.WriteTimeout = 10 * time.Second
