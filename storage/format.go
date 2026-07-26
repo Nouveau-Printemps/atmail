@@ -88,6 +88,13 @@ func WriteEmail(f *os.File, b []byte) (uint32, error) {
 	return uint32(n), err
 }
 
-func DeleteEmailAt(b []byte, offset uint32) {
-	b[offset] |= EmailDeleted
+func DeleteEmailAt(f *os.File, offset uint32) error {
+	var data [1]byte
+	_, err := f.ReadAt(data[:], int64(offset))
+	if err != nil {
+		return err
+	}
+	data[0] |= EmailDeleted
+	_, err = f.WriteAt(data[:], int64(offset))
+	return err
 }

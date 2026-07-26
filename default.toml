@@ -14,17 +14,18 @@ main_domain = "mail.example.org"
 # max mail size in KiB
 max_mail_size = 16416
 
-# each key in domains define a domain used
-[domains."example.org"]
 # If you wanna use ATProto for the auth
-#atproto_pds = "pds.example.org"
-#atproto_client_id = "mail.example.org"
-#atproto_client_secret = "my-secret"
+#[domains."example.org".atproto]
+#pds = "pds.example.org"
+#client_id = "mail.example.org"
+#client_secret = "my-secret"
 
 # If you wanna allow only specific users, maps them to their password (hashed with bcrypt)
-#static_users.foo = "$2y$10$wWJy64n5j4pU2CscdWRq.er5Z2.V31U5Ntz5uTopLy1fMX87GQEDG"
-#static_users.bar = "$2y$10$fZ1tRpz2mfdRfaaTbx723.Gch7tY.f7LIBuZz1of/cLwBGvU39ivG"
+#[domains."example.org".static]
+#users.foo = "$2y$10$wWJy64n5j4pU2CscdWRq.er5Z2.V31U5Ntz5uTopLy1fMX87GQEDG"
+#users.bar = "$2y$10$fZ1tRpz2mfdRfaaTbx723.Gch7tY.f7LIBuZz1of/cLwBGvU39ivG"
 
 # Catch every mail into one address
-catch_all = "me"
-catch_all_password = "bcrypt here"
+[domains."example.org".catch_all]
+user = "me"
+password = "bcrypt here"

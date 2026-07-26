@@ -72,16 +72,16 @@ func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 			Message:      "Forwarding to remote hosts is disabled",
 		}
 	}
-	if cfg.CatchAllPassword == "" {
-		if _, ok := cfg.StaticUsers[a[0]]; !ok {
+	if cfg.Static != nil {
+		if _, ok := cfg.Static.Users[a[0]]; !ok {
 			return &smtp.SMTPError{
 				Code:         550,
 				EnhancedCode: [3]int{5, 1, 1},
 				Message:      "Address doesn't exist",
 			}
 		}
-	} else {
-		s.RedirectTo = cfg.CatchAll
+	} else if cfg.CatchAll != nil {
+		s.RedirectTo = cfg.CatchAll.User
 	}
 	s.To = a
 	return nil

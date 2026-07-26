@@ -7,29 +7,38 @@ import (
 )
 
 type Config struct {
-	// ATProto related
-	ATProtoPDS          string `toml:"atproto_pds"`
-	ATProtoClientID     string `toml:"atproto_client_id"`
-	ATProtoClientSecret string `toml:"atproto_client_secret"`
+	ATProto  *ATProtoConfig `toml:"atproto"`
+	Static   *StaticConfig  `toml:"static"`
+	CatchAll *CatchAll      `toml:"catch_all"`
+}
 
-	// StaticUsers maps username to bcrypt password
-	StaticUsers map[string]string `toml:"static_users"`
+type ATProtoConfig struct {
+	PDS          string `json:"pds"`
+	ClientID     string `toml:"client_id"`
+	ClientSecret string `toml:"client_secret"`
+}
 
-	// CatchAll mail to a specific address
-	CatchAll         string `toml:"catch_all"`
-	CatchAllPassword string `toml:"catch_all_password"`
+type StaticConfig struct {
+	// Users maps username to bcrypt password
+	Users map[string]string `toml:"users"`
+}
+
+type CatchAll struct {
+	User string `toml:"user"`
+	// bcrypt Password of user
+	Password string `toml:"password"`
 }
 
 func (cfg *Config) VerifyUser(username, password string) bool {
 	var realPass string
-	if cfg.CatchAllPassword != "" {
-		if subtle.ConstantTimeCompare([]byte(cfg.CatchAll), []byte(username)) != 1 {
+	if cfg.CatchAll != nil {
+		if subtle.ConstantTimeCompare([]byte(cfg.CatchAll.User), []byte(username)) != 1 {
 			return false
 		}
-		realPass = cfg.CatchAllPassword
-	} else {
+		realPass = cfg.CatchAll.Password
+	} else if cfg.Static != nil {
 		var ok bool
-		realPass, ok = cfg.StaticUsers[username]
+		realPass, ok = cfg.Static.Users[username]
 		if !ok {
 			return false
 		}

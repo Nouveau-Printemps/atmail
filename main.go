@@ -39,17 +39,17 @@ func main() {
 	}
 	slog.Debug("config parsed", "path", configPath)
 	for d, v := range cfg.Domains {
-		if v.CatchAllPassword != "" {
-			err = os.Mkdir(path.Join(cfg.Directory, v.CatchAll+"@"+d), 0o750)
+		if v.CatchAll != nil {
+			err = os.Mkdir(path.Join(cfg.Directory, v.CatchAll.User+"@"+d), 0o750)
 			if err != nil && !os.IsExist(err) {
 				panic(err)
 			}
-			continue
-		}
-		for u := range v.StaticUsers {
-			err = os.Mkdir(path.Join(cfg.Directory, u+"@"+d), 0o750)
-			if err != nil && !os.IsExist(err) {
-				panic(err)
+		} else if v.Static != nil {
+			for u := range v.Static.Users {
+				err = os.Mkdir(path.Join(cfg.Directory, u+"@"+d), 0o750)
+				if err != nil && !os.IsExist(err) {
+					panic(err)
+				}
 			}
 		}
 	}
