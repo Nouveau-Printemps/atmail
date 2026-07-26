@@ -1,8 +1,8 @@
 version: "2"
 sql:
   - engine: "sqlite"
-    queries: "storage/index/query.sql"
-    schema: "storage/index/schema.sql"
+    queries: "storage/index/query/"
+    schema: "storage/index/schema/"
     gen:
       go:
         package: "index"

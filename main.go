@@ -19,8 +19,11 @@ import (
 
 //go:generate go tool sqlc generate
 
-//go:embed storage/index/schema.sql
-var migrations string
+//go:embed storage/index/schema/emails.sql
+var emailsMigrations string
+
+//go:embed storage/index/schema/mailbox.sql
+var mailboxMigrations string
 
 var (
 	configPath = DefaultConfigPath
@@ -68,7 +71,7 @@ func main() {
 	defer cancel()
 
 	storage.Cache.Path = cfg.Directory
-	storage.Cache.Migrations = migrations
+	storage.Cache.Migrations = emailsMigrations + mailboxMigrations
 	defer func() {
 		err = storage.Cache.Close(context.TODO())
 		if err != nil {

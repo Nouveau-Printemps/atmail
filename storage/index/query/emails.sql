@@ -31,3 +31,4 @@ VALUES (?, ?, ?)
 ON CONFLICT DO UPDATE SET
     last_file = excluded.last_file,
     offset = excluded.offset;
+

@@ -11,6 +11,8 @@ import (
 	"nouveauprintemps.org/atmail/storage/index"
 )
 
+type Index = index.Queries
+
 var Cache = &Meta{subs: make(map[string]*meta)}
 
 type Meta struct {
@@ -50,7 +52,7 @@ func (m *Meta) DB(ctx context.Context, user string) (*meta, error) {
 
 	db, err := sql.Open(
 		"sqlite3",
-		"file:"+m.PathOf(user, "database.db")+"?_journal=WAL",
+		"file:"+m.PathOf(user, "database.db")+"?_journal=WAL&_foreign_keys=1",
 	)
 	if err != nil {
 		return nil, err
@@ -59,7 +61,7 @@ func (m *Meta) DB(ctx context.Context, user string) (*meta, error) {
 	if err != nil {
 		return nil, err
 	}
-	mm := &meta{index: index.New(db)}
+	mm := &meta{db: db}
 	err = mm.Sync(ctx)
 	if err != nil {
 		return nil, err
@@ -72,7 +74,7 @@ type meta struct {
 	mu       sync.RWMutex
 	lastFile string
 	offset   uint32
-	index    *Index
+	db       *sql.DB
 }
 
 func (m *meta) LastFile() string {
@@ -95,7 +97,7 @@ func (m *meta) Update(lastFile string, offset uint32) {
 }
 
 func (m *meta) Sync(ctx context.Context) error {
-	meta, err := m.index.GetMeta(ctx)
+	meta, err := index.New(m.db).GetMeta(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil
@@ -110,7 +112,7 @@ func (m *meta) Sync(ctx context.Context) error {
 }
 
 func (m *meta) Save(ctx context.Context) error {
-	return m.index.SetMeta(
+	return index.New(m.db).SetMeta(
 		ctx,
 		0,
 		sql.NullString{String: m.lastFile, Valid: true},

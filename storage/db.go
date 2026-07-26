@@ -12,8 +12,6 @@ import (
 	"nouveauprintemps.org/atmail/storage/index"
 )
 
-type Index = index.Queries
-
 func newFileName() string {
 	return strconv.Itoa(int(time.Now().Unix()))
 }
@@ -59,13 +57,26 @@ func StoreEmail(ctx context.Context, from, to [2]string, spamScore sql.NullFloat
 	if err != nil {
 		return err
 	}
-	_, err = cache.index.NewEmail(ctx, index.NewEmailParams{
+	tx, err := cache.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	in := index.New(tx)
+	id, err := in.NewEmail(ctx, index.NewEmailParams{
 		MailFrom:  strings.Join(from[:], "@"),
 		RcptTo:    addr,
 		SpamScore: spamScore,
 		Filename:  lastFile,
 		Offset:    offset,
 	})
+	if err != nil {
+		return err
+	}
+	err = in.AddInboxEmail(ctx, id)
+	if err != nil {
+		return err
+	}
+	err = tx.Commit()
 	if err != nil {
 		return err
 	}
@@ -78,7 +89,7 @@ func Read(ctx context.Context, user string, id int64) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	email, err := cache.index.GetEmail(ctx, id)
+	email, err := index.New(cache.db).GetEmail(ctx, id)
 	if err != nil {
 		return nil, err
 	}

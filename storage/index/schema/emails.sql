@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS emails (
 	parent INTEGER,
     filename TEXT NOT NULL,
     offset INTEGER NOT NULL,
-	FOREIGN KEY(parent) REFERENCES email(id)
+	FOREIGN KEY(parent) REFERENCES emails(id) ON DELETE SET NULL
 ) strict;
 
 CREATE TABLE IF NOT EXISTS meta (
