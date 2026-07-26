@@ -9,16 +9,17 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/pires/go-proxyproto"
+	"nouveauprintemps.org/atmail/auth"
 )
 
 type Config struct {
-	ListenAddr  string         `toml:"listen"`
-	UseProxyV2  bool           `toml:"use_proxy_v2"`
-	DB          string         `toml:"db"`
-	Directory   string         `toml:"directory"`
-	MainDomain  string         `toml:"main_domain"`
-	MaxMailSize uint32         `toml:"max_mail_size"`
-	Domains     map[string]any `toml:"domains"`
+	ListenAddr  string                 `toml:"listen"`
+	UseProxyV2  bool                   `toml:"use_proxy_v2"`
+	DB          string                 `toml:"db"`
+	Directory   string                 `toml:"directory"`
+	MainDomain  string                 `toml:"main_domain"`
+	MaxMailSize uint32                 `toml:"max_mail_size"`
+	Domains     map[string]auth.Config `toml:"domains"`
 }
 
 const DefaultConfigPath = "/etc/atmail/config.toml"

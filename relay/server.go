@@ -7,17 +7,17 @@ import (
 	"io"
 	"log/slog"
 	"net/mail"
-	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
+	"nouveauprintemps.org/atmail/auth"
 	"nouveauprintemps.org/atmail/storage"
 )
 
 type Backend struct {
-	Domains []string
+	Domains map[string]auth.Config
 	Rspamd  *RspamdClient
 	Storage *storage.Storage
 }
@@ -28,7 +28,7 @@ func (bck *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
 
 type Session struct {
 	backend *Backend
-	auth    bool
+	authFor []string
 
 	From [2]string
 	To   [2]string
@@ -40,14 +40,21 @@ func (s *Session) AuthMechanisms() []string {
 
 func (s *Session) Auth(mech string) (sasl.Server, error) {
 	return sasl.NewPlainServer(func(identity, username, password string) error {
-		s.auth = true
+		for k, cfg := range s.backend.Domains {
+			if cfg.VerifyUser(username, password) {
+				s.authFor = append(s.authFor, k)
+			}
+		}
+		if len(s.authFor) == 0 {
+			return smtp.ErrAuthFailed
+		}
 		return nil
 	}), nil
 }
 
 func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 	a := ParseAddress(from)
-	if slices.Contains(s.backend.Domains, a[1]) && !s.auth {
+	if _, ok := s.backend.Domains[a[1]]; ok && len(s.authFor) == 0 {
 		return smtp.ErrAuthRequired
 	}
 	s.From = a
@@ -56,7 +63,7 @@ func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 
 func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 	a := ParseAddress(to)
-	if !slices.Contains(s.backend.Domains, a[1]) {
+	if _, ok := s.backend.Domains[a[1]]; !ok {
 		s.Reset()
 		return &smtp.SMTPError{
 			Code:         551,

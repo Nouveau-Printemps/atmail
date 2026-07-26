@@ -6,10 +6,8 @@ import (
 	_ "embed"
 	"flag"
 	"log/slog"
-	"maps"
 	"os"
 	"os/signal"
-	"slices"
 	"syscall"
 	"time"
 
@@ -51,7 +49,7 @@ func main() {
 	}
 	st := storage.New(index.New(database), cfg.Directory)
 	bck := relay.Backend{
-		Domains: slices.Collect(maps.Keys(cfg.Domains)),
+		Domains: cfg.Domains,
 		Storage: st,
 	}
 	srv := smtp.NewServer(&bck)
