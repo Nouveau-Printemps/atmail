@@ -46,11 +46,17 @@ func (s *Session) Unselect() error {
 	return nil
 }
 
-func (s *Session) Create(mailbox string, options *imap.CreateOptions) error
+func (s *Session) Create(mailbox string, options *imap.CreateOptions) error {
+	return storage.CreateMailbox(context.TODO(), s.username, mailbox)
+}
 
-func (s *Session) Delete(mailbox string) error
+func (s *Session) Delete(mailbox string) error {
+	return storage.DeleteMailbox(context.TODO(), s.username, mailbox)
+}
 
-func (s *Session) Rename(mailbox, newName string, options *imap.RenameOptions) error
+func (s *Session) Rename(mailbox, newName string, options *imap.RenameOptions) error {
+	return storage.RenameMailbox(context.TODO(), s.username, mailbox, newName)
+}
 
 func (s *Session) Subscribe(mailbox string) error
 

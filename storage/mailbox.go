@@ -52,3 +52,28 @@ func DescribeMailbox(ctx context.Context, user string, mailbox string) (*imap.Se
 		UIDValidity:    uint32(box.ID),
 	}, nil
 }
+
+func CreateMailbox(ctx context.Context, user, name string) error {
+	meta, err := Cache.DB(ctx, user)
+	if err != nil {
+		return err
+	}
+	_, err = index.New(meta.db).NewMailbox(ctx, name)
+	return err
+}
+
+func DeleteMailbox(ctx context.Context, user, name string) error {
+	meta, err := Cache.DB(ctx, user)
+	if err != nil {
+		return err
+	}
+	return index.New(meta.db).DeleteMailbox(ctx, name)
+}
+
+func RenameMailbox(ctx context.Context, user, old, new string) error {
+	meta, err := Cache.DB(ctx, user)
+	if err != nil {
+		return err
+	}
+	return index.New(meta.db).RenameMailbox(ctx, new, old)
+}

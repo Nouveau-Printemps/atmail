@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"flag"
 	"log/slog"
+	"log/syslog"
 	"os"
 	"os/signal"
 	"path"
@@ -14,6 +15,7 @@ import (
 	"github.com/emersion/go-imap/v2/imapserver"
 	"github.com/emersion/go-smtp"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/nyttikord/logos"
 	"nouveauprintemps.org/atmail/display"
 	"nouveauprintemps.org/atmail/relay"
 	"nouveauprintemps.org/atmail/storage"
@@ -29,31 +31,53 @@ var mailboxMigrations string
 
 var (
 	configPath = DefaultConfigPath
+	verbose    = false
+	toSyslog   = false
 )
 
 func init() {
 	flag.StringVar(&configPath, "config", configPath, "sets the config path")
+	flag.BoolVar(&verbose, "v", verbose, "increase verbosity")
+	flag.BoolVar(&toSyslog, "syslog", toSyslog, "log to syslog instead of stderr")
 }
 
 func main() {
-	slog.Info("starting...")
 	flag.Parse()
+	slog.Info("starting...")
+	lvl := slog.LevelInfo
+	if verbose {
+		lvl = slog.LevelDebug
+	}
+	var lg *logos.Logos
+	var err error
+	if toSyslog {
+		lg, err = logos.NewSyslog("atmail", syslog.LOG_MAIL, &logos.Options{Level: lvl})
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		lg = logos.NewColor(os.Stderr, &logos.Options{Level: lvl})
+	}
+	slog.SetDefault(slog.New(lg))
 	cfg, err := ParseConfig(configPath)
 	if err != nil {
-		panic(err)
+		slog.Error("parsing config", "error", err)
+		os.Exit(2)
 	}
 	slog.Debug("config parsed", "path", configPath)
 	for d, v := range cfg.Domains {
 		if v.CatchAll != nil {
 			err = os.Mkdir(path.Join(cfg.Directory, v.CatchAll.User+"@"+d), 0o750)
 			if err != nil && !os.IsExist(err) {
-				panic(err)
+				slog.Error("creating folders", "domain", d, "user", v.CatchAll.User, "error", err)
+				os.Exit(3)
 			}
 		} else if v.Static != nil {
 			for u := range v.Static.Users {
 				err = os.Mkdir(path.Join(cfg.Directory, u+"@"+d), 0o750)
 				if err != nil && !os.IsExist(err) {
-					panic(err)
+					slog.Error("creating folders", "domain", d, "user", u, "error", err)
+					os.Exit(3)
 				}
 			}
 		}
@@ -83,22 +107,24 @@ func main() {
 	defer func() {
 		err = storage.Cache.Close(context.TODO())
 		if err != nil {
-			panic(err)
+			slog.Error("saving cache", "error", err)
 		}
 	}()
 
 	smtpL, err := cfg.Smtp.Listen()
 	if err != nil {
-		panic(err)
+		slog.Error("listening for smtp", "error", err)
+		os.Exit(4)
 	}
 	defer smtpL.Close()
 	imapL, err := cfg.Imap.Listen()
 	if err != nil {
-		panic(err)
+		slog.Error("listening for imap", "error", err)
+		os.Exit(4)
 	}
 	defer imapL.Close()
 
-	errc := make(chan error, 1)
+	errc := make(chan error, 2)
 	go func() {
 		errc <- smtpSrv.Serve(smtpL)
 	}()
@@ -110,7 +136,8 @@ func main() {
 	select {
 	case <-ctx.Done():
 	case err = <-errc:
-		panic(err)
+		slog.Error("handling requests", "error", err)
+		os.Exit(5)
 	}
 	slog.Info("exiting")
 }

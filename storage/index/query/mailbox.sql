@@ -13,7 +13,11 @@ RETURNING id;
 -- name: RenameMailbox :exec
 UPDATE mailbox
 SET name = ?
-WHERE id = ?;
+WHERE name = ?;
+
+-- name: DeleteMailbox :exec
+DELETE FROM mailbox
+WHERE name = ?;
 
 -- name: ListFlags :many
 SELECT * FROM flags;
