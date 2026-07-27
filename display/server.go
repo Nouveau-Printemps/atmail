@@ -33,5 +33,5 @@ func (bck *Backend) Options(log *slog.Logger) *imapserver.Options {
 }
 
 func (bck *Backend) NewSession(conn *imapserver.Conn) (imapserver.Session, *imapserver.GreetingData, error) {
-	return &Session{backend: bck}, &imapserver.GreetingData{PreAuth: false}, nil
+	return &Session{backend: bck, subscribed: map[string]struct{}{}}, &imapserver.GreetingData{PreAuth: false}, nil
 }

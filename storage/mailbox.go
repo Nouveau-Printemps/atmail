@@ -7,6 +7,8 @@ import (
 	"nouveauprintemps.org/atmail/storage/index"
 )
 
+const MailboxSeparator = '/'
+
 func DescribeMailbox(ctx context.Context, user string, mailbox string) (*imap.SelectData, error) {
 	meta, err := Cache.DB(ctx, user)
 	if err != nil {
@@ -76,4 +78,40 @@ func RenameMailbox(ctx context.Context, user, old, new string) error {
 		return err
 	}
 	return index.New(meta.db).RenameMailbox(ctx, new, old)
+}
+
+func ListMailbox(ctx context.Context, user string) ([]index.Mailbox, error) {
+	meta, err := Cache.DB(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+	return index.New(meta.db).ListMailbox(ctx)
+}
+
+func StatusMailbox(ctx context.Context, user, mailbox string, opt *imap.StatusOptions) (*imap.StatusData, error) {
+	meta, err := Cache.DB(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+	in := index.New(meta.db)
+	box, err := in.GetMailbox(ctx, mailbox)
+	var status imap.StatusData
+	if opt.NumMessages {
+		n, err := in.CountMailboxEmails(ctx, box.ID)
+		if err != nil {
+			return nil, err
+		}
+		status.NumMessages = new(uint32(n))
+	}
+	if opt.UIDValidity {
+		status.UIDValidity = uint32(box.ID)
+	}
+	if opt.UIDNext {
+		mails, err := in.GetLatestMailboxEmails(ctx, box.ID, 1, 0)
+		if err != nil {
+			return nil, err
+		}
+		status.UIDNext = imap.UID(mails[0].ID + 1)
+	}
+	return &status, nil
 }

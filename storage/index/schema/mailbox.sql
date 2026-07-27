@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS mailbox_emails (
 -- ensure that the required mailbox exists
 
 INSERT INTO mailbox (name)
-VALUES ("INBOX")
+VALUES ("Inbox")
 ON CONFLICT DO NOTHING;
 
 INSERT INTO mailbox (name)

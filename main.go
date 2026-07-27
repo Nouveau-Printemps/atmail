@@ -92,12 +92,14 @@ func main() {
 	smtpSrv.Domain = cfg.MainDomain
 	smtpSrv.ReadTimeout = 10 * time.Second
 	smtpSrv.WriteTimeout = 10 * time.Second
+	defer smtpSrv.Close()
 
 	d := &display.Backend{
 		Domains: cfg.Domains,
 	}
 
 	imapSrv := imapserver.New(d.Options(slog.Default()))
+	defer imapSrv.Close()
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill, syscall.SIGINT)
 	defer cancel()
