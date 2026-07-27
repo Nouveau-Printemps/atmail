@@ -11,8 +11,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/emersion/go-imap/v2/imapserver"
 	"github.com/emersion/go-smtp"
 	_ "github.com/mattn/go-sqlite3"
+	"nouveauprintemps.org/atmail/display"
 	"nouveauprintemps.org/atmail/relay"
 	"nouveauprintemps.org/atmail/storage"
 )
@@ -60,12 +62,18 @@ func main() {
 	bck := relay.Backend{
 		Domains: cfg.Domains,
 	}
-	srv := smtp.NewServer(&bck)
-	srv.AllowInsecureAuth = true
-	srv.MaxMessageBytes = int64(cfg.MaxMailSize)
-	srv.Domain = cfg.MainDomain
-	srv.ReadTimeout = 10 * time.Second
-	srv.WriteTimeout = 10 * time.Second
+	smtpSrv := smtp.NewServer(&bck)
+	smtpSrv.AllowInsecureAuth = true
+	smtpSrv.MaxMessageBytes = int64(cfg.Smtp.MaxMailSize)
+	smtpSrv.Domain = cfg.MainDomain
+	smtpSrv.ReadTimeout = 10 * time.Second
+	smtpSrv.WriteTimeout = 10 * time.Second
+
+	d := &display.Backend{
+		Domains: cfg.Domains,
+	}
+
+	imapSrv := imapserver.New(d.Options(slog.Default()))
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill, syscall.SIGINT)
 	defer cancel()
@@ -79,15 +87,25 @@ func main() {
 		}
 	}()
 
-	l, err := cfg.Listen()
+	smtpL, err := cfg.Smtp.Listen()
 	if err != nil {
 		panic(err)
 	}
-	defer l.Close()
+	defer smtpL.Close()
+	imapL, err := cfg.Imap.Listen()
+	if err != nil {
+		panic(err)
+	}
+	defer imapL.Close()
+
 	errc := make(chan error, 1)
 	go func() {
-		errc <- srv.Serve(l)
+		errc <- smtpSrv.Serve(smtpL)
 	}()
+	go func() {
+		errc <- imapSrv.Serve(imapL)
+	}()
+
 	slog.Info("started")
 	select {
 	case <-ctx.Done():

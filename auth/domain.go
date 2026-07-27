@@ -7,9 +7,10 @@ import (
 )
 
 type Config struct {
-	ATProto  *ATProtoConfig `toml:"atproto"`
-	Static   *StaticConfig  `toml:"static"`
-	CatchAll *CatchAll      `toml:"catch_all"`
+	PlusAddressing bool           `toml:"plus_addressing"`
+	ATProto        *ATProtoConfig `toml:"atproto"`
+	Static         *StaticConfig  `toml:"static"`
+	CatchAll       *CatchAll      `toml:"catch_all"`
 }
 
 type ATProtoConfig struct {
