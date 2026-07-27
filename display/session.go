@@ -1,31 +1,50 @@
 package display
 
 import (
+	"context"
+
 	"github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapserver"
+	"nouveauprintemps.org/atmail/storage"
 )
 
 type Session struct {
 	backend *Backend
 
-	authFor []string
+	username string
+
+	mailbox  string
+	readOnly bool
 }
 
-func (s *Session) Close() error
+func (s *Session) Close() error {
+	*s = Session{backend: s.backend}
+	return nil
+}
 
 func (s *Session) Login(username, password string) error {
-	for k, cfg := range s.backend.Domains {
+	for _, cfg := range s.backend.Domains {
 		if cfg.VerifyUser(username, password) {
-			s.authFor = append(s.authFor, k)
+			s.username = username
+			break
 		}
 	}
-	if len(s.authFor) == 0 {
+	if len(s.username) == 0 {
 		return imapserver.ErrAuthFailed
 	}
 	return nil
 }
 
-func (s *Session) Select(mailbox string, options *imap.SelectOptions) (*imap.SelectData, error)
+func (s *Session) Select(mailbox string, options *imap.SelectOptions) (*imap.SelectData, error) {
+	s.mailbox = mailbox
+	s.readOnly = options.ReadOnly
+	return storage.DescribeMailbox(context.TODO(), s.username, mailbox)
+}
+
+func (s *Session) Unselect() error {
+	s.mailbox = ""
+	return nil
+}
 
 func (s *Session) Create(mailbox string, options *imap.CreateOptions) error
 
@@ -46,8 +65,6 @@ func (s *Session) Append(mailbox string, r imap.LiteralReader, options *imap.App
 func (s *Session) Poll(w *imapserver.UpdateWriter, allowExpunge bool) error
 
 func (s *Session) Idle(w *imapserver.UpdateWriter, stop <-chan struct{}) error
-
-func (s *Session) Unselect() error
 
 func (s *Session) Expunge(w *imapserver.ExpungeWriter, uids *imap.UIDSet) error
 

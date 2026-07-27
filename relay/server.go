@@ -104,7 +104,7 @@ func (s *Session) Data(r io.Reader) error {
 		// thus, this goto produces a faster assembly because there is no bad branch prediction in the common case
 		goto valid_email
 	}
-	spam, err = s.backend.Rspamd.Verify(context.Background(), nil, b)
+	spam, err = s.backend.Rspamd.Verify(context.TODO(), nil, b)
 	if err != nil {
 		return err
 	}
@@ -159,7 +159,7 @@ valid_email:
 		}
 		b, _ := io.ReadAll(body)
 		b = formatMail(headers, b)
-		err := storage.StoreEmail(context.Background(), s.From, s.To, score, b)
+		err := storage.StoreEmail(context.TODO(), s.From, s.To, score, b)
 		if err != nil {
 			slog.Error("cannot save email", "error", err)
 		}

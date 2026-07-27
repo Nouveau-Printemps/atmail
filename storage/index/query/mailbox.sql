@@ -1,4 +1,8 @@
 -- name: GetMailbox :one
+SELECT * FROM mailbox
+WHERE name = ?;
+
+-- name: ListMailbox :many
 SELECT * FROM mailbox;
 
 -- name: NewMailbox :one
@@ -20,10 +24,8 @@ VALUES (?)
 RETURNING id;
 
 -- name: GetMailboxFlags :many
-SELECT * FROM flags f
-WHERE EXISTS(
-    SELECT * FROM mailbox_flags m WHERE m.mailbox_id = ? and m.flag_id = f.id
-);
+SELECT f.*, m.user_added FROM flags f, mailbox_flags m
+WHERE m.mailbox_id = ? and m.flag_id = f.id;
 
 -- name: AddMailboxFlag :exec
 INSERT INTO mailbox_flags (mailbox_id, flag_id)

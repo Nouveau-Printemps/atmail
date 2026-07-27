@@ -11,12 +11,14 @@ CREATE TABLE IF NOT EXISTS flags (
 CREATE TABLE IF NOT EXISTS mailbox_flags (
     mailbox_id INTEGER NOT NULL REFERENCES mailbox(id) ON DELETE CASCADE,
     flag_id INTEGER NOT NULL REFERENCES flags(id) ON DELETE CASCADE,
+    user_added BOOLEAN NOT NULL DEFAULT false,
     PRIMARY KEY(mailbox_id, flag_id)
 ) strict;
 
 CREATE TABLE IF NOT EXISTS emails_flags (
     email_id INTEGER NOT NULL REFERENCES emails(id) ON DELETE CASCADE,
     flag_id INTEGER NOT NULL REFERENCES flags(id) ON DELETE CASCADE,
+    user_added BOOLEAN NOT NULL DEFAULT false,
     PRIMARY KEY(email_id, flag_id)
 ) strict;
 
