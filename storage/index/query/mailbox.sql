@@ -3,7 +3,9 @@ SELECT * FROM mailbox
 WHERE name = ?;
 
 -- name: ListMailbox :many
-SELECT * FROM mailbox;
+SELECT m.*, (
+    SELECT COUNT(*) FROM mailbox_emails e WHERE e.mailbox_id = m.id
+) FROM mailbox m;
 
 -- name: NewMailbox :one
 INSERT INTO mailbox (name)
@@ -13,11 +15,11 @@ RETURNING id;
 -- name: RenameMailbox :exec
 UPDATE mailbox
 SET name = ?
-WHERE name = ?;
+WHERE id = ?;
 
 -- name: DeleteMailbox :exec
 DELETE FROM mailbox
-WHERE name = ?;
+WHERE id = ?;
 
 -- name: ListFlags :many
 SELECT * FROM flags;
@@ -79,3 +81,15 @@ WHERE EXISTS(
     SELECT * FROM mailbox_emails m WHERE m.mailbox_id = ? and m.email_id = e.id
 ) ORDER BY e.id ASC
 LIMIT ? OFFSET ?;
+
+-- name: GetMailboxEmails :many
+SELECT * FROM emails e
+WHERE EXISTS(
+    SELECT * FROM mailbox_emails m WHERE m.mailbox_id = ? and m.email_id = e.id
+) AND e.id IN (sqlc.slice('ids'));
+
+-- name: RemoveMailboxEmails :exec
+DELETE FROM emails
+WHERE EXISTS(
+    SELECT * FROM mailbox_emails m WHERE m.mailbox_id = ? and m.email_id = id
+) AND id IN (sqlc.slice('ids'));

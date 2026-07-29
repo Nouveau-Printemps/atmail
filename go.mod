@@ -8,6 +8,7 @@ require (
 	github.com/emersion/go-sasl v0.0.0-20241020182733-b788ff22d5a6
 	github.com/emersion/go-smtp v0.24.0
 	github.com/mattn/go-sqlite3 v1.14.48
+	github.com/nyttikord/logos v0.2.1
 	github.com/pires/go-proxyproto v0.15.0
 	golang.org/x/crypto v0.54.0
 )
@@ -31,7 +32,6 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/ncruces/go-sqlite3 v0.32.0 // indirect
 	github.com/ncruces/julianday v1.0.0 // indirect
-	github.com/nyttikord/logos v0.2.1 // indirect
 	github.com/pganalyze/pg_query_go/v6 v6.2.2 // indirect
 	github.com/pingcap/errors v0.11.5-0.20250523034308-74f78ae071ee // indirect
 	github.com/pingcap/failpoint v0.0.0-20240528011301-b51a646c7c86 // indirect

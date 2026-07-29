@@ -9,6 +9,14 @@ import (
 
 const MailboxSeparator = '/'
 
+func LoadMailbox(ctx context.Context, user string) ([]index.ListMailboxRow, error) {
+	meta, err := Cache.DB(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+	return index.New(meta.db).ListMailbox(ctx)
+}
+
 func DescribeMailbox(ctx context.Context, user string, mailbox string) (*imap.SelectData, error) {
 	meta, err := Cache.DB(ctx, user)
 	if err != nil {
@@ -64,23 +72,23 @@ func CreateMailbox(ctx context.Context, user, name string) error {
 	return err
 }
 
-func DeleteMailbox(ctx context.Context, user, name string) error {
+func DeleteMailbox(ctx context.Context, user string, id int64) error {
 	meta, err := Cache.DB(ctx, user)
 	if err != nil {
 		return err
 	}
-	return index.New(meta.db).DeleteMailbox(ctx, name)
+	return index.New(meta.db).DeleteMailbox(ctx, id)
 }
 
-func RenameMailbox(ctx context.Context, user, old, new string) error {
+func RenameMailbox(ctx context.Context, user string, id int64, rename string) error {
 	meta, err := Cache.DB(ctx, user)
 	if err != nil {
 		return err
 	}
-	return index.New(meta.db).RenameMailbox(ctx, new, old)
+	return index.New(meta.db).RenameMailbox(ctx, rename, id)
 }
 
-func ListMailbox(ctx context.Context, user string) ([]index.Mailbox, error) {
+func ListMailbox(ctx context.Context, user string) ([]index.ListMailboxRow, error) {
 	meta, err := Cache.DB(ctx, user)
 	if err != nil {
 		return nil, err
@@ -114,4 +122,46 @@ func StatusMailbox(ctx context.Context, user, mailbox string, opt *imap.StatusOp
 		status.UIDNext = imap.UID(mails[0].ID + 1)
 	}
 	return &status, nil
+}
+
+func GetMailboxEmails(ctx context.Context, user string, mailbox int64, set imap.NumSet) ([]index.Email, error) {
+	meta, err := Cache.DB(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+	var ids []int64
+	switch v := set.(type) {
+	case imap.SeqSet:
+		seq, _ := v.Nums()
+		ids = make([]int64, 0, len(seq))
+		for _, id := range seq {
+			ids = append(ids, int64(id))
+		}
+	case imap.UIDSet:
+		seq, _ := v.Nums()
+		ids = make([]int64, 0, len(seq))
+		for _, id := range seq {
+			ids = append(ids, int64(id))
+		}
+	}
+	return index.New(meta.db).GetMailboxEmails(ctx, mailbox, ids)
+}
+
+func AddMailboxEmail(ctx context.Context, user string, mailbox int64, emails []int64) error {
+	meta, err := Cache.DB(ctx, user)
+	if err != nil {
+		return err
+	}
+	tx, err := meta.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	in := index.New(tx)
+	for _, id := range emails {
+		err = in.AddMailboxEmail(ctx, mailbox, id)
+		if err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }

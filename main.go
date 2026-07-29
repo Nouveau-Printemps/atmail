@@ -95,9 +95,9 @@ func main() {
 	defer smtpSrv.Close()
 
 	d := &display.Backend{
-		Domains: cfg.Domains,
+		Domains:   cfg.Domains,
+		Mailboxes: map[string]map[string]display.MailboxView{},
 	}
-
 	imapSrv := imapserver.New(d.Options(slog.Default()))
 	defer imapSrv.Close()
 

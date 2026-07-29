@@ -18,7 +18,9 @@ func (l *logger) Printf(format string, args ...any) {
 }
 
 type Backend struct {
-	Domains map[string]auth.Config
+	Domains     map[string]auth.Config
+	MaxMailSize uint32
+	Mailboxes   map[string]map[string]MailboxView
 }
 
 func (bck *Backend) Options(log *slog.Logger) *imapserver.Options {
