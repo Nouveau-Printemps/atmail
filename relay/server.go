@@ -1,15 +1,16 @@
 package relay
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"database/sql"
 	"io"
 	"log/slog"
-	"net/mail"
 	"strconv"
 	"strings"
 
+	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
 	"nouveauprintemps.org/atmail/auth"
@@ -103,7 +104,8 @@ func (s *Session) Data(r io.Reader) error {
 		)
 		return errInternal
 	}
-	msg, err := mail.ReadMessage(bytes.NewBuffer(b))
+	buf := bufio.NewReader(bytes.NewBuffer(b))
+	h, err := textproto.ReadHeader(buf)
 	if err != nil {
 		slog.Error(
 			"parsing mail",
@@ -113,8 +115,7 @@ func (s *Session) Data(r io.Reader) error {
 		)
 		return errInternal
 	}
-	body := msg.Body
-	headers := map[string][]string(msg.Header)
+	body, _ := io.ReadAll(buf)
 	var spam *RspamdResponse
 	if s.backend.Rspamd == nil {
 		// this goto avoids an hugly condition that is almost always met
@@ -159,16 +160,16 @@ func (s *Session) Data(r io.Reader) error {
 			Message:      "Your message is temporary unwanted, retry later",
 		}
 	case AddHeaderResponse:
-		headers["X-Spam-Score"] = []string{strconv.FormatFloat(spam.Score, 'f', 2, 64)}
+		h.Add("X-Spam-Score", strconv.FormatFloat(spam.Score, 'f', 2, 64))
 	case RewriteSubjectResponse:
-		headers["Subject"] = []string{spam.Subject}
+		h.Add("Subject", spam.Subject)
 	case GreylistResponse:
 	case NoActionResponse:
 	default:
 		panic("not implemented")
 	}
 	if spam.Body != nil {
-		body = spam.Body
+		body, _ = io.ReadAll(spam.Body)
 	}
 valid_email:
 	if s.RedirectTo != "" {
@@ -180,8 +181,7 @@ valid_email:
 			score.Float64 = spam.Score
 			score.Valid = true
 		}
-		b, _ := io.ReadAll(body)
-		b = formatMail(headers, b)
+		b := formatMail(h.Map(), body)
 		err := storage.StoreEmailInbox(context.TODO(), s.From, s.To, score, b)
 		if err != nil {
 			slog.Error("cannot save email", "error", err)
