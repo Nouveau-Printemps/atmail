@@ -69,11 +69,12 @@ func StoreEmail(
 	}
 	in := index.New(tx)
 	id, err := in.NewEmail(ctx, index.NewEmailParams{
-		MailFrom:  strings.Join(from[:], "@"),
-		RcptTo:    addr,
-		SpamScore: spamScore,
-		Filename:  lastFile,
-		Offset:    offset,
+		MailFrom:     strings.Join(from[:], "@"),
+		RcptTo:       addr,
+		SpamScore:    spamScore,
+		Filename:     lastFile,
+		InternalDate: time.Now().Unix(),
+		Offset:       offset,
 	})
 	if err != nil {
 		return err

@@ -15,19 +15,6 @@ const (
 	JunkMailbox
 )
 
-const (
-	SeenFlag int64 = iota + 1
-	AnsweredFlag
-	FlaggedFlag
-	DeletedFlag
-	DraftFlag
-	ForwardedFlag
-	MDNSentFlag
-	JunkFlag
-	NotJunkFlag
-	PhishingFlag
-)
-
 func LoadMailbox(ctx context.Context, user string) ([]index.ListMailboxRow, error) {
 	meta, err := Cache.DB(ctx, user)
 	if err != nil {
@@ -143,7 +130,7 @@ func StatusMailbox(ctx context.Context, user, mailbox string, opt *imap.StatusOp
 	return &status, nil
 }
 
-func GetMailboxEmails(ctx context.Context, user string, mailbox int64, set imap.NumSet) ([]index.Email, error) {
+func ListMailboxEmails(ctx context.Context, user string, mailbox int64, set imap.NumSet) ([]index.Email, error) {
 	meta, err := Cache.DB(ctx, user)
 	if err != nil {
 		return nil, err
@@ -192,6 +179,7 @@ func DeleteEmail(user string, email index.Email) error {
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 	return DeleteEmailAt(f, uint32(email.Offset))
 }
 
@@ -227,23 +215,4 @@ func RemoveMailboxEmails(ctx context.Context, user string, mailbox int64, emails
 		}
 	}
 	return nil
-}
-
-func DeleteEmailsWithFlag(ctx context.Context, user string, flag int64) ([]index.Email, error) {
-	meta, err := Cache.DB(ctx, user)
-	if err != nil {
-		return nil, err
-	}
-	in := index.New(meta.db)
-	emails, err := in.ListEmailsWithFlag(ctx, flag)
-	if err != nil {
-		return nil, err
-	}
-	for _, email := range emails {
-		err = DeleteEmail(user, email)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return emails, in.RemoveEmailsWithFlag(ctx, flag)
 }

@@ -10,8 +10,8 @@ SELECT * FROM emails
 WHERE id = ?;
 
 -- name: NewEmail :one
-INSERT INTO emails (mail_from, rcpt_to, spam_score, parent, filename, offset)
-VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO emails (mail_from, rcpt_to, spam_score, parent, filename, offset, internal_date)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 RETURNING id;
 
 -- name: DeleteEmail :exec

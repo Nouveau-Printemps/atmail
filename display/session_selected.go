@@ -1,0 +1,209 @@
+package display
+
+import (
+	"bufio"
+	"bytes"
+	"context"
+	"os"
+	"time"
+
+	"github.com/emersion/go-imap/v2"
+	"github.com/emersion/go-imap/v2/imapserver"
+	"github.com/emersion/go-message/textproto"
+	"nouveauprintemps.org/atmail/storage"
+)
+
+func (s *Session) Close() error {
+	if s.selected != nil {
+		_, err := storage.DeleteEmailsWithFlag(context.TODO(), s.username, storage.DeletedFlag)
+		if err != nil {
+			return err
+		}
+		s.selected.Close()
+		s.selected = nil
+	}
+	return nil
+}
+
+func (s *Session) Expunge(w *imapserver.ExpungeWriter, uids *imap.UIDSet) error {
+	if uids == nil {
+		deleted, err := storage.DeleteEmailsWithFlag(context.TODO(), s.username, storage.DeletedFlag)
+		if err != nil {
+			return err
+		}
+		for _, d := range deleted {
+			err = w.WriteExpunge(uint32(d.ID))
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	ns, _ := uids.Nums()
+	keys := make([]int64, 0, len(ns))
+	for _, u := range ns {
+		keys = append(keys, int64(u))
+	}
+	err := storage.RemoveMailboxEmails(
+		context.TODO(),
+		s.username,
+		int64(s.selected.ID),
+		keys,
+	)
+	if err != nil {
+		return err
+	}
+	for _, u := range ns {
+		err = w.WriteExpunge(uint32(u))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Session) Search(
+	kind imapserver.NumKind,
+	criteria *imap.SearchCriteria,
+	options *imap.SearchOptions,
+) (*imap.SearchData, error)
+
+func (s *Session) Fetch(wr *imapserver.FetchWriter, set imap.NumSet, options *imap.FetchOptions) error {
+	emails, err := storage.ListMailboxEmails(context.TODO(), s.username, int64(s.selected.ID), set)
+	if err != nil {
+		return err
+	}
+	markSeen := true
+	for _, sec := range options.BinarySection {
+		markSeen = markSeen && !sec.Peek
+	}
+	for _, sec := range options.BodySection {
+		markSeen = markSeen && !sec.Peek
+	}
+	for _, email := range emails {
+		if markSeen {
+			err = storage.AddEmailFlag(context.TODO(), s.username, email.ID, storage.SeenFlag)
+			if err != nil {
+				return err
+			}
+		}
+		w := wr.CreateMessage(s.selected.EncodeSeqNum(uint32(email.ID)))
+
+		if options.UID {
+			w.WriteUID(imap.UID(email.ID))
+		}
+		if options.Flags {
+			flags, err := storage.ListEmailFlags(context.TODO(), s.username, email.ID)
+			if err != nil {
+				return err
+			}
+			fls := make([]imap.Flag, 0, len(flags))
+			for _, f := range flags {
+				fls = append(fls, imap.Flag(f.Name))
+			}
+			w.WriteFlags(fls)
+		}
+		if options.InternalDate {
+			w.WriteInternalDate(time.Unix(email.InternalDate, 0))
+		}
+		f, err := os.Open(storage.Cache.PathOf(s.username, email.Filename))
+		if err != nil {
+			return err
+		}
+		b, err := storage.ReadEmailAt(f, uint32(email.Offset))
+		if err != nil {
+			return err
+		}
+		_ = f.Close()
+		if options.RFC822Size {
+			w.WriteRFC822Size(int64(len(b)))
+		}
+		if options.Envelope {
+			h, _ := textproto.ReadHeader(bufio.NewReader(bytes.NewBuffer(b)))
+			w.WriteEnvelope(imapserver.ExtractEnvelope(h))
+		}
+		if options.BodyStructure != nil {
+			w.WriteBodyStructure(imapserver.ExtractBodyStructure(bytes.NewReader(b)))
+		}
+
+		for _, bs := range options.BodySection {
+			buf := imapserver.ExtractBodySection(bytes.NewReader(b), bs)
+			wc := w.WriteBodySection(bs, int64(len(buf)))
+			_, writeErr := wc.Write(buf)
+			closeErr := wc.Close()
+			if writeErr != nil {
+				return writeErr
+			}
+			if closeErr != nil {
+				return closeErr
+			}
+		}
+
+		for _, bs := range options.BinarySection {
+			buf := imapserver.ExtractBinarySection(bytes.NewReader(b), bs)
+			wc := w.WriteBinarySection(bs, int64(len(buf)))
+			_, writeErr := wc.Write(buf)
+			closeErr := wc.Close()
+			if writeErr != nil {
+				return writeErr
+			}
+			if closeErr != nil {
+				return closeErr
+			}
+		}
+
+		for _, bss := range options.BinarySectionSize {
+			n := imapserver.ExtractBinarySectionSize(bytes.NewReader(b), bss)
+			w.WriteBinarySectionSize(bss, n)
+		}
+
+		err = w.Close()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Session) Store(
+	w *imapserver.FetchWriter,
+	numSet imap.NumSet,
+	flags *imap.StoreFlags,
+	options *imap.StoreOptions,
+) error
+
+func (s *Session) Copy(set imap.NumSet, dest string) (*imap.CopyData, error) {
+	if dest == s.selected.Name {
+		return nil, &imap.Error{
+			Type: imap.StatusResponseTypeNo,
+			Text: "This is the same mailbox",
+		}
+	}
+	target, ok := s.mailboxes[dest]
+	if !ok {
+		return nil, errNotFound
+	}
+	ts := target.NewSession()
+	defer ts.Close()
+
+	mails, err := storage.ListMailboxEmails(
+		context.TODO(),
+		s.username,
+		int64(target.UIDValidity),
+		set,
+	)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]int64, 0, len(mails))
+	for _, m := range mails {
+		ids = append(ids, m.ID)
+	}
+	err = storage.AddMailboxEmails(context.TODO(), s.username, int64(target.UIDValidity), ids)
+	if err != nil {
+		return nil, err
+	}
+	return &imap.CopyData{
+		UIDValidity: uint32(target.UIDValidity),
+	}, nil
+}
