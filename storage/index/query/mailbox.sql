@@ -104,3 +104,18 @@ WHERE EXISTS (
     SELECT * FROM emails_flags f WHERE f.email_id = id AND f.flag_id = ?
 );
 
+-- name: RemoveEmailFlags :exec
+DELETE FROM emails_flags
+WHERE email_id = ?;
+
+-- name: AddEmailFlagName :exec
+INSERT INTO emails_flags (email_id, flag_id)
+VALUES (?, (
+        SELECT id FROM flags WHERE name = ?
+));
+
+-- name: RemoveEmailFlagName :exec
+DELETE FROM emails_flags
+WHERE email_id = ? AND flag_id = (
+    SELECT id FROM flags WHERE name = ?
+);

@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 
+	"github.com/emersion/go-imap/v2"
 	"nouveauprintemps.org/atmail/storage/index"
 )
 
@@ -52,4 +53,50 @@ func AddEmailFlag(ctx context.Context, user string, email, flag int64) error {
 		return err
 	}
 	return index.New(meta.db).AddEmailFlag(ctx, email, flag)
+}
+
+func RemoveEmailAllFlags(ctx context.Context, user string, email int64) error {
+	meta, err := Cache.DB(ctx, user)
+	if err != nil {
+		return err
+	}
+	return index.New(meta.db).RemoveEmailFlags(ctx, email)
+}
+
+func AddEmailFlags(ctx context.Context, user string, email int64, flags []imap.Flag) error {
+	meta, err := Cache.DB(ctx, user)
+	if err != nil {
+		return err
+	}
+	tx, err := meta.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	in := index.New(tx)
+	for _, flag := range flags {
+		err = in.AddEmailFlagName(ctx, email, string(flag))
+		if err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func RemoveEmailFlags(ctx context.Context, user string, email int64, flags []imap.Flag) error {
+	meta, err := Cache.DB(ctx, user)
+	if err != nil {
+		return err
+	}
+	tx, err := meta.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	in := index.New(tx)
+	for _, flag := range flags {
+		err = in.RemoveEmailFlagName(ctx, email, string(flag))
+		if err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }

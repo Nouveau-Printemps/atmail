@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"time"
 
@@ -86,6 +87,7 @@ func (s *Session) Fetch(wr *imapserver.FetchWriter, set imap.NumSet, options *im
 			if err != nil {
 				return err
 			}
+			s.mailboxes[s.selected.Name].QueueMailboxFlags([]imap.Flag{imap.FlagSeen})
 		}
 		w := wr.CreateMessage(s.selected.EncodeSeqNum(uint32(email.ID)))
 
@@ -167,10 +169,45 @@ func (s *Session) Fetch(wr *imapserver.FetchWriter, set imap.NumSet, options *im
 
 func (s *Session) Store(
 	w *imapserver.FetchWriter,
-	numSet imap.NumSet,
+	set imap.NumSet,
 	flags *imap.StoreFlags,
 	options *imap.StoreOptions,
-) error
+) error {
+	emails, err := storage.ListMailboxEmails(context.TODO(), s.username, int64(s.selected.ID), set)
+	if err != nil {
+		return err
+	}
+	for _, email := range emails {
+		switch flags.Op {
+		case imap.StoreFlagsSet:
+			err = storage.RemoveEmailAllFlags(context.TODO(), s.username, email.ID)
+			if err != nil {
+				return err
+
+			}
+			fallthrough
+		case imap.StoreFlagsAdd:
+			err = storage.AddEmailFlags(context.TODO(), s.username, email.ID, flags.Flags)
+		case imap.StoreFlagsDel:
+			err = storage.RemoveEmailFlags(context.TODO(), s.username, email.ID, flags.Flags)
+		default:
+			panic(fmt.Errorf("unknown STORE flag operation: %v", flags.Op))
+		}
+		if err != nil {
+			return err
+		}
+		s.mailboxes[s.selected.Name].QueueMessageFlags(
+			s.selected.EncodeSeqNum(uint32(email.ID)),
+			s.selected.ID,
+			flags.Flags,
+			s.selected.SessionTracker,
+		)
+	}
+	if !flags.Silent {
+		return s.Fetch(w, set, &imap.FetchOptions{Flags: true})
+	}
+	return nil
+}
 
 func (s *Session) Copy(set imap.NumSet, dest string) (*imap.CopyData, error) {
 	if dest == s.selected.Name {
