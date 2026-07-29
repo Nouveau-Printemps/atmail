@@ -97,7 +97,7 @@ func StoreEmail(
 
 func StoreEmailInbox(ctx context.Context, from, to [2]string, spamScore sql.NullFloat64, b []byte) error {
 	return StoreEmail(ctx, from, to, spamScore, b, func(ctx context.Context, in *Index, id int64) error {
-		return in.AddInboxEmail(ctx, id)
+		return in.AddMailboxEmail(ctx, InboxMailbox, id)
 	})
 }
 

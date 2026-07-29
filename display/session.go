@@ -240,12 +240,52 @@ func (s *Session) Idle(w *imapserver.UpdateWriter, stop <-chan struct{}) error {
 
 func (s *Session) Close() error {
 	if s.selected != nil {
+		_, err := storage.DeleteEmailsWithFlag(context.TODO(), s.username, storage.DeletedFlag)
+		if err != nil {
+			return err
+		}
 		s.selected.Close()
+		s.selected = nil
 	}
 	return nil
 }
 
-func (s *Session) Expunge(w *imapserver.ExpungeWriter, uids *imap.UIDSet) error
+func (s *Session) Expunge(w *imapserver.ExpungeWriter, uids *imap.UIDSet) error {
+	if uids == nil {
+		deleted, err := storage.DeleteEmailsWithFlag(context.TODO(), s.username, storage.DeletedFlag)
+		if err != nil {
+			return err
+		}
+		for _, d := range deleted {
+			err = w.WriteExpunge(uint32(d.ID))
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	ns, _ := uids.Nums()
+	keys := make([]int64, 0, len(ns))
+	for _, u := range ns {
+		keys = append(keys, int64(u))
+	}
+	err := storage.RemoveMailboxEmails(
+		context.TODO(),
+		s.username,
+		int64(s.selected.ID),
+		keys,
+	)
+	if err != nil {
+		return err
+	}
+	for _, u := range ns {
+		err = w.WriteExpunge(uint32(u))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 func (s *Session) Search(
 	kind imapserver.NumKind,
@@ -289,7 +329,7 @@ func (s *Session) Copy(set imap.NumSet, dest string) (*imap.CopyData, error) {
 	for _, m := range mails {
 		ids = append(ids, m.ID)
 	}
-	err = storage.AddMailboxEmail(context.TODO(), s.username, int64(target.UIDValidity), ids)
+	err = storage.AddMailboxEmails(context.TODO(), s.username, int64(target.UIDValidity), ids)
 	if err != nil {
 		return nil, err
 	}

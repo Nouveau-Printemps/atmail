@@ -29,7 +29,7 @@ INSERT INTO flags (name)
 VALUES (?)
 RETURNING id;
 
--- name: GetMailboxFlags :many
+-- name: ListMailboxFlags :many
 SELECT f.*, m.user_added FROM flags f, mailbox_flags m
 WHERE m.mailbox_id = ? and m.flag_id = f.id;
 
@@ -41,7 +41,7 @@ VALUES (?, ?);
 DELETE FROM mailbox_flags
 WHERE mailbox_id = ? AND flag_id = ?;
 
--- name: GetEmailFlags :many
+-- name: ListEmailFlags :many
 SELECT * FROM flags f
 WHERE EXISTS(
     SELECT * FROM emails_flags e WHERE e.email_id = ? and m.flag_id = f.id
@@ -58,14 +58,6 @@ WHERE email_id = ? AND flag_id = ?;
 -- name: AddMailboxEmail :exec
 INSERT INTO mailbox_emails (mailbox_id, email_id)
 VALUES (?, ?);
-
--- name: AddInboxEmail :exec
-INSERT INTO mailbox_emails (mailbox_id, email_id)
-VALUES ((SELECT id FROM mailbox WHERE name = "INBOX"), ?);
-
--- name: AddJunkEmail :exec
-INSERT INTO mailbox_emails (mailbox_id, email_id)
-VALUES ((SELECT id FROM mailbox WHERE name = "Junk"), ?);
 
 -- name: RemoveMailboxEmail :exec
 DELETE FROM mailbox_emails
@@ -93,3 +85,22 @@ DELETE FROM emails
 WHERE EXISTS(
     SELECT * FROM mailbox_emails m WHERE m.mailbox_id = ? and m.email_id = id
 ) AND id IN (sqlc.slice('ids'));
+
+-- name: ListEmailsNoMailbox :many
+SELECT * FROM emails e
+WHERE NOT EXISTS(
+    SELECT * FROM mailbox_emails m WHERE m.email_id = e.id
+);
+
+-- name: ListEmailsWithFlag :many
+SELECT * FROM emails e
+WHERE EXISTS (
+    SELECT * FROM emails_flags f WHERE f.flag_id = ? and f.email_id = e.id
+);
+
+-- name: RemoveEmailsWithFlag :exec
+DELETE FROM emails
+WHERE EXISTS (
+    SELECT * FROM emails_flags f WHERE f.email_id = id AND f.flag_id = ?
+);
+

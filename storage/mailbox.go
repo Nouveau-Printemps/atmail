@@ -2,12 +2,31 @@ package storage
 
 import (
 	"context"
+	"os"
 
 	"github.com/emersion/go-imap/v2"
 	"nouveauprintemps.org/atmail/storage/index"
 )
 
 const MailboxSeparator = '/'
+
+const (
+	InboxMailbox int64 = iota + 1
+	JunkMailbox
+)
+
+const (
+	SeenFlag int64 = iota + 1
+	AnsweredFlag
+	FlaggedFlag
+	DeletedFlag
+	DraftFlag
+	ForwardedFlag
+	MDNSentFlag
+	JunkFlag
+	NotJunkFlag
+	PhishingFlag
+)
 
 func LoadMailbox(ctx context.Context, user string) ([]index.ListMailboxRow, error) {
 	meta, err := Cache.DB(ctx, user)
@@ -31,7 +50,7 @@ func DescribeMailbox(ctx context.Context, user string, mailbox string) (*imap.Se
 	if err != nil {
 		return nil, err
 	}
-	mailboxFlags, err := in.GetMailboxFlags(ctx, box.ID)
+	mailboxFlags, err := in.ListMailboxFlags(ctx, box.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +166,7 @@ func GetMailboxEmails(ctx context.Context, user string, mailbox int64, set imap.
 	return index.New(meta.db).GetMailboxEmails(ctx, mailbox, ids)
 }
 
-func AddMailboxEmail(ctx context.Context, user string, mailbox int64, emails []int64) error {
+func AddMailboxEmails(ctx context.Context, user string, mailbox int64, emails []int64) error {
 	meta, err := Cache.DB(ctx, user)
 	if err != nil {
 		return err
@@ -164,4 +183,67 @@ func AddMailboxEmail(ctx context.Context, user string, mailbox int64, emails []i
 		}
 	}
 	return tx.Commit()
+}
+
+func DeleteEmail(user string, email index.Email) error {
+	f, err := os.OpenFile(
+		Cache.PathOf(user, email.Filename), os.O_RDWR, 0o660,
+	)
+	if err != nil {
+		return err
+	}
+	return DeleteEmailAt(f, uint32(email.Offset))
+}
+
+func RemoveMailboxEmails(ctx context.Context, user string, mailbox int64, emails []int64) error {
+	meta, err := Cache.DB(ctx, user)
+	if err != nil {
+		return err
+	}
+	tx, err := meta.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	in := index.New(tx)
+	for _, id := range emails {
+		err = in.RemoveMailboxEmail(ctx, mailbox, id)
+		if err != nil {
+			return err
+		}
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	in = index.New(meta.db)
+	td, err := in.ListEmailsNoMailbox(ctx)
+	if err != nil {
+		return err
+	}
+	for _, email := range td {
+		err = DeleteEmail(user, email)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func DeleteEmailsWithFlag(ctx context.Context, user string, flag int64) ([]index.Email, error) {
+	meta, err := Cache.DB(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+	in := index.New(meta.db)
+	emails, err := in.ListEmailsWithFlag(ctx, flag)
+	if err != nil {
+		return nil, err
+	}
+	for _, email := range emails {
+		err = DeleteEmail(user, email)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return emails, in.RemoveEmailsWithFlag(ctx, flag)
 }

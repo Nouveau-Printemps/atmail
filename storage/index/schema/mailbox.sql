@@ -28,13 +28,56 @@ CREATE TABLE IF NOT EXISTS mailbox_emails (
     PRIMARY KEY(mailbox_id, email_id)
 ) strict;
 
--- ensure that the required mailbox exists
+-- ensure that the required mailboxes exist
+BEGIN IMMEDIATE TRANSACTION
+    INSERT INTO mailbox (id, name)
+    VALUES (1, "Inbox")
+    ON CONFLICT DO NOTHING;
 
-INSERT INTO mailbox (name)
-VALUES ("Inbox")
-ON CONFLICT DO NOTHING;
+    INSERT INTO mailbox (id, name)
+    VALUES (2, "Junk")
+    ON CONFLICT DO NOTHING;
+COMMIT
 
-INSERT INTO mailbox (name)
-VALUES ("Junk")
-ON CONFLICT DO NOTHING;
+-- ensure that the required flags exist
+BEGIN IMMEDIATE TRANSACTION
+    INSERT INTO flags (id, name)
+    VALUES (1, "\Seen")
+    ON CONFLICT DO NOTHING;
 
+    INSERT INTO flags (id, name)
+    VALUES (2, "\Answered")
+    ON CONFLICT DO NOTHING;
+
+    INSERT INTO flags (id, name)
+    VALUES (3, "\Flagged")
+    ON CONFLICT DO NOTHING;
+
+    INSERT INTO flags (id, name)
+    VALUES (4, "\Deleted")
+    ON CONFLICT DO NOTHING;
+
+    INSERT INTO flags (id, name)
+    VALUES (5, "\Draft")
+    ON CONFLICT DO NOTHING;
+
+    INSERT INTO flags (id, name)
+    VALUES (6, "$Forwarded")
+    ON CONFLICT DO NOTHING;
+
+    INSERT INTO flags (id, name)
+    VALUES (7, "$MDNSent")
+    ON CONFLICT DO NOTHING;
+
+    INSERT INTO flags (id, name)
+    VALUES (8, "$Junk")
+    ON CONFLICT DO NOTHING;
+
+    INSERT INTO flags (id, name)
+    VALUES (9, "$NotJunk")
+    ON CONFLICT DO NOTHING;
+
+    INSERT INTO flags (id, name)
+    VALUES (10, "$Phishing")
+    ON CONFLICT DO NOTHING;
+COMMIT
