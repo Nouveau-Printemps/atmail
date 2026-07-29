@@ -16,118 +16,107 @@ const (
 )
 
 func LoadMailbox(ctx context.Context, user string) ([]index.ListMailboxRow, error) {
-	meta, err := Cache.DB(ctx, user)
-	if err != nil {
-		return nil, err
-	}
-	return index.New(meta.db).ListMailbox(ctx)
+	return get(ctx, user, func(in *Index) ([]index.ListMailboxRow, error) {
+		return in.ListMailbox(ctx)
+	})
+
 }
 
 func DescribeMailbox(ctx context.Context, user string, mailbox string) (*imap.SelectData, error) {
-	meta, err := Cache.DB(ctx, user)
-	if err != nil {
-		return nil, err
-	}
-	in := index.New(meta.db)
-	box, err := in.GetMailbox(ctx, mailbox)
-	if err != nil {
-		return nil, err
-	}
-	n, err := in.CountMailboxEmails(ctx, box.ID)
-	if err != nil {
-		return nil, err
-	}
-	mailboxFlags, err := in.ListMailboxFlags(ctx, box.ID)
-	if err != nil {
-		return nil, err
-	}
-	flags := make([]imap.Flag, 0, len(mailboxFlags))
-	var permanentFlags []imap.Flag
-	for _, f := range mailboxFlags {
-		if f.UserAdded {
-			permanentFlags = append(permanentFlags, imap.Flag(f.Name))
-		} else {
-			flags = append(flags, imap.Flag(f.Name))
+	return get(ctx, user, func(in *Index) (*imap.SelectData, error) {
+		box, err := in.GetMailbox(ctx, mailbox)
+		if err != nil {
+			return nil, err
 		}
-	}
-	mails, err := in.GetLatestMailboxEmails(ctx, box.ID, 1, 0)
-	if err != nil {
-		return nil, err
-	}
-	var next uint32
-	if len(mails) == 0 {
-		next = 1
-	} else {
-		next = uint32(mails[0].ID + 1)
-	}
-	return &imap.SelectData{
-		Flags:          flags,
-		PermanentFlags: permanentFlags,
-		NumMessages:    uint32(n),
-		UIDNext:        imap.UID(next),
-		UIDValidity:    uint32(box.ID),
-	}, nil
-}
-
-func CreateMailbox(ctx context.Context, user, name string) error {
-	meta, err := Cache.DB(ctx, user)
-	if err != nil {
-		return err
-	}
-	_, err = index.New(meta.db).NewMailbox(ctx, name)
-	return err
-}
-
-func DeleteMailbox(ctx context.Context, user string, id int64) error {
-	meta, err := Cache.DB(ctx, user)
-	if err != nil {
-		return err
-	}
-	return index.New(meta.db).DeleteMailbox(ctx, id)
-}
-
-func RenameMailbox(ctx context.Context, user string, id int64, rename string) error {
-	meta, err := Cache.DB(ctx, user)
-	if err != nil {
-		return err
-	}
-	return index.New(meta.db).RenameMailbox(ctx, rename, id)
-}
-
-func ListMailbox(ctx context.Context, user string) ([]index.ListMailboxRow, error) {
-	meta, err := Cache.DB(ctx, user)
-	if err != nil {
-		return nil, err
-	}
-	return index.New(meta.db).ListMailbox(ctx)
-}
-
-func StatusMailbox(ctx context.Context, user, mailbox string, opt *imap.StatusOptions) (*imap.StatusData, error) {
-	meta, err := Cache.DB(ctx, user)
-	if err != nil {
-		return nil, err
-	}
-	in := index.New(meta.db)
-	box, err := in.GetMailbox(ctx, mailbox)
-	var status imap.StatusData
-	if opt.NumMessages {
 		n, err := in.CountMailboxEmails(ctx, box.ID)
 		if err != nil {
 			return nil, err
 		}
-		status.NumMessages = new(uint32(n))
-	}
-	if opt.UIDValidity {
-		status.UIDValidity = uint32(box.ID)
-	}
-	if opt.UIDNext {
+		mailboxFlags, err := in.ListMailboxFlags(ctx, box.ID)
+		if err != nil {
+			return nil, err
+		}
+		flags := make([]imap.Flag, 0, len(mailboxFlags))
+		var permanentFlags []imap.Flag
+		for _, f := range mailboxFlags {
+			if f.UserAdded {
+				permanentFlags = append(permanentFlags, imap.Flag(f.Name))
+			} else {
+				flags = append(flags, imap.Flag(f.Name))
+			}
+		}
 		mails, err := in.GetLatestMailboxEmails(ctx, box.ID, 1, 0)
 		if err != nil {
 			return nil, err
 		}
-		status.UIDNext = imap.UID(mails[0].ID + 1)
-	}
-	return &status, nil
+		var next uint32
+		if len(mails) == 0 {
+			next = 1
+		} else {
+			next = uint32(mails[0].ID + 1)
+		}
+		return &imap.SelectData{
+			Flags:          flags,
+			PermanentFlags: permanentFlags,
+			NumMessages:    uint32(n),
+			UIDNext:        imap.UID(next),
+			UIDValidity:    uint32(box.ID),
+		}, nil
+	})
+}
+
+func CreateMailbox(ctx context.Context, user, name string) error {
+	return exec(ctx, user, func(in *Index) error {
+		_, err := in.NewMailbox(ctx, name)
+		return err
+	})
+
+}
+
+func DeleteMailbox(ctx context.Context, user string, id int64) error {
+	return exec(ctx, user, func(in *Index) error {
+		return in.DeleteMailbox(ctx, id)
+	})
+}
+
+func RenameMailbox(ctx context.Context, user string, id int64, rename string) error {
+	return exec(ctx, user, func(in *Index) error {
+		return in.RenameMailbox(ctx, rename, id)
+	})
+}
+
+func ListMailbox(ctx context.Context, user string) ([]index.ListMailboxRow, error) {
+	return get(ctx, user, func(in *Index) ([]index.ListMailboxRow, error) {
+		return in.ListMailbox(ctx)
+	})
+}
+
+func StatusMailbox(ctx context.Context, user, mailbox string, opt *imap.StatusOptions) (*imap.StatusData, error) {
+	return get(ctx, user, func(in *Index) (*imap.StatusData, error) {
+		box, err := in.GetMailbox(ctx, mailbox)
+		if err != nil {
+			return nil, err
+		}
+		var status imap.StatusData
+		if opt.NumMessages {
+			n, err := in.CountMailboxEmails(ctx, box.ID)
+			if err != nil {
+				return nil, err
+			}
+			status.NumMessages = new(uint32(n))
+		}
+		if opt.UIDValidity {
+			status.UIDValidity = uint32(box.ID)
+		}
+		if opt.UIDNext {
+			mails, err := in.GetLatestMailboxEmails(ctx, box.ID, 1, 0)
+			if err != nil {
+				return nil, err
+			}
+			status.UIDNext = imap.UID(mails[0].ID + 1)
+		}
+		return &status, nil
+	})
 }
 
 func ListMailboxEmails(ctx context.Context, user string, mailbox int64, set imap.NumSet) ([]index.Email, error) {
@@ -154,22 +143,15 @@ func ListMailboxEmails(ctx context.Context, user string, mailbox int64, set imap
 }
 
 func AddMailboxEmails(ctx context.Context, user string, mailbox int64, emails []int64) error {
-	meta, err := Cache.DB(ctx, user)
-	if err != nil {
-		return err
-	}
-	tx, err := meta.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	in := index.New(tx)
-	for _, id := range emails {
-		err = in.AddMailboxEmail(ctx, mailbox, id)
-		if err != nil {
-			return err
+	return execTx(ctx, user, func(in *Index) error {
+		for _, id := range emails {
+			err := in.AddMailboxEmail(ctx, mailbox, id)
+			if err != nil {
+				return err
+			}
 		}
-	}
-	return tx.Commit()
+		return nil
+	})
 }
 
 func DeleteEmail(user string, email index.Email) error {
@@ -184,35 +166,29 @@ func DeleteEmail(user string, email index.Email) error {
 }
 
 func RemoveMailboxEmails(ctx context.Context, user string, mailbox int64, emails []int64) error {
-	meta, err := Cache.DB(ctx, user)
+	err := execTx(ctx, user, func(in *Index) error {
+		for _, id := range emails {
+			err := in.RemoveMailboxEmail(ctx, mailbox, id)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 	if err != nil {
 		return err
 	}
-	tx, err := meta.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	in := index.New(tx)
-	for _, id := range emails {
-		err = in.RemoveMailboxEmail(ctx, mailbox, id)
+	return exec(ctx, user, func(in *Index) error {
+		td, err := in.ListEmailsNoMailbox(ctx)
 		if err != nil {
 			return err
 		}
-	}
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
-	in = index.New(meta.db)
-	td, err := in.ListEmailsNoMailbox(ctx)
-	if err != nil {
-		return err
-	}
-	for _, email := range td {
-		err = DeleteEmail(user, email)
-		if err != nil {
-			return err
+		for _, email := range td {
+			err = DeleteEmail(user, email)
+			if err != nil {
+				return err
+			}
 		}
-	}
-	return nil
+		return nil
+	})
 }

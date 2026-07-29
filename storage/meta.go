@@ -119,3 +119,33 @@ func (m *meta) Save(ctx context.Context) error {
 		sql.NullInt64{Int64: int64(m.offset), Valid: true},
 	)
 }
+
+func exec(ctx context.Context, user string, fn func(*Index) error) error {
+	meta, err := Cache.DB(ctx, user)
+	if err != nil {
+		return err
+	}
+	return fn(index.New(meta.db))
+}
+
+func execTx(ctx context.Context, user string, fn func(*Index) error) error {
+	meta, err := Cache.DB(ctx, user)
+	if err != nil {
+		return err
+	}
+	tx, err := meta.db.BeginTx(ctx, nil)
+	err = fn(index.New(tx))
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func get[T any](ctx context.Context, user string, fn func(*Index) (T, error)) (T, error) {
+	meta, err := Cache.DB(ctx, user)
+	if err != nil {
+		var v T
+		return v, err
+	}
+	return fn(index.New(meta.db))
+}
