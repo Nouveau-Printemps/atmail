@@ -87,14 +87,31 @@ func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 	return nil
 }
 
+var errInternal = &smtp.SMTPError{
+	Code:    451,
+	Message: "Internal error",
+}
+
 func (s *Session) Data(r io.Reader) error {
 	b, err := io.ReadAll(r)
 	if err != nil {
-		return err
+		slog.Error(
+			"reading data",
+			"error", err,
+			"from", strings.Join(s.From[:], "@"),
+			"to", strings.Join(s.To[:], "@"),
+		)
+		return errInternal
 	}
 	msg, err := mail.ReadMessage(bytes.NewBuffer(b))
 	if err != nil {
-		return err
+		slog.Error(
+			"parsing mail",
+			"error", err,
+			"from", strings.Join(s.From[:], "@"),
+			"to", strings.Join(s.To[:], "@"),
+		)
+		return errInternal
 	}
 	body := msg.Body
 	headers := map[string][]string(msg.Header)
@@ -106,7 +123,13 @@ func (s *Session) Data(r io.Reader) error {
 	}
 	spam, err = s.backend.Rspamd.Verify(context.TODO(), nil, b)
 	if err != nil {
-		return err
+		slog.Error(
+			"rspamd check",
+			"error", err,
+			"from", strings.Join(s.From[:], "@"),
+			"to", strings.Join(s.To[:], "@"),
+		)
+		return errInternal
 	}
 	if spam.Skipped {
 		// see above
@@ -159,7 +182,7 @@ valid_email:
 		}
 		b, _ := io.ReadAll(body)
 		b = formatMail(headers, b)
-		err := storage.StoreEmail(context.TODO(), s.From, s.To, score, b)
+		err := storage.StoreEmailInbox(context.TODO(), s.From, s.To, score, b)
 		if err != nil {
 			slog.Error("cannot save email", "error", err)
 		}

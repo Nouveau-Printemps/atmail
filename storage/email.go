@@ -16,7 +16,13 @@ func newFileName() string {
 	return strconv.Itoa(int(time.Now().Unix()))
 }
 
-func StoreEmail(ctx context.Context, from, to [2]string, spamScore sql.NullFloat64, b []byte) error {
+func StoreEmail(
+	ctx context.Context,
+	from, to [2]string,
+	spamScore sql.NullFloat64,
+	b []byte,
+	callback func(context.Context, *Index, int64) error,
+) error {
 	addr := strings.Join(to[:], "@")
 	cache, err := Cache.DB(ctx, addr)
 	if err != nil {
@@ -72,7 +78,7 @@ func StoreEmail(ctx context.Context, from, to [2]string, spamScore sql.NullFloat
 	if err != nil {
 		return err
 	}
-	err = in.AddInboxEmail(ctx, id)
+	err = callback(ctx, in, id)
 	if err != nil {
 		return err
 	}
@@ -81,7 +87,18 @@ func StoreEmail(ctx context.Context, from, to [2]string, spamScore sql.NullFloat
 		return err
 	}
 	cache.Update(lastFile, uint32(offset)+n)
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	cache.Update(lastFile, uint32(offset)+n)
 	return nil
+}
+
+func StoreEmailInbox(ctx context.Context, from, to [2]string, spamScore sql.NullFloat64, b []byte) error {
+	return StoreEmail(ctx, from, to, spamScore, b, func(ctx context.Context, in *Index, id int64) error {
+		return in.AddInboxEmail(ctx, id)
+	})
 }
 
 func Read(ctx context.Context, user string, id int64) ([]byte, error) {
