@@ -2,7 +2,7 @@ package storage
 
 import (
 	"context"
-	"os"
+	"path"
 
 	"github.com/emersion/go-imap/v2"
 	"nouveauprintemps.org/atmail/storage/index"
@@ -16,14 +16,13 @@ const (
 )
 
 func LoadMailbox(ctx context.Context, user string) ([]index.ListMailboxRow, error) {
-	return get(ctx, user, func(in *Index) ([]index.ListMailboxRow, error) {
+	return get(ctx, user, func(in *DB) ([]index.ListMailboxRow, error) {
 		return in.ListMailbox(ctx)
 	})
-
 }
 
 func DescribeMailbox(ctx context.Context, user string, mailbox string) (*imap.SelectData, error) {
-	return get(ctx, user, func(in *Index) (*imap.SelectData, error) {
+	return get(ctx, user, func(in *DB) (*imap.SelectData, error) {
 		box, err := in.GetMailbox(ctx, mailbox)
 		if err != nil {
 			return nil, err
@@ -66,7 +65,7 @@ func DescribeMailbox(ctx context.Context, user string, mailbox string) (*imap.Se
 }
 
 func CreateMailbox(ctx context.Context, user, name string) error {
-	return exec(ctx, user, func(in *Index) error {
+	return exec(ctx, user, func(in *DB) error {
 		_, err := in.NewMailbox(ctx, name)
 		return err
 	})
@@ -74,25 +73,25 @@ func CreateMailbox(ctx context.Context, user, name string) error {
 }
 
 func DeleteMailbox(ctx context.Context, user string, id int64) error {
-	return exec(ctx, user, func(in *Index) error {
+	return exec(ctx, user, func(in *DB) error {
 		return in.DeleteMailbox(ctx, id)
 	})
 }
 
 func RenameMailbox(ctx context.Context, user string, id int64, rename string) error {
-	return exec(ctx, user, func(in *Index) error {
+	return exec(ctx, user, func(in *DB) error {
 		return in.RenameMailbox(ctx, rename, id)
 	})
 }
 
 func ListMailbox(ctx context.Context, user string) ([]index.ListMailboxRow, error) {
-	return get(ctx, user, func(in *Index) ([]index.ListMailboxRow, error) {
+	return get(ctx, user, func(in *DB) ([]index.ListMailboxRow, error) {
 		return in.ListMailbox(ctx)
 	})
 }
 
 func StatusMailbox(ctx context.Context, user, mailbox string, opt *imap.StatusOptions) (*imap.StatusData, error) {
-	return get(ctx, user, func(in *Index) (*imap.StatusData, error) {
+	return get(ctx, user, func(in *DB) (*imap.StatusData, error) {
 		box, err := in.GetMailbox(ctx, mailbox)
 		if err != nil {
 			return nil, err
@@ -143,7 +142,7 @@ func ListMailboxEmails(ctx context.Context, user string, mailbox int64, set imap
 }
 
 func AddMailboxEmails(ctx context.Context, user string, mailbox int64, emails []int64) error {
-	return execTx(ctx, user, func(in *Index) error {
+	return execTx(ctx, user, func(in *DB) error {
 		for _, id := range emails {
 			err := in.AddMailboxEmail(ctx, mailbox, id)
 			if err != nil {
@@ -155,18 +154,11 @@ func AddMailboxEmails(ctx context.Context, user string, mailbox int64, emails []
 }
 
 func DeleteEmail(user string, email index.Email) error {
-	f, err := os.OpenFile(
-		Cache.PathOf(user, email.Filename), os.O_RDWR, 0o660,
-	)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	return DeleteEmailAt(f, uint32(email.Offset))
+	return email.Delete(path.Join(Cache.Path, user))
 }
 
 func RemoveMailboxEmails(ctx context.Context, user string, mailbox int64, emails []int64) error {
-	err := execTx(ctx, user, func(in *Index) error {
+	err := execTx(ctx, user, func(in *DB) error {
 		for _, id := range emails {
 			err := in.RemoveMailboxEmail(ctx, mailbox, id)
 			if err != nil {
@@ -178,7 +170,7 @@ func RemoveMailboxEmails(ctx context.Context, user string, mailbox int64, emails
 	if err != nil {
 		return err
 	}
-	return exec(ctx, user, func(in *Index) error {
+	return exec(ctx, user, func(in *DB) error {
 		td, err := in.ListEmailsNoMailbox(ctx)
 		if err != nil {
 			return err

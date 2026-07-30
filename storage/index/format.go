@@ -1,4 +1,4 @@
-package storage
+package index
 
 import (
 	"bytes"
@@ -10,9 +10,9 @@ import (
 	"os"
 )
 
-// ReadEmailAt returns the email stored at in the file with the given offset.
+// readEmailAt returns the email stored at in the file with the given offset.
 // Returns nil if the email was deleted.
-func ReadEmailAt(f *os.File, offset uint32) ([]byte, error) {
+func readEmailAt(f *os.File, offset uint32) ([]byte, error) {
 	var header [5]byte
 	_, err := f.ReadAt(header[:], int64(offset))
 	if err != nil {
@@ -88,7 +88,7 @@ func WriteEmail(f *os.File, b []byte) (uint32, error) {
 	return uint32(n), err
 }
 
-func DeleteEmailAt(f *os.File, offset uint32) error {
+func deleteEmailAt(f *os.File, offset uint32) error {
 	var data [1]byte
 	_, err := f.ReadAt(data[:], int64(offset))
 	if err != nil {

@@ -21,7 +21,7 @@ func StoreEmail(
 	from, to [2]string,
 	spamScore sql.NullFloat64,
 	b []byte,
-	callback func(context.Context, *Index, int64) error,
+	callback func(context.Context, *DB, int64) error,
 ) error {
 	addr := strings.Join(to[:], "@")
 	cache, err := Cache.DB(ctx, addr)
@@ -33,12 +33,12 @@ func StoreEmail(
 	if lastFile == "" {
 		lastFile = newFileName()
 		p = lastFile
-	} else if len(b) < MaxEmailSizeInFile {
-		info, err := os.Stat(Cache.PathOf(addr, lastFile))
+	} else if len(b) < index.MaxEmailSizeInFile {
+		info, err := os.Stat(cache.path + lastFile)
 		if err != nil {
 			return err
 		}
-		if info.Size() >= MaxFileSize {
+		if info.Size() >= index.MaxFileSize {
 			lastFile = newFileName()
 		}
 		p = lastFile
@@ -46,7 +46,7 @@ func StoreEmail(
 		p = newFileName()
 	}
 	f, err := os.OpenFile(
-		Cache.PathOf(addr, p),
+		cache.path+p,
 		os.O_RDWR|os.O_CREATE,
 		0o660,
 	)
@@ -59,7 +59,7 @@ func StoreEmail(
 	if err != nil {
 		return err
 	}
-	n, err := WriteEmail(f, b)
+	n, err := index.WriteEmail(f, b)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func StoreEmail(
 }
 
 func StoreEmailInbox(ctx context.Context, from, to [2]string, spamScore sql.NullFloat64, b []byte) error {
-	return StoreEmail(ctx, from, to, spamScore, b, func(ctx context.Context, in *Index, id int64) error {
+	return StoreEmail(ctx, from, to, spamScore, b, func(ctx context.Context, in *DB, id int64) error {
 		return in.AddMailboxEmail(ctx, InboxMailbox, id)
 	})
 }
@@ -111,10 +111,13 @@ func Read(ctx context.Context, user string, id int64) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	f, err := os.Open(Cache.PathOf(user, email.Filename))
+	return email.Read(cache.path)
+}
+
+func ReadEmail(ctx context.Context, user string, email index.Email) ([]byte, error) {
+	cache, err := Cache.DB(ctx, user)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
-	return ReadEmailAt(f, uint32(email.Offset))
+	return email.Read(cache.path)
 }

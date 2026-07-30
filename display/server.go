@@ -27,7 +27,8 @@ func (bck *Backend) Options(log *slog.Logger) *imapserver.Options {
 	return &imapserver.Options{
 		NewSession: bck.NewSession,
 		Caps: imap.CapSet{
-			imap.CapIMAP4rev2: struct{}{},
+			imap.CapIMAP4rev2:  struct{}{},
+			imap.CapUTF8Accept: struct{}{},
 		},
 		Logger:       &logger{log},
 		InsecureAuth: true,

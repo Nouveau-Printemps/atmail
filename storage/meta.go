@@ -11,7 +11,7 @@ import (
 	"nouveauprintemps.org/atmail/storage/index"
 )
 
-type Index = index.Queries
+type DB = index.Queries
 
 var Cache = &Meta{subs: make(map[string]*meta)}
 
@@ -39,20 +39,16 @@ func (m *Meta) Close(ctx context.Context) error {
 	return err
 }
 
-func (m *Meta) PathOf(user string, file string) string {
-	return path.Join(m.Path, user, file)
-}
-
 func (m *Meta) DB(ctx context.Context, user string) (*meta, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if v, ok := m.subs[user]; ok {
 		return v, nil
 	}
-
+	p := path.Join(m.Path, user) + "/"
 	db, err := sql.Open(
 		"sqlite3",
-		"file:"+m.PathOf(user, "database.db")+"?_journal=WAL&_foreign_keys=1",
+		"file:"+p+"database.db?_journal=WAL&_foreign_keys=1",
 	)
 	if err != nil {
 		return nil, err
@@ -61,7 +57,7 @@ func (m *Meta) DB(ctx context.Context, user string) (*meta, error) {
 	if err != nil {
 		return nil, err
 	}
-	mm := &meta{db: db}
+	mm := &meta{db: db, path: p}
 	err = mm.Sync(ctx)
 	if err != nil {
 		return nil, err
@@ -72,6 +68,7 @@ func (m *Meta) DB(ctx context.Context, user string) (*meta, error) {
 
 type meta struct {
 	mu       sync.RWMutex
+	path     string
 	lastFile string
 	offset   uint32
 	db       *sql.DB
@@ -120,7 +117,7 @@ func (m *meta) Save(ctx context.Context) error {
 	)
 }
 
-func exec(ctx context.Context, user string, fn func(*Index) error) error {
+func exec(ctx context.Context, user string, fn func(*DB) error) error {
 	meta, err := Cache.DB(ctx, user)
 	if err != nil {
 		return err
@@ -128,7 +125,7 @@ func exec(ctx context.Context, user string, fn func(*Index) error) error {
 	return fn(index.New(meta.db))
 }
 
-func execTx(ctx context.Context, user string, fn func(*Index) error) error {
+func execTx(ctx context.Context, user string, fn func(*DB) error) error {
 	meta, err := Cache.DB(ctx, user)
 	if err != nil {
 		return err
@@ -141,7 +138,7 @@ func execTx(ctx context.Context, user string, fn func(*Index) error) error {
 	return tx.Commit()
 }
 
-func get[T any](ctx context.Context, user string, fn func(*Index) (T, error)) (T, error) {
+func get[T any](ctx context.Context, user string, fn func(*DB) (T, error)) (T, error) {
 	meta, err := Cache.DB(ctx, user)
 	if err != nil {
 		var v T

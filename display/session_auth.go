@@ -8,6 +8,7 @@ import (
 	"maps"
 	"net/mail"
 	"slices"
+	"strings"
 
 	"github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapserver"
@@ -46,6 +47,16 @@ func (s *Session) Unselect() error {
 }
 
 func (s *Session) Create(mailbox string, options *imap.CreateOptions) error {
+	sep := string(storage.MailboxSeparator)
+	if strings.HasSuffix(mailbox, sep) ||
+		strings.Contains(mailbox, sep+sep) {
+		return &imap.Error{
+			Type: imap.StatusResponseTypeNo,
+			Code: imap.ResponseCodeCannot,
+			Text: "bad mailbox name",
+		}
+	}
+	mailbox = strings.TrimPrefix(mailbox, sep)
 	return storage.CreateMailbox(context.TODO(), s.username, mailbox)
 }
 
@@ -163,7 +174,7 @@ func (s *Session) Append(mailbox string, r imap.LiteralReader, options *imap.App
 		relay.ParseAddress(from), relay.ParseAddress(to),
 		sql.NullFloat64{Float64: 0, Valid: false},
 		b,
-		func(ctx context.Context, in *storage.Index, id int64) error {
+		func(ctx context.Context, in *storage.DB, id int64) error {
 			uid = imap.UID(id)
 			return in.AddMailboxEmail(ctx, int64(box.UIDValidity), id)
 		})

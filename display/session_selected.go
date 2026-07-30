@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/emersion/go-imap/v2"
@@ -108,15 +107,10 @@ func (s *Session) Fetch(wr *imapserver.FetchWriter, set imap.NumSet, options *im
 		if options.InternalDate {
 			w.WriteInternalDate(time.Unix(email.InternalDate, 0))
 		}
-		f, err := os.Open(storage.Cache.PathOf(s.username, email.Filename))
+		b, err := storage.ReadEmail(context.TODO(), s.username, email)
 		if err != nil {
 			return err
 		}
-		b, err := storage.ReadEmailAt(f, uint32(email.Offset))
-		if err != nil {
-			return err
-		}
-		_ = f.Close()
 		if options.RFC822Size {
 			w.WriteRFC822Size(int64(len(b)))
 		}
