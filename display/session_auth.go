@@ -14,6 +14,7 @@ import (
 	"github.com/emersion/go-imap/v2/imapserver"
 	"nouveauprintemps.org/atmail/relay"
 	"nouveauprintemps.org/atmail/storage"
+	"nouveauprintemps.org/atmail/utils"
 )
 
 var errNotFound = &imap.Error{
@@ -95,10 +96,9 @@ func (s *Session) List(w *imapserver.ListWriter, ref string, patterns []string, 
 	if options.ReturnSubscribed {
 		boxes = slices.Collect(maps.Keys(s.subscribed))
 	} else {
-		boxes = make([]string, 0, len(s.mailboxes))
-		for name := range s.mailboxes {
-			boxes = append(boxes, name)
-		}
+		boxes = utils.ReduceMapToSlice(s.mailboxes, func(k string, _ MailboxView) string {
+			return k
+		})
 	}
 	for _, p := range patterns {
 		for _, box := range boxes {

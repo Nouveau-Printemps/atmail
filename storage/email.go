@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"io"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -46,7 +47,7 @@ func StoreEmail(
 		p = newFileName()
 	}
 	f, err := os.OpenFile(
-		cache.path+p,
+		path.Join(cache.path, p),
 		os.O_RDWR|os.O_CREATE,
 		0o660,
 	)
@@ -83,11 +84,6 @@ func StoreEmail(
 	if err != nil {
 		return err
 	}
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
-	cache.Update(lastFile, uint32(offset)+n)
 	err = tx.Commit()
 	if err != nil {
 		return err

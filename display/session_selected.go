@@ -11,6 +11,8 @@ import (
 	"github.com/emersion/go-imap/v2/imapserver"
 	"github.com/emersion/go-message/textproto"
 	"nouveauprintemps.org/atmail/storage"
+	"nouveauprintemps.org/atmail/storage/index"
+	"nouveauprintemps.org/atmail/utils"
 )
 
 func (s *Session) Close() error {
@@ -40,10 +42,7 @@ func (s *Session) Expunge(w *imapserver.ExpungeWriter, uids *imap.UIDSet) error 
 		return nil
 	}
 	ns, _ := uids.Nums()
-	keys := make([]int64, 0, len(ns))
-	for _, u := range ns {
-		keys = append(keys, int64(u))
-	}
+	keys := utils.Map(ns, func(v imap.UID) int64 { return int64(v) })
 	err := storage.RemoveMailboxEmails(
 		context.TODO(),
 		s.username,
@@ -98,11 +97,7 @@ func (s *Session) Fetch(wr *imapserver.FetchWriter, set imap.NumSet, options *im
 			if err != nil {
 				return err
 			}
-			fls := make([]imap.Flag, 0, len(flags))
-			for _, f := range flags {
-				fls = append(fls, imap.Flag(f.Name))
-			}
-			w.WriteFlags(fls)
+			w.WriteFlags(utils.Map(flags, func(f index.Flag) imap.Flag { return imap.Flag(f.Name) }))
 		}
 		if options.InternalDate {
 			w.WriteInternalDate(time.Unix(email.InternalDate, 0))
@@ -226,10 +221,7 @@ func (s *Session) Copy(set imap.NumSet, dest string) (*imap.CopyData, error) {
 	if err != nil {
 		return nil, err
 	}
-	ids := make([]int64, 0, len(mails))
-	for _, m := range mails {
-		ids = append(ids, m.ID)
-	}
+	ids := utils.Map(mails, func(m index.Email) int64 { return m.ID })
 	err = storage.AddMailboxEmails(context.TODO(), s.username, int64(target.UIDValidity), ids)
 	if err != nil {
 		return nil, err

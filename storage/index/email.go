@@ -5,12 +5,12 @@ import (
 	"path"
 )
 
-func (e *Email) openFile(base string, flag int) (*os.File, error) {
-	return os.OpenFile(path.Join(base, e.Filename), flag|os.O_RDWR, 0o660)
+func (e *Email) openFile(base string) (*os.File, error) {
+	return os.OpenFile(path.Join(base, e.Filename), os.O_RDWR, 0o660)
 }
 
 func (e *Email) Read(base string) ([]byte, error) {
-	f, err := e.openFile(base, 0)
+	f, err := e.openFile(base)
 	if err != nil {
 		return nil, err
 	}
@@ -23,7 +23,7 @@ func (e *Email) ReadFile(f *os.File) ([]byte, error) {
 }
 
 func (e *Email) Delete(base string) error {
-	f, err := e.openFile(base, 0)
+	f, err := e.openFile(base)
 	if err != nil {
 		return err
 	}

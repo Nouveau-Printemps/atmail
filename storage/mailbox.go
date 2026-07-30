@@ -6,6 +6,7 @@ import (
 
 	"github.com/emersion/go-imap/v2"
 	"nouveauprintemps.org/atmail/storage/index"
+	"nouveauprintemps.org/atmail/utils"
 )
 
 const MailboxSeparator = '/'
@@ -69,7 +70,6 @@ func CreateMailbox(ctx context.Context, user, name string) error {
 		_, err := in.NewMailbox(ctx, name)
 		return err
 	})
-
 }
 
 func DeleteMailbox(ctx context.Context, user string, id int64) error {
@@ -119,26 +119,18 @@ func StatusMailbox(ctx context.Context, user, mailbox string, opt *imap.StatusOp
 }
 
 func ListMailboxEmails(ctx context.Context, user string, mailbox int64, set imap.NumSet) ([]index.Email, error) {
-	meta, err := Cache.DB(ctx, user)
-	if err != nil {
-		return nil, err
-	}
-	var ids []int64
-	switch v := set.(type) {
-	case imap.SeqSet:
-		seq, _ := v.Nums()
-		ids = make([]int64, 0, len(seq))
-		for _, id := range seq {
-			ids = append(ids, int64(id))
+	return get(ctx, user, func(in *DB) ([]index.Email, error) {
+		var ids []int64
+		switch v := set.(type) {
+		case imap.SeqSet:
+			seq, _ := v.Nums()
+			ids = utils.Map(seq, func(id uint32) int64 { return int64(id) })
+		case imap.UIDSet:
+			seq, _ := v.Nums()
+			ids = utils.Map(seq, func(id imap.UID) int64 { return int64(id) })
 		}
-	case imap.UIDSet:
-		seq, _ := v.Nums()
-		ids = make([]int64, 0, len(seq))
-		for _, id := range seq {
-			ids = append(ids, int64(id))
-		}
-	}
-	return index.New(meta.db).GetMailboxEmails(ctx, mailbox, ids)
+		return in.GetMailboxEmails(ctx, mailbox, ids)
+	})
 }
 
 func AddMailboxEmails(ctx context.Context, user string, mailbox int64, emails []int64) error {
