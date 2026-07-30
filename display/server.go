@@ -1,11 +1,14 @@
 package display
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapserver"
+	"github.com/nyttikord/logos"
 	"nouveauprintemps.org/atmail/auth"
 )
 
@@ -14,7 +17,9 @@ type logger struct {
 }
 
 func (l *logger) Printf(format string, args ...any) {
-	l.Logger.Error(fmt.Sprintf(format, args...))
+	ctx := logos.NewContext(context.Background(), 1, true, false)
+	log, _, _ := strings.Cut(fmt.Sprintf(format, args...), "\n")
+	l.Logger.ErrorContext(ctx, log)
 }
 
 type Backend struct {
@@ -27,8 +32,8 @@ func (bck *Backend) Options(log *slog.Logger) *imapserver.Options {
 	return &imapserver.Options{
 		NewSession: bck.NewSession,
 		Caps: imap.CapSet{
-			imap.CapIMAP4rev2:  struct{}{},
-			imap.CapUTF8Accept: struct{}{},
+			imap.CapIMAP4rev1: {},
+			imap.CapIMAP4rev2: {},
 		},
 		Logger:       &logger{log},
 		InsecureAuth: true,

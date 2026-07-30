@@ -43,7 +43,7 @@ func (s *Session) AuthMechanisms() []string {
 func (s *Session) Auth(mech string) (sasl.Server, error) {
 	return sasl.NewPlainServer(func(identity, username, password string) error {
 		for k, cfg := range s.backend.Domains {
-			if cfg.VerifyUser(username, password) {
+			if cfg.VerifyUser(k, username, password) {
 				s.authFor = append(s.authFor, k)
 			}
 		}

@@ -195,3 +195,12 @@ func (s *Session) Poll(w *imapserver.UpdateWriter, allowExpunge bool) error {
 func (s *Session) Idle(w *imapserver.UpdateWriter, stop <-chan struct{}) error {
 	return s.selected.Idle(w, stop)
 }
+
+func (s *Session) Namespace() (*imap.NamespaceData, error) {
+	return &imap.NamespaceData{
+		Personal: []imap.NamespaceDescriptor{{
+			Prefix: "",
+			Delim:  '/',
+		}},
+	}, nil
+}

@@ -30,10 +30,10 @@ type CatchAll struct {
 	Password string `toml:"password"`
 }
 
-func (cfg *Config) VerifyUser(username, password string) bool {
+func (cfg *Config) VerifyUser(domain, username, password string) bool {
 	var realPass string
 	if cfg.CatchAll != nil {
-		if subtle.ConstantTimeCompare([]byte(cfg.CatchAll.User), []byte(username)) != 1 {
+		if subtle.ConstantTimeCompare([]byte(cfg.CatchAll.User+"@"+domain), []byte(username)) != 1 {
 			return false
 		}
 		realPass = cfg.CatchAll.Password

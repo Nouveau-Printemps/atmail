@@ -11,14 +11,14 @@ CREATE TABLE IF NOT EXISTS flags (
 CREATE TABLE IF NOT EXISTS mailbox_flags (
     mailbox_id INTEGER NOT NULL REFERENCES mailbox(id) ON DELETE CASCADE,
     flag_id INTEGER NOT NULL REFERENCES flags(id) ON DELETE CASCADE,
-    user_added BOOLEAN NOT NULL DEFAULT false,
+    user_added INTEGER NOT NULL DEFAULT false CHECK (user_added IN (0, 1)),
     PRIMARY KEY(mailbox_id, flag_id)
 ) strict;
 
 CREATE TABLE IF NOT EXISTS emails_flags (
     email_id INTEGER NOT NULL REFERENCES emails(id) ON DELETE CASCADE,
     flag_id INTEGER NOT NULL REFERENCES flags(id) ON DELETE CASCADE,
-    user_added BOOLEAN NOT NULL DEFAULT false,
+    user_added INTEGER  NOT NULL DEFAULT false CHECK (user_added IN (0, 1)),
     PRIMARY KEY(email_id, flag_id)
 ) strict;
 
@@ -28,56 +28,60 @@ CREATE TABLE IF NOT EXISTS mailbox_emails (
     PRIMARY KEY(mailbox_id, email_id)
 ) strict;
 
+INSERT INTO mailbox (id, name)
+VALUES (3, 'Sent')
+ON CONFLICT DO NOTHING;
+
 -- ensure that the required mailboxes exist
-BEGIN IMMEDIATE TRANSACTION
+BEGIN IMMEDIATE TRANSACTION;
     INSERT INTO mailbox (id, name)
-    VALUES (1, "Inbox")
+    VALUES (1, 'INBOX')
     ON CONFLICT DO NOTHING;
 
     INSERT INTO mailbox (id, name)
-    VALUES (2, "Junk")
+    VALUES (2, 'Junk')
     ON CONFLICT DO NOTHING;
-COMMIT
+COMMIT;
 
 -- ensure that the required flags exist
-BEGIN IMMEDIATE TRANSACTION
+BEGIN IMMEDIATE TRANSACTION;
     INSERT INTO flags (id, name)
-    VALUES (1, "\Seen")
+    VALUES (1, '\Seen')
     ON CONFLICT DO NOTHING;
 
     INSERT INTO flags (id, name)
-    VALUES (2, "\Answered")
+    VALUES (2, '\Answered')
     ON CONFLICT DO NOTHING;
 
     INSERT INTO flags (id, name)
-    VALUES (3, "\Flagged")
+    VALUES (3, '\Flagged')
     ON CONFLICT DO NOTHING;
 
     INSERT INTO flags (id, name)
-    VALUES (4, "\Deleted")
+    VALUES (4, '\Deleted')
     ON CONFLICT DO NOTHING;
 
     INSERT INTO flags (id, name)
-    VALUES (5, "\Draft")
+    VALUES (5, '\Draft')
     ON CONFLICT DO NOTHING;
 
     INSERT INTO flags (id, name)
-    VALUES (6, "$Forwarded")
+    VALUES (6, '$Forwarded')
     ON CONFLICT DO NOTHING;
 
     INSERT INTO flags (id, name)
-    VALUES (7, "$MDNSent")
+    VALUES (7, '$MDNSent')
     ON CONFLICT DO NOTHING;
 
     INSERT INTO flags (id, name)
-    VALUES (8, "$Junk")
+    VALUES (8, '$Junk')
     ON CONFLICT DO NOTHING;
 
     INSERT INTO flags (id, name)
-    VALUES (9, "$NotJunk")
+    VALUES (9, '$NotJunk')
     ON CONFLICT DO NOTHING;
 
     INSERT INTO flags (id, name)
-    VALUES (10, "$Phishing")
+    VALUES (10, '$Phishing')
     ON CONFLICT DO NOTHING;
-COMMIT
+COMMIT;

@@ -119,3 +119,9 @@ DELETE FROM emails_flags
 WHERE email_id = ? AND flag_id = (
     SELECT id FROM flags WHERE name = ?
 );
+
+-- name: CountEmailsWithFlagInMailbox :one
+SELECT COUNT(*) FROM emails_flags e
+WHERE e.flag_id = ? AND EXISTS(
+    SELECT * FROM mailbox_emails m WHERE m.email_id = e.email_id AND m.mailbox_id = ?
+);

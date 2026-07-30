@@ -65,7 +65,9 @@ func (s *Session) Search(
 	kind imapserver.NumKind,
 	criteria *imap.SearchCriteria,
 	options *imap.SearchOptions,
-) (*imap.SearchData, error)
+) (*imap.SearchData, error) {
+	return &imap.SearchData{}, nil
+}
 
 func (s *Session) Fetch(wr *imapserver.FetchWriter, set imap.NumSet, options *imap.FetchOptions) error {
 	emails, err := storage.ListMailboxEmails(context.TODO(), s.username, int64(s.selected.ID), set)
@@ -229,4 +231,21 @@ func (s *Session) Copy(set imap.NumSet, dest string) (*imap.CopyData, error) {
 	return &imap.CopyData{
 		UIDValidity: uint32(target.UIDValidity),
 	}, nil
+}
+
+func (s *Session) Move(w *imapserver.MoveWriter, set imap.NumSet, dest string) error {
+	v, err := s.Copy(set, dest)
+	if err != nil {
+		return err
+	}
+	err = w.WriteCopyData(v)
+	if err != nil {
+		return err
+	}
+	return storage.RemoveMailboxEmails(
+		context.TODO(),
+		s.username,
+		int64(s.selected.ID),
+		storage.GetIds(set),
+	)
 }

@@ -39,7 +39,7 @@ func DescribeMailbox(ctx context.Context, user string, mailbox string) (*imap.Se
 		flags := make([]imap.Flag, 0, len(mailboxFlags))
 		var permanentFlags []imap.Flag
 		for _, f := range mailboxFlags {
-			if f.UserAdded {
+			if f.UserAdded == 1 {
 				permanentFlags = append(permanentFlags, imap.Flag(f.Name))
 			} else {
 				flags = append(flags, imap.Flag(f.Name))
@@ -107,29 +107,53 @@ func StatusMailbox(ctx context.Context, user, mailbox string, opt *imap.StatusOp
 		if opt.UIDValidity {
 			status.UIDValidity = uint32(box.ID)
 		}
+		if opt.NumDeleted {
+			nbr, err := in.CountEmailsWithFlagInMailbox(ctx, DeletedFlag, box.ID)
+			if err != nil {
+				return nil, err
+			}
+			status.NumMessages = new(*status.NumMessages - uint32(nbr))
+		}
+		if opt.NumRecent {
+			status.NumRecent = new(uint32(0))
+		}
+		if opt.NumUnseen {
+			nbr, err := in.CountEmailsWithFlagInMailbox(ctx, SeenFlag, box.ID)
+			if err != nil {
+				return nil, err
+			}
+			status.NumUnseen = new(*status.NumMessages - uint32(nbr))
+		}
 		if opt.UIDNext {
 			mails, err := in.GetLatestMailboxEmails(ctx, box.ID, 1, 0)
 			if err != nil {
 				return nil, err
 			}
-			status.UIDNext = imap.UID(mails[0].ID + 1)
+			if len(mails) > 0 {
+				status.UIDNext = imap.UID(mails[0].ID + 1)
+			} else {
+				status.UIDNext = 1
+			}
 		}
 		return &status, nil
 	})
 }
 
+func GetIds(set imap.NumSet) []int64 {
+	switch v := set.(type) {
+	case imap.SeqSet:
+		seq, _ := v.Nums()
+		return utils.Map(seq, func(id uint32) int64 { return int64(id) })
+	case imap.UIDSet:
+		seq, _ := v.Nums()
+		return utils.Map(seq, func(id imap.UID) int64 { return int64(id) })
+	}
+	panic("set not handled")
+}
+
 func ListMailboxEmails(ctx context.Context, user string, mailbox int64, set imap.NumSet) ([]index.Email, error) {
 	return get(ctx, user, func(in *DB) ([]index.Email, error) {
-		var ids []int64
-		switch v := set.(type) {
-		case imap.SeqSet:
-			seq, _ := v.Nums()
-			ids = utils.Map(seq, func(id uint32) int64 { return int64(id) })
-		case imap.UIDSet:
-			seq, _ := v.Nums()
-			ids = utils.Map(seq, func(id imap.UID) int64 { return int64(id) })
-		}
-		return in.GetMailboxEmails(ctx, mailbox, ids)
+		return in.GetMailboxEmails(ctx, mailbox, GetIds(set))
 	})
 }
 

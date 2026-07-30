@@ -33,8 +33,8 @@ type Session struct {
 }
 
 func (s *Session) Login(username, password string) error {
-	for _, cfg := range s.backend.Domains {
-		if cfg.VerifyUser(username, password) {
+	for d, cfg := range s.backend.Domains {
+		if cfg.VerifyUser(d, username, password) {
 			s.username = username
 			break
 		}
