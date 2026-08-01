@@ -32,3 +32,12 @@ storage/index/models.go
 *.db*
 data
 dev.toml
+
+# Zig programming language
+
+.zig-cache/
+zig-out/
+build/
+build-*/
+docgen_tmp/
+zig-pkg

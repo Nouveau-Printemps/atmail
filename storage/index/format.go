@@ -18,13 +18,13 @@ func readEmailAt(f *os.File, offset uint32) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if header[0]&EmailDeleted == EmailDeleted {
+	if header[0]&EmailDeleted != 0 {
 		return nil, nil
 	}
 	ln := binary.BigEndian.Uint32(header[1:])
 	b := make([]byte, ln)
 	_, err = f.ReadAt(b, int64(offset)+int64(len(header)))
-	if header[0]&EmailCompressed == EmailCompressed {
+	if header[0]&EmailCompressed != 0 {
 		slog.Debug("email compressed, decompressing")
 		buf := bytes.NewBuffer(b)
 		r, err := gzip.NewReader(buf)
