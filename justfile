@@ -1,11 +1,14 @@
 dev:
     go generate
-    go run . -config dev.toml -v
+    zig build run -- -config dev.toml -v
 
 build:
     go generate
-    go build -ldflags "-s -w" .
+    zig build --summary all
 
 clean:
     rm -fr data/*
     rm debug.db
+
+test:
+    zig run test --summary all
