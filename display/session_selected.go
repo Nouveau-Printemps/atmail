@@ -66,7 +66,14 @@ func (s *Session) Search(
 	criteria *imap.SearchCriteria,
 	options *imap.SearchOptions,
 ) (*imap.SearchData, error) {
-	return &imap.SearchData{}, nil
+	return storage.Search(
+		context.TODO(),
+		s.username,
+		int64(s.selected.ID),
+		kind,
+		criteria,
+		options,
+	)
 }
 
 func (s *Session) Fetch(wr *imapserver.FetchWriter, set imap.NumSet, options *imap.FetchOptions) error {

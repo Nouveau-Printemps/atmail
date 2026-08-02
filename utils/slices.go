@@ -15,3 +15,21 @@ func ReduceMapToSlice[A comparable, B, V any](in map[A]B, fn func(A, B) V) []V {
 	}
 	return out
 }
+
+func Any(in []bool) bool {
+	for _, v := range in {
+		if v {
+			return true
+		}
+	}
+	return false
+}
+
+func All(in []bool) bool {
+	for _, v := range in {
+		if !v {
+			return false
+		}
+	}
+	return true
+}
