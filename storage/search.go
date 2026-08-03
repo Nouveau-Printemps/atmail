@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"slices"
 	"strconv"
 	"strings"
@@ -17,6 +18,12 @@ type searchDataSmall struct {
 	filename string
 	offset   int64
 }
+
+const searchQuery = `
+SELECT id, filename, offset FROM emails
+WHERE %s EXISTS(
+	SELECT * FROM mailbox_emails WHERE mailbox_id = ? AND email_id = id
+)`
 
 func Search(
 	ctx context.Context,
@@ -41,9 +48,9 @@ func Search(
 	}
 	var rows *sql.Rows
 	if where.Len() > 0 {
-		rows, err = meta.db.QueryContext(ctx, `SELECT id, filename, offset FROM emails WHERE `+where.String())
+		rows, err = meta.db.QueryContext(ctx, fmt.Sprintf(searchQuery, where.String()+" AND"), mailbox)
 	} else {
-		rows, err = meta.db.QueryContext(ctx, `SELECT id, filename, offset FROM emails`)
+		rows, err = meta.db.QueryContext(ctx, fmt.Sprintf(searchQuery, ""), mailbox)
 	}
 	if err != nil {
 		return nil, err

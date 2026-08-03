@@ -5,7 +5,6 @@ import (
 	"path"
 
 	"github.com/emersion/go-imap/v2"
-	"github.com/emersion/go-imap/v2/imapserver"
 	"nouveauprintemps.org/atmail/storage/index"
 	"nouveauprintemps.org/atmail/utils"
 )
@@ -116,7 +115,7 @@ func StatusMailbox(ctx context.Context, user, mailbox string, opt *imap.StatusOp
 			status.NumMessages = new(*status.NumMessages - uint32(nbr))
 		}
 		if opt.NumRecent {
-			status.NumRecent = status.NumMessages
+			status.NumRecent = new(uint32(0))
 		}
 		if opt.NumUnseen {
 			nbr, err := in.CountEmailsWithFlagInMailbox(ctx, SeenFlag, box.ID)
@@ -140,14 +139,20 @@ func StatusMailbox(ctx context.Context, user, mailbox string, opt *imap.StatusOp
 	})
 }
 
-func GetIds(s *imapserver.SessionTracker, set imap.NumSet) []int64 {
+func GetIds(ctx context.Context, user string, mailbox int64, set imap.NumSet) []int64 {
 	if set.Dynamic() {
 		panic("cannot extract seq from a dynamic")
 	}
 	switch v := set.(type) {
 	case imap.SeqSet:
 		seq, _ := v.Nums()
-		return utils.Map(seq, func(id uint32) int64 { return int64(s.DecodeSeqNum(id)) })
+		return utils.Map(seq, func(id uint32) int64 {
+			res, err := FromSequence(ctx, user, mailbox, id)
+			if err != nil {
+				panic(err)
+			}
+			return res
+		})
 	case imap.UIDSet:
 		seq, _ := v.Nums()
 		return utils.Map(seq, func(id imap.UID) int64 { return int64(id) })
@@ -157,14 +162,13 @@ func GetIds(s *imapserver.SessionTracker, set imap.NumSet) []int64 {
 
 func ListMailboxEmails(
 	ctx context.Context,
-	s *imapserver.SessionTracker,
 	user string,
 	mailbox int64,
 	set imap.NumSet,
 ) ([]index.Email, error) {
 	return get(ctx, user, func(in *DB) ([]index.Email, error) {
 		if !set.Dynamic() {
-			return in.GetMailboxEmails(ctx, mailbox, GetIds(s, set))
+			return in.GetMailboxEmails(ctx, mailbox, GetIds(ctx, user, mailbox, set))
 		}
 		emails, err := in.ListMailboxEmails(ctx, mailbox)
 		if err != nil {
@@ -180,7 +184,11 @@ func ListMailboxEmails(
 			}
 		case imap.SeqSet:
 			for _, email := range emails {
-				if v.Contains(s.EncodeSeqNum(uint32(email.ID))) {
+				id, err := ToSequence(ctx, user, mailbox, email.ID)
+				if err != nil {
+					return nil, err
+				}
+				if v.Contains(id) {
 					res = append(res, email)
 				}
 			}
@@ -230,5 +238,21 @@ func RemoveMailboxEmails(ctx context.Context, user string, mailbox int64, emails
 			}
 		}
 		return nil
+	})
+}
+
+func ToSequence(ctx context.Context, user string, mailbox, id int64) (uint32, error) {
+	return get(ctx, user, func(in *DB) (uint32, error) {
+		seq, err := in.GetSequence(ctx, mailbox, id)
+		if err != nil {
+			return 0, err
+		}
+		return uint32(seq), nil
+	})
+}
+
+func FromSequence(ctx context.Context, user string, mailbox int64, seq uint32) (int64, error) {
+	return get(ctx, user, func(in *DB) (int64, error) {
+		return in.FromSequence(ctx, mailbox, int64(seq))
 	})
 }

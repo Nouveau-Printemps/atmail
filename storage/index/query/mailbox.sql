@@ -132,3 +132,13 @@ SELECT COUNT(*) FROM emails_flags e
 WHERE e.flag_id = ? AND EXISTS(
     SELECT * FROM mailbox_emails m WHERE m.email_id = e.email_id AND m.mailbox_id = ?
 );
+
+-- name: GetSequence :one
+SELECT COUNT(*) FROM mailbox_emails
+WHERE mailbox_id = ? AND email_id >= ?;
+
+-- name: FromSequence :one
+SELECT email_id FROM mailbox_emails
+WHERE mailbox_id = ?
+ORDER BY email_id ASC
+LIMIT 1 OFFSET ?-1;

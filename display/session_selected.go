@@ -79,13 +79,15 @@ func (s *Session) Search(
 func (s *Session) Fetch(wr *imapserver.FetchWriter, set imap.NumSet, options *imap.FetchOptions) error {
 	emails, err := storage.ListMailboxEmails(
 		context.TODO(),
-		s.selected.SessionTracker,
 		s.username,
 		int64(s.selected.ID),
 		set,
 	)
 	if err != nil {
 		return err
+	}
+	for _, e := range emails {
+		println("id", e.ID)
 	}
 	markSeen := true
 	for _, sec := range options.BinarySection {
@@ -102,7 +104,11 @@ func (s *Session) Fetch(wr *imapserver.FetchWriter, set imap.NumSet, options *im
 			}
 			s.mailboxes[s.selected.Name].QueueMailboxFlags([]imap.Flag{imap.FlagSeen})
 		}
-		w := wr.CreateMessage(s.selected.EncodeSeqNum(uint32(email.ID)))
+		seq, err := storage.ToSequence(context.TODO(), s.username, int64(s.selected.ID), email.ID)
+		if err != nil {
+			return err
+		}
+		w := wr.CreateMessage(seq)
 
 		if options.UID {
 			w.WriteUID(imap.UID(email.ID))
@@ -179,7 +185,6 @@ func (s *Session) Store(
 ) error {
 	emails, err := storage.ListMailboxEmails(
 		context.TODO(),
-		s.selected.SessionTracker,
 		s.username,
 		int64(s.selected.ID),
 		set,
@@ -206,8 +211,12 @@ func (s *Session) Store(
 		if err != nil {
 			return err
 		}
+		seq, err := storage.ToSequence(context.TODO(), s.username, int64(s.selected.ID), email.ID)
+		if err != nil {
+			return err
+		}
 		s.mailboxes[s.selected.Name].QueueMessageFlags(
-			s.selected.EncodeSeqNum(uint32(email.ID)),
+			seq,
 			s.selected.ID,
 			flags.Flags,
 			s.selected.SessionTracker,
@@ -235,7 +244,6 @@ func (s *Session) Copy(set imap.NumSet, dest string) (*imap.CopyData, error) {
 
 	mails, err := storage.ListMailboxEmails(
 		context.TODO(),
-		s.selected.SessionTracker,
 		s.username,
 		int64(target.UIDValidity),
 		set,
@@ -266,6 +274,6 @@ func (s *Session) Move(w *imapserver.MoveWriter, set imap.NumSet, dest string) e
 		context.TODO(),
 		s.username,
 		int64(s.selected.ID),
-		storage.GetIds(s.selected.SessionTracker, set),
+		storage.GetIds(context.TODO(), s.username, int64(s.selected.ID), set),
 	)
 }
