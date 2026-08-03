@@ -20,6 +20,8 @@ import (
 type Backend struct {
 	Domains map[string]auth.Config
 	Rspamd  *RspamdClient
+
+	OnReceive func(user string, id int64)
 }
 
 func (bck *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
@@ -185,9 +187,12 @@ valid_email:
 			score.Valid = true
 		}
 		b := formatMail(h.Map(), body)
-		err := storage.StoreEmailInbox(context.TODO(), s.From, s.To, user, score, b)
+		id, err := storage.StoreEmailInbox(context.TODO(), s.From, s.To, user, score, b)
 		if err != nil {
 			slog.Error("cannot save email", "error", err)
+		}
+		if s.backend.OnReceive != nil {
+			s.backend.OnReceive(user, id)
 		}
 	}()
 	return nil

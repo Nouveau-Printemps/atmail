@@ -44,7 +44,8 @@ func (s *Session) Login(username, password string) error {
 	if len(s.username) == 0 {
 		return imapserver.ErrAuthFailed
 	}
-	boxes, ok := s.backend.Mailboxes[s.username]
+	slog.Debug("client connected", "ip", s.conn.NetConn().RemoteAddr(), "user", username)
+	boxes, ok := s.backend.GetUserBoxes(s.username)
 	if ok {
 		s.mailboxes = boxes
 		return nil
@@ -61,6 +62,6 @@ func (s *Session) Login(username, password string) error {
 		}
 		s.mailboxes[b.Name] = view
 	}
-	slog.Debug("client connected", "ip", s.conn.NetConn().RemoteAddr(), "user", username)
+	s.backend.SetUserBoxes(username, s.mailboxes)
 	return nil
 }

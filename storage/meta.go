@@ -48,8 +48,12 @@ func (m *Meta) DB(ctx context.Context, user string) (*meta, error) {
 	p := path.Join(m.Path, user) + "/"
 	db, err := sql.Open(
 		"sqlite3",
-		"file:"+p+"database.db?_journal=WAL&_foreign_keys=1",
+		"file:"+p+"database.db?_journal=WAL&_foreign_keys=1&_synch=normal&_timeout=5000",
 	)
+	if err != nil {
+		return nil, err
+	}
+	_, err = db.ExecContext(ctx, `PRAGMA wal_checkpoint(PASSIVE)`)
 	if err != nil {
 		return nil, err
 	}

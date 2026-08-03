@@ -96,11 +96,17 @@ func main() {
 
 	d := &display.Backend{
 		Domains:     cfg.Domains,
-		Mailboxes:   map[string]map[string]display.MailboxView{},
 		MaxMailSize: cfg.Smtp.MaxMailSize,
 	}
 	imapSrv := imapserver.New(d.Options(slog.Default()))
 	defer imapSrv.Close()
+	bck.OnReceive = func(user string, id int64) {
+		boxes, ok := d.GetUserBoxes(user)
+		if !ok {
+			return
+		}
+		boxes["INBOX"].QueueNumMessages(uint32(id))
+	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill, syscall.SIGINT)
 	defer cancel()

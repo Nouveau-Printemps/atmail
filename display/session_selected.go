@@ -86,9 +86,6 @@ func (s *Session) Fetch(wr *imapserver.FetchWriter, set imap.NumSet, options *im
 	if err != nil {
 		return err
 	}
-	for _, e := range emails {
-		println("id", e.ID)
-	}
 	markSeen := true
 	for _, sec := range options.BinarySection {
 		markSeen = markSeen && !sec.Peek

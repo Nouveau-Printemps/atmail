@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 
 	"github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapserver"
@@ -25,10 +26,12 @@ func (l *logger) Printf(format string, args ...any) {
 type Backend struct {
 	Domains     map[string]auth.Config
 	MaxMailSize uint32
-	Mailboxes   map[string]map[string]MailboxView
+	mailboxes   map[string]map[string]MailboxView
+	muBoxes     sync.RWMutex
 }
 
 func (bck *Backend) Options(log *slog.Logger) *imapserver.Options {
+	bck.mailboxes = make(map[string]map[string]MailboxView, 2)
 	return &imapserver.Options{
 		NewSession: bck.NewSession,
 		Caps: imap.CapSet{
@@ -46,4 +49,17 @@ func (bck *Backend) NewSession(conn *imapserver.Conn) (imapserver.Session, *imap
 		conn:       conn,
 		subscribed: map[string]struct{}{},
 	}, &imapserver.GreetingData{PreAuth: false}, nil
+}
+
+func (bck *Backend) GetUserBoxes(user string) (map[string]MailboxView, bool) {
+	bck.muBoxes.RLock()
+	defer bck.muBoxes.RUnlock()
+	bxs, ok := bck.mailboxes[user]
+	return bxs, ok
+}
+
+func (bck *Backend) SetUserBoxes(user string, boxes map[string]MailboxView) {
+	bck.muBoxes.Lock()
+	defer bck.muBoxes.Unlock()
+	bck.mailboxes[user] = boxes
 }
