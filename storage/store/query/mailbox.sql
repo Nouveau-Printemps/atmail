@@ -135,10 +135,10 @@ WHERE e.flag_id = ? AND EXISTS(
 
 -- name: GetSequence :one
 SELECT COUNT(*) FROM mailbox_emails
-WHERE mailbox_id = ? AND email_id >= ?;
+WHERE mailbox_id = ? AND email_id <= ?;
 
 -- name: FromSequence :one
 SELECT email_id FROM mailbox_emails
 WHERE mailbox_id = ?
-ORDER BY email_id ASC
+ORDER BY email_id DESC
 LIMIT 1 OFFSET ?-1;
