@@ -12,6 +12,7 @@ import (
 
 	"github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapserver"
+	"nouveauprintemps.org/atmail/mailbox"
 	"nouveauprintemps.org/atmail/relay"
 	"nouveauprintemps.org/atmail/storage"
 	"nouveauprintemps.org/atmail/utils"
@@ -28,21 +29,17 @@ func (s *Session) Select(mailbox string, options *imap.SelectOptions) (*imap.Sel
 	if !ok {
 		return nil, errNotFound
 	}
-	s.selected = &MailboxSelectedView{
-		SessionTracker: m.NewSession(),
-		Name:           mailbox,
-	}
+	s.selected = m
 	s.readOnly = options.ReadOnly
 	res, err := storage.DescribeMailbox(context.TODO(), s.username, mailbox)
 	if err != nil {
 		return nil, err
 	}
-	s.selected.ID = imap.UID(res.UIDValidity)
+	s.selected.Count.Store(res.NumMessages)
 	return res, nil
 }
 
 func (s *Session) Unselect() error {
-	s.selected.Close()
 	s.selected = nil
 	return nil
 }
@@ -66,7 +63,7 @@ func (s *Session) Delete(mailbox string) error {
 	if !ok {
 		return errNotFound
 	}
-	return storage.DeleteMailbox(context.TODO(), s.username, int64(box.UIDValidity))
+	return storage.DeleteMailbox(context.TODO(), s.username, int64(box.ID))
 }
 
 func (s *Session) Rename(mailbox, newName string, options *imap.RenameOptions) error {
@@ -74,7 +71,7 @@ func (s *Session) Rename(mailbox, newName string, options *imap.RenameOptions) e
 	if !ok {
 		return errNotFound
 	}
-	return storage.RenameMailbox(context.TODO(), s.username, int64(box.UIDValidity), newName)
+	return storage.RenameMailbox(context.TODO(), s.username, int64(box.ID), newName)
 }
 
 func (s *Session) Subscribe(mailbox string) error {
@@ -96,7 +93,7 @@ func (s *Session) List(w *imapserver.ListWriter, ref string, patterns []string, 
 	if options.ReturnSubscribed {
 		boxes = slices.Collect(maps.Keys(s.subscribed))
 	} else {
-		boxes = utils.ReduceMapToSlice(s.mailboxes, func(k string, _ MailboxView) string {
+		boxes = utils.ReduceMapToSlice(s.mailboxes, func(k string, _ *mailbox.View) string {
 			return k
 		})
 	}
@@ -184,35 +181,32 @@ func (s *Session) Append(mailbox string, r imap.LiteralReader, options *imap.App
 		b,
 		func(ctx context.Context, in *storage.DB, id int64) error {
 			uid = imap.UID(id)
-			return in.AddMailboxEmail(ctx, int64(box.UIDValidity), id)
+			return in.AddMailboxEmail(ctx, int64(box.ID), id)
 		})
 	if err != nil {
 		return nil, err
 	}
-	box.QueueNumMessages(uint32(uid))
+	box.WriteNewMessages(1)
 	return &imap.AppendData{
 		UID:         imap.UID(uid),
-		UIDValidity: uint32(box.UIDValidity),
+		UIDValidity: box.ID,
 	}, nil
 }
 
 func (s *Session) Poll(w *imapserver.UpdateWriter, allowExpunge bool) error {
 	if s.selected == nil {
 		for _, box := range s.mailboxes {
-			b := box.NewSession()
-			defer b.Close()
-			err := b.Poll(w, allowExpunge)
-			if err != nil {
-				return err
-			}
+			//defer b.Close()
+			//err := b.Poll(w, allowExpunge)
+			//if err != nil {
+			//	return err
+			//}
+			_ = box
 		}
 		return nil
 	}
-	return s.selected.Poll(w, allowExpunge)
-}
-
-func (s *Session) Idle(w *imapserver.UpdateWriter, stop <-chan struct{}) error {
-	return s.selected.Idle(w, stop)
+	return nil
+	//return s.selected.Poll(w, allowExpunge)
 }
 
 func (s *Session) Namespace() (*imap.NamespaceData, error) {

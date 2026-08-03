@@ -4,31 +4,20 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapserver"
+	"nouveauprintemps.org/atmail/mailbox"
 	"nouveauprintemps.org/atmail/storage"
 )
-
-type MailboxView struct {
-	*imapserver.MailboxTracker
-	UIDValidity imap.UID
-}
-
-type MailboxSelectedView struct {
-	*imapserver.SessionTracker
-	ID   imap.UID
-	Name string
-}
 
 type Session struct {
 	backend *Backend
 	conn    *imapserver.Conn
 
-	mailboxes map[string]MailboxView
+	mailboxes map[string]*mailbox.View
 
 	username string
 
-	selected *MailboxSelectedView
+	selected *mailbox.View
 	readOnly bool
 
 	subscribed map[string]struct{}
@@ -54,13 +43,9 @@ func (s *Session) Login(username, password string) error {
 	if err != nil {
 		return err
 	}
-	s.mailboxes = make(map[string]MailboxView, len(box))
+	s.mailboxes = make(map[string]*mailbox.View, len(box))
 	for _, b := range box {
-		view := MailboxView{
-			MailboxTracker: imapserver.NewMailboxTracker(uint32(b.Count)),
-			UIDValidity:    imap.UID(b.ID),
-		}
-		s.mailboxes[b.Name] = view
+		s.mailboxes[b.Name] = mailbox.NewView(uint32(b.ID), b.Name)
 	}
 	s.backend.SetUserBoxes(username, s.mailboxes)
 	return nil

@@ -103,9 +103,10 @@ func main() {
 	bck.OnReceive = func(user string, id int64) {
 		boxes, ok := d.GetUserBoxes(user)
 		if !ok {
+			slog.Warn("user not found", "user", user)
 			return
 		}
-		boxes["INBOX"].QueueNumMessages(uint32(id))
+		boxes["INBOX"].WriteNewMessages(1)
 	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill, syscall.SIGINT)

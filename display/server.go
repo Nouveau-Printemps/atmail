@@ -11,6 +11,7 @@ import (
 	"github.com/emersion/go-imap/v2/imapserver"
 	"github.com/nyttikord/logos"
 	"nouveauprintemps.org/atmail/auth"
+	"nouveauprintemps.org/atmail/mailbox"
 )
 
 type logger struct {
@@ -26,12 +27,12 @@ func (l *logger) Printf(format string, args ...any) {
 type Backend struct {
 	Domains     map[string]auth.Config
 	MaxMailSize uint32
-	mailboxes   map[string]map[string]MailboxView
+	mailboxes   map[string]map[string]*mailbox.View
 	muBoxes     sync.RWMutex
 }
 
 func (bck *Backend) Options(log *slog.Logger) *imapserver.Options {
-	bck.mailboxes = make(map[string]map[string]MailboxView, 2)
+	bck.mailboxes = make(map[string]map[string]*mailbox.View, 2)
 	return &imapserver.Options{
 		NewSession: bck.NewSession,
 		Caps: imap.CapSet{
@@ -51,14 +52,14 @@ func (bck *Backend) NewSession(conn *imapserver.Conn) (imapserver.Session, *imap
 	}, &imapserver.GreetingData{PreAuth: false}, nil
 }
 
-func (bck *Backend) GetUserBoxes(user string) (map[string]MailboxView, bool) {
+func (bck *Backend) GetUserBoxes(user string) (map[string]*mailbox.View, bool) {
 	bck.muBoxes.RLock()
 	defer bck.muBoxes.RUnlock()
 	bxs, ok := bck.mailboxes[user]
 	return bxs, ok
 }
 
-func (bck *Backend) SetUserBoxes(user string, boxes map[string]MailboxView) {
+func (bck *Backend) SetUserBoxes(user string, boxes map[string]*mailbox.View) {
 	bck.muBoxes.Lock()
 	defer bck.muBoxes.Unlock()
 	bck.mailboxes[user] = boxes

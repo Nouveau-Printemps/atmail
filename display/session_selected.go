@@ -21,7 +21,6 @@ func (s *Session) Close() error {
 		if err != nil {
 			return err
 		}
-		s.selected.Close()
 		s.selected = nil
 	}
 	return nil
@@ -99,7 +98,7 @@ func (s *Session) Fetch(wr *imapserver.FetchWriter, set imap.NumSet, options *im
 			if err != nil {
 				return err
 			}
-			s.mailboxes[s.selected.Name].QueueMailboxFlags([]imap.Flag{imap.FlagSeen})
+			s.mailboxes[s.selected.Name].WriteMailboxFlags([]imap.Flag{imap.FlagSeen})
 		}
 		seq, err := storage.ToSequence(context.TODO(), s.username, int64(s.selected.ID), email.ID)
 		if err != nil {
@@ -212,11 +211,10 @@ func (s *Session) Store(
 		if err != nil {
 			return err
 		}
-		s.mailboxes[s.selected.Name].QueueMessageFlags(
+		s.mailboxes[s.selected.Name].WriteMessageFlags(
 			seq,
 			s.selected.ID,
 			flags.Flags,
-			s.selected.SessionTracker,
 		)
 	}
 	if !flags.Silent {
@@ -236,25 +234,23 @@ func (s *Session) Copy(set imap.NumSet, dest string) (*imap.CopyData, error) {
 	if !ok {
 		return nil, errNotFound
 	}
-	ts := target.NewSession()
-	defer ts.Close()
 
 	mails, err := storage.ListMailboxEmails(
 		context.TODO(),
 		s.username,
-		int64(target.UIDValidity),
+		int64(target.ID),
 		set,
 	)
 	if err != nil {
 		return nil, err
 	}
 	ids := utils.Map(mails, func(m store.Email) int64 { return m.ID })
-	err = storage.AddMailboxEmails(context.TODO(), s.username, int64(target.UIDValidity), ids)
+	err = storage.AddMailboxEmails(context.TODO(), s.username, int64(target.ID), ids)
 	if err != nil {
 		return nil, err
 	}
 	return &imap.CopyData{
-		UIDValidity: uint32(target.UIDValidity),
+		UIDValidity: uint32(target.ID),
 	}, nil
 }
 
@@ -273,4 +269,8 @@ func (s *Session) Move(w *imapserver.MoveWriter, set imap.NumSet, dest string) e
 		int64(s.selected.ID),
 		storage.GetIds(context.TODO(), s.username, int64(s.selected.ID), set),
 	)
+}
+
+func (s *Session) Idle(w *imapserver.UpdateWriter, stop <-chan struct{}) error {
+	return s.selected.Idle(w, stop)
 }
