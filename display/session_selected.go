@@ -77,7 +77,13 @@ func (s *Session) Search(
 }
 
 func (s *Session) Fetch(wr *imapserver.FetchWriter, set imap.NumSet, options *imap.FetchOptions) error {
-	emails, err := storage.ListMailboxEmails(context.TODO(), s.username, int64(s.selected.ID), set)
+	emails, err := storage.ListMailboxEmails(
+		context.TODO(),
+		s.selected.SessionTracker,
+		s.username,
+		int64(s.selected.ID),
+		set,
+	)
 	if err != nil {
 		return err
 	}
@@ -171,7 +177,13 @@ func (s *Session) Store(
 	flags *imap.StoreFlags,
 	options *imap.StoreOptions,
 ) error {
-	emails, err := storage.ListMailboxEmails(context.TODO(), s.username, int64(s.selected.ID), set)
+	emails, err := storage.ListMailboxEmails(
+		context.TODO(),
+		s.selected.SessionTracker,
+		s.username,
+		int64(s.selected.ID),
+		set,
+	)
 	if err != nil {
 		return err
 	}
@@ -223,6 +235,7 @@ func (s *Session) Copy(set imap.NumSet, dest string) (*imap.CopyData, error) {
 
 	mails, err := storage.ListMailboxEmails(
 		context.TODO(),
+		s.selected.SessionTracker,
 		s.username,
 		int64(target.UIDValidity),
 		set,
@@ -253,6 +266,6 @@ func (s *Session) Move(w *imapserver.MoveWriter, set imap.NumSet, dest string) e
 		context.TODO(),
 		s.username,
 		int64(s.selected.ID),
-		storage.GetIds(set),
+		storage.GetIds(s.selected.SessionTracker, set),
 	)
 }

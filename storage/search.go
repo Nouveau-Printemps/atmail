@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 	"slices"
 	"strconv"
 	"strings"
@@ -38,7 +39,12 @@ func Search(
 	if err != nil {
 		return nil, err
 	}
-	rows, err := meta.db.QueryContext(ctx, `SELECT id, filename, offset FROM emails WHERE `+where.String())
+	var rows *sql.Rows
+	if where.Len() > 0 {
+		rows, err = meta.db.QueryContext(ctx, `SELECT id, filename, offset FROM emails WHERE `+where.String())
+	} else {
+		rows, err = meta.db.QueryContext(ctx, `SELECT id, filename, offset FROM emails`)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -68,9 +74,7 @@ func Search(
 		return int(a.id - b.id)
 	})
 	var res imap.SearchData
-	if options.ReturnAll {
-		res.All = imap.UIDSetNum(ids...)
-	}
+	res.All = imap.UIDSetNum(ids...)
 	if options.ReturnMax && len(ids) > 0 {
 		res.Max = uint32(ids[len(ids)-1])
 	}
@@ -153,7 +157,6 @@ func parseCriteria(criteria *imap.SearchCriteria, sb *strings.Builder) func(v se
 		sb.WriteString(strings.ReplaceAll(string(flag), `'`, `\'`))
 		sb.WriteString(`'))`)
 		needAnd = true
-
 	}
 	for _, flag := range criteria.NotFlag {
 		if needAnd {

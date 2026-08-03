@@ -20,12 +20,12 @@ func newFileName() string {
 func StoreEmail(
 	ctx context.Context,
 	from, to [2]string,
+	user string,
 	spamScore sql.NullFloat64,
 	b []byte,
 	callback func(context.Context, *DB, int64) error,
 ) error {
-	addr := strings.Join(to[:], "@")
-	cache, err := Cache.DB(ctx, addr)
+	cache, err := Cache.DB(ctx, user)
 	if err != nil {
 		return err
 	}
@@ -71,7 +71,7 @@ func StoreEmail(
 	in := index.New(tx)
 	id, err := in.NewEmail(ctx, index.NewEmailParams{
 		MailFrom:     strings.Join(from[:], "@"),
-		RcptTo:       addr,
+		RcptTo:       strings.Join(to[:], "@"),
 		SpamScore:    spamScore,
 		Filename:     lastFile,
 		InternalDate: time.Now().Unix(),
@@ -92,8 +92,8 @@ func StoreEmail(
 	return nil
 }
 
-func StoreEmailInbox(ctx context.Context, from, to [2]string, spamScore sql.NullFloat64, b []byte) error {
-	return StoreEmail(ctx, from, to, spamScore, b, func(ctx context.Context, in *DB, id int64) error {
+func StoreEmailInbox(ctx context.Context, from, to [2]string, user string, spamScore sql.NullFloat64, b []byte) error {
+	return StoreEmail(ctx, from, to, user, spamScore, b, func(ctx context.Context, in *DB, id int64) error {
 		return in.AddMailboxEmail(ctx, InboxMailbox, id)
 	})
 }

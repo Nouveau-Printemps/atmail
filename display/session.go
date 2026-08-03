@@ -2,6 +2,7 @@ package display
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapserver"
@@ -21,6 +22,7 @@ type MailboxSelectedView struct {
 
 type Session struct {
 	backend *Backend
+	conn    *imapserver.Conn
 
 	mailboxes map[string]MailboxView
 
@@ -53,10 +55,12 @@ func (s *Session) Login(username, password string) error {
 	}
 	s.mailboxes = make(map[string]MailboxView, len(box))
 	for _, b := range box {
-		s.mailboxes[b.Name] = MailboxView{
+		view := MailboxView{
 			MailboxTracker: imapserver.NewMailboxTracker(uint32(b.Count)),
 			UIDValidity:    imap.UID(b.ID),
 		}
+		s.mailboxes[b.Name] = view
 	}
+	slog.Debug("client connected", "ip", s.conn.NetConn().RemoteAddr(), "user", username)
 	return nil
 }

@@ -131,6 +131,10 @@ func (s *Session) List(w *imapserver.ListWriter, ref string, patterns []string, 
 }
 
 func (s *Session) Status(mailbox string, options *imap.StatusOptions) (*imap.StatusData, error) {
+	_, ok := s.mailboxes[mailbox]
+	if !ok {
+		return nil, errNotFound
+	}
 	return storage.StatusMailbox(
 		context.TODO(),
 		s.username,
@@ -159,8 +163,11 @@ func (s *Session) Append(mailbox string, r imap.LiteralReader, options *imap.App
 	if err != nil {
 		return nil, err
 	}
-	from := m.Header.Get("From")
-	if from != s.username {
+	from, err := mail.ParseAddress(m.Header.Get("From"))
+	if err != nil {
+		return nil, err
+	}
+	if from.Address != s.username {
 		return nil, &imap.Error{
 			Type: imap.StatusResponseTypeNo,
 			Code: imap.ResponseCodeAuthorizationFailed,
@@ -171,7 +178,8 @@ func (s *Session) Append(mailbox string, r imap.LiteralReader, options *imap.App
 	var uid imap.UID
 	err = storage.StoreEmail(
 		context.TODO(),
-		relay.ParseAddress(from), relay.ParseAddress(to),
+		relay.ParseAddress(from.Address), relay.ParseAddress(to),
+		s.username,
 		sql.NullFloat64{Float64: 0, Valid: false},
 		b,
 		func(ctx context.Context, in *storage.DB, id int64) error {
@@ -189,6 +197,17 @@ func (s *Session) Append(mailbox string, r imap.LiteralReader, options *imap.App
 }
 
 func (s *Session) Poll(w *imapserver.UpdateWriter, allowExpunge bool) error {
+	if s.selected == nil {
+		for _, box := range s.mailboxes {
+			b := box.NewSession()
+			defer b.Close()
+			err := b.Poll(w, allowExpunge)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 	return s.selected.Poll(w, allowExpunge)
 }
 

@@ -23,11 +23,12 @@ type Backend struct {
 }
 
 func (bck *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
-	return &Session{backend: bck}, nil
+	return &Session{backend: bck, conn: c}, nil
 }
 
 type Session struct {
 	backend *Backend
+	conn    *smtp.Conn
 	authFor []string
 
 	From [2]string
@@ -50,6 +51,7 @@ func (s *Session) Auth(mech string) (sasl.Server, error) {
 		if len(s.authFor) == 0 {
 			return smtp.ErrAuthFailed
 		}
+		slog.Debug("client connected", "ip", s.conn.Conn().RemoteAddr(), "user", username)
 		return nil
 	}), nil
 }
@@ -172,8 +174,9 @@ func (s *Session) Data(r io.Reader) error {
 		body, _ = io.ReadAll(spam.Body)
 	}
 valid_email:
-	if s.RedirectTo != "" {
-		s.To[0] = s.RedirectTo
+	user := s.RedirectTo + "@" + s.To[1]
+	if user == "" {
+		user = strings.Join(s.To[:], "@")
 	}
 	go func() {
 		score := sql.NullFloat64{Float64: 0, Valid: false}
@@ -182,7 +185,7 @@ valid_email:
 			score.Valid = true
 		}
 		b := formatMail(h.Map(), body)
-		err := storage.StoreEmailInbox(context.TODO(), s.From, s.To, score, b)
+		err := storage.StoreEmailInbox(context.TODO(), s.From, s.To, user, score, b)
 		if err != nil {
 			slog.Error("cannot save email", "error", err)
 		}

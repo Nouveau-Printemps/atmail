@@ -85,3 +85,22 @@ BEGIN IMMEDIATE TRANSACTION;
     VALUES (10, '$Phishing')
     ON CONFLICT DO NOTHING;
 COMMIT;
+
+-- set required flags for mailboxes
+BEGIN IMMEDIATE TRANSACTION;
+    INSERT INTO mailbox_flags (mailbox_id, flag_id)
+    VALUES (1, 1)
+    ON CONFLICT DO NOTHING;
+
+    INSERT INTO mailbox_flags (mailbox_id, flag_id)
+    VALUES (1, 2)
+    ON CONFLICT DO NOTHING;
+
+    INSERT INTO mailbox_flags (mailbox_id, flag_id)
+    VALUES (1, 3)
+    ON CONFLICT DO NOTHING;
+
+    INSERT INTO mailbox_flags (mailbox_id, flag_id)
+    VALUES (2, 8)
+    ON CONFLICT DO NOTHING;
+COMMIT;

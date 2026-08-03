@@ -43,7 +43,6 @@ func init() {
 
 func main() {
 	flag.Parse()
-	slog.Info("starting...")
 	lvl := slog.LevelInfo
 	if verbose {
 		lvl = slog.LevelDebug
@@ -59,6 +58,7 @@ func main() {
 		lg = logos.NewColor(os.Stderr, &logos.Options{Level: lvl})
 	}
 	slog.SetDefault(slog.New(lg))
+	slog.Info("starting...")
 	cfg, err := ParseConfig(configPath)
 	if err != nil {
 		slog.Error("parsing config", "error", err)
@@ -95,8 +95,9 @@ func main() {
 	defer smtpSrv.Close()
 
 	d := &display.Backend{
-		Domains:   cfg.Domains,
-		Mailboxes: map[string]map[string]display.MailboxView{},
+		Domains:     cfg.Domains,
+		Mailboxes:   map[string]map[string]display.MailboxView{},
+		MaxMailSize: cfg.Smtp.MaxMailSize,
 	}
 	imapSrv := imapserver.New(d.Options(slog.Default()))
 	defer imapSrv.Close()

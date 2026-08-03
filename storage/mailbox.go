@@ -5,6 +5,7 @@ import (
 	"path"
 
 	"github.com/emersion/go-imap/v2"
+	"github.com/emersion/go-imap/v2/imapserver"
 	"nouveauprintemps.org/atmail/storage/index"
 	"nouveauprintemps.org/atmail/utils"
 )
@@ -115,7 +116,7 @@ func StatusMailbox(ctx context.Context, user, mailbox string, opt *imap.StatusOp
 			status.NumMessages = new(*status.NumMessages - uint32(nbr))
 		}
 		if opt.NumRecent {
-			status.NumRecent = new(uint32(0))
+			status.NumRecent = status.NumMessages
 		}
 		if opt.NumUnseen {
 			nbr, err := in.CountEmailsWithFlagInMailbox(ctx, SeenFlag, box.ID)
@@ -139,11 +140,14 @@ func StatusMailbox(ctx context.Context, user, mailbox string, opt *imap.StatusOp
 	})
 }
 
-func GetIds(set imap.NumSet) []int64 {
+func GetIds(s *imapserver.SessionTracker, set imap.NumSet) []int64 {
+	if set.Dynamic() {
+		panic("cannot extract seq from a dynamic")
+	}
 	switch v := set.(type) {
 	case imap.SeqSet:
 		seq, _ := v.Nums()
-		return utils.Map(seq, func(id uint32) int64 { return int64(id) })
+		return utils.Map(seq, func(id uint32) int64 { return int64(s.DecodeSeqNum(id)) })
 	case imap.UIDSet:
 		seq, _ := v.Nums()
 		return utils.Map(seq, func(id imap.UID) int64 { return int64(id) })
@@ -151,9 +155,37 @@ func GetIds(set imap.NumSet) []int64 {
 	panic("set not handled")
 }
 
-func ListMailboxEmails(ctx context.Context, user string, mailbox int64, set imap.NumSet) ([]index.Email, error) {
+func ListMailboxEmails(
+	ctx context.Context,
+	s *imapserver.SessionTracker,
+	user string,
+	mailbox int64,
+	set imap.NumSet,
+) ([]index.Email, error) {
 	return get(ctx, user, func(in *DB) ([]index.Email, error) {
-		return in.GetMailboxEmails(ctx, mailbox, GetIds(set))
+		if !set.Dynamic() {
+			return in.GetMailboxEmails(ctx, mailbox, GetIds(s, set))
+		}
+		emails, err := in.ListMailboxEmails(ctx, mailbox)
+		if err != nil {
+			return nil, err
+		}
+		res := make([]index.Email, 0, 10)
+		switch v := set.(type) {
+		case imap.UIDSet:
+			for _, email := range emails {
+				if v.Contains(imap.UID(email.ID)) {
+					res = append(res, email)
+				}
+			}
+		case imap.SeqSet:
+			for _, email := range emails {
+				if v.Contains(s.EncodeSeqNum(uint32(email.ID))) {
+					res = append(res, email)
+				}
+			}
+		}
+		return res, nil
 	})
 }
 

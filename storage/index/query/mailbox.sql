@@ -44,12 +44,13 @@ WHERE mailbox_id = ? AND flag_id = ?;
 -- name: ListEmailFlags :many
 SELECT * FROM flags f
 WHERE EXISTS(
-    SELECT * FROM emails_flags e WHERE e.email_id = ? and m.flag_id = f.id
+    SELECT * FROM emails_flags e WHERE e.email_id = ? and e.flag_id = f.id
 );
 
 -- name: AddEmailFlag :exec
 INSERT INTO emails_flags (email_id, flag_id)
-VALUES (?, ?);
+VALUES (?, ?)
+ON CONFLICT DO NOTHING;
 
 -- name: RemoveEmailFlag :exec
 DELETE FROM emails_flags
@@ -79,6 +80,12 @@ SELECT * FROM emails e
 WHERE EXISTS(
     SELECT * FROM mailbox_emails m WHERE m.mailbox_id = ? and m.email_id = e.id
 ) AND e.id IN (sqlc.slice('ids'));
+
+-- name: ListMailboxEmails :many
+SELECT * FROM emails e
+WHERE EXISTS(
+    SELECT * FROM mailbox_emails m WHERE m.mailbox_id = ? and m.email_id = e.id
+);
 
 -- name: RemoveMailboxEmails :exec
 DELETE FROM emails
