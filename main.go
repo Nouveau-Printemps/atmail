@@ -23,10 +23,10 @@ import (
 
 //go:generate go tool sqlc generate
 
-//go:embed storage/index/schema/emails.sql
+//go:embed storage/store/schema/emails.sql
 var emailsMigrations string
 
-//go:embed storage/index/schema/mailbox.sql
+//go:embed storage/store/schema/mailbox.sql
 var mailboxMigrations string
 
 var (

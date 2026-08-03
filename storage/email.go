@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"nouveauprintemps.org/atmail/storage/index"
+	"nouveauprintemps.org/atmail/storage/store"
 )
 
 func newFileName() string {
@@ -34,12 +34,12 @@ func StoreEmail(
 	if lastFile == "" {
 		lastFile = newFileName()
 		p = lastFile
-	} else if len(b) < index.MaxEmailSizeInFile {
+	} else if len(b) < store.MaxEmailSizeInFile {
 		info, err := os.Stat(cache.path + lastFile)
 		if err != nil {
 			return err
 		}
-		if info.Size() >= index.MaxFileSize {
+		if info.Size() >= store.MaxFileSize {
 			lastFile = newFileName()
 		}
 		p = lastFile
@@ -60,7 +60,7 @@ func StoreEmail(
 	if err != nil {
 		return err
 	}
-	n, err := index.WriteEmail(f, b)
+	n, err := store.WriteEmail(f, b)
 	if err != nil {
 		return err
 	}
@@ -68,8 +68,8 @@ func StoreEmail(
 	if err != nil {
 		return err
 	}
-	in := index.New(tx)
-	id, err := in.NewEmail(ctx, index.NewEmailParams{
+	in := store.New(tx)
+	id, err := in.NewEmail(ctx, store.NewEmailParams{
 		MailFrom:     strings.Join(from[:], "@"),
 		RcptTo:       strings.Join(to[:], "@"),
 		SpamScore:    spamScore,
@@ -105,14 +105,14 @@ func Read(ctx context.Context, user string, id int64) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	email, err := index.New(cache.db).GetEmail(ctx, id)
+	email, err := store.New(cache.db).GetEmail(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	return email.Read(cache.path)
 }
 
-func ReadEmail(ctx context.Context, user string, email index.Email) ([]byte, error) {
+func ReadEmail(ctx context.Context, user string, email store.Email) ([]byte, error) {
 	cache, err := Cache.DB(ctx, user)
 	if err != nil {
 		return nil, err

@@ -5,7 +5,7 @@ import (
 	"path"
 
 	"github.com/emersion/go-imap/v2"
-	"nouveauprintemps.org/atmail/storage/index"
+	"nouveauprintemps.org/atmail/storage/store"
 	"nouveauprintemps.org/atmail/utils"
 )
 
@@ -16,8 +16,8 @@ const (
 	JunkMailbox
 )
 
-func LoadMailbox(ctx context.Context, user string) ([]index.ListMailboxRow, error) {
-	return get(ctx, user, func(in *DB) ([]index.ListMailboxRow, error) {
+func LoadMailbox(ctx context.Context, user string) ([]store.ListMailboxRow, error) {
+	return get(ctx, user, func(in *DB) ([]store.ListMailboxRow, error) {
 		return in.ListMailbox(ctx)
 	})
 }
@@ -84,8 +84,8 @@ func RenameMailbox(ctx context.Context, user string, id int64, rename string) er
 	})
 }
 
-func ListMailbox(ctx context.Context, user string) ([]index.ListMailboxRow, error) {
-	return get(ctx, user, func(in *DB) ([]index.ListMailboxRow, error) {
+func ListMailbox(ctx context.Context, user string) ([]store.ListMailboxRow, error) {
+	return get(ctx, user, func(in *DB) ([]store.ListMailboxRow, error) {
 		return in.ListMailbox(ctx)
 	})
 }
@@ -165,8 +165,8 @@ func ListMailboxEmails(
 	user string,
 	mailbox int64,
 	set imap.NumSet,
-) ([]index.Email, error) {
-	return get(ctx, user, func(in *DB) ([]index.Email, error) {
+) ([]store.Email, error) {
+	return get(ctx, user, func(in *DB) ([]store.Email, error) {
 		if !set.Dynamic() {
 			return in.GetMailboxEmails(ctx, mailbox, GetIds(ctx, user, mailbox, set))
 		}
@@ -174,7 +174,7 @@ func ListMailboxEmails(
 		if err != nil {
 			return nil, err
 		}
-		res := make([]index.Email, 0, 10)
+		res := make([]store.Email, 0, 10)
 		switch v := set.(type) {
 		case imap.UIDSet:
 			for _, email := range emails {
@@ -209,7 +209,7 @@ func AddMailboxEmails(ctx context.Context, user string, mailbox int64, emails []
 	})
 }
 
-func DeleteEmail(user string, email index.Email) error {
+func DeleteEmail(user string, email store.Email) error {
 	return email.Delete(path.Join(Cache.Path, user))
 }
 

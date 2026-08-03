@@ -11,7 +11,7 @@ import (
 	"github.com/emersion/go-imap/v2/imapserver"
 	"github.com/emersion/go-message/textproto"
 	"nouveauprintemps.org/atmail/storage"
-	"nouveauprintemps.org/atmail/storage/index"
+	"nouveauprintemps.org/atmail/storage/store"
 	"nouveauprintemps.org/atmail/utils"
 )
 
@@ -115,7 +115,7 @@ func (s *Session) Fetch(wr *imapserver.FetchWriter, set imap.NumSet, options *im
 			if err != nil {
 				return err
 			}
-			w.WriteFlags(utils.Map(flags, func(f index.Flag) imap.Flag { return imap.Flag(f.Name) }))
+			w.WriteFlags(utils.Map(flags, func(f store.Flag) imap.Flag { return imap.Flag(f.Name) }))
 		}
 		if options.InternalDate {
 			w.WriteInternalDate(time.Unix(email.InternalDate, 0))
@@ -248,7 +248,7 @@ func (s *Session) Copy(set imap.NumSet, dest string) (*imap.CopyData, error) {
 	if err != nil {
 		return nil, err
 	}
-	ids := utils.Map(mails, func(m index.Email) int64 { return m.ID })
+	ids := utils.Map(mails, func(m store.Email) int64 { return m.ID })
 	err = storage.AddMailboxEmails(context.TODO(), s.username, int64(target.UIDValidity), ids)
 	if err != nil {
 		return nil, err

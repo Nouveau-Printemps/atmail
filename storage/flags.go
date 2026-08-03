@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/emersion/go-imap/v2"
-	"nouveauprintemps.org/atmail/storage/index"
+	"nouveauprintemps.org/atmail/storage/store"
 )
 
 const (
@@ -20,8 +20,8 @@ const (
 	PhishingFlag
 )
 
-func DeleteEmailsWithFlag(ctx context.Context, user string, flag int64) ([]index.Email, error) {
-	return get(ctx, user, func(in *DB) ([]index.Email, error) {
+func DeleteEmailsWithFlag(ctx context.Context, user string, flag int64) ([]store.Email, error) {
+	return get(ctx, user, func(in *DB) ([]store.Email, error) {
 		emails, err := in.ListEmailsWithFlag(ctx, flag)
 		if err != nil {
 			return nil, err
@@ -36,8 +36,8 @@ func DeleteEmailsWithFlag(ctx context.Context, user string, flag int64) ([]index
 	})
 }
 
-func ListEmailFlags(ctx context.Context, user string, email int64) ([]index.Flag, error) {
-	return get(ctx, user, func(in *DB) ([]index.Flag, error) {
+func ListEmailFlags(ctx context.Context, user string, email int64) ([]store.Flag, error) {
+	return get(ctx, user, func(in *DB) ([]store.Flag, error) {
 		return in.ListEmailFlags(ctx, email)
 	})
 }

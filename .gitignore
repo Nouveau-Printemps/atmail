@@ -26,9 +26,9 @@ go.work
 
 # End of https://www.toptal.com/developers/gitignore/api/go
 
-storage/index/*.sql.go
-storage/index/db.go
-storage/index/models.go
+storage/store/*.sql.go
+storage/store/db.go
+storage/store/models.go
 *.db*
 data
 dev.toml

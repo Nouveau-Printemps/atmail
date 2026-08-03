@@ -8,10 +8,10 @@ import (
 	"sync"
 
 	_ "github.com/mattn/go-sqlite3"
-	"nouveauprintemps.org/atmail/storage/index"
+	"nouveauprintemps.org/atmail/storage/store"
 )
 
-type DB = index.Queries
+type DB = store.Queries
 
 var Cache = &Meta{subs: make(map[string]*meta)}
 
@@ -98,7 +98,7 @@ func (m *meta) Update(lastFile string, offset uint32) {
 }
 
 func (m *meta) Sync(ctx context.Context) error {
-	meta, err := index.New(m.db).GetMeta(ctx)
+	meta, err := store.New(m.db).GetMeta(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil
@@ -113,7 +113,7 @@ func (m *meta) Sync(ctx context.Context) error {
 }
 
 func (m *meta) Save(ctx context.Context) error {
-	return index.New(m.db).SetMeta(
+	return store.New(m.db).SetMeta(
 		ctx,
 		0,
 		sql.NullString{String: m.lastFile, Valid: true},
@@ -126,7 +126,7 @@ func exec(ctx context.Context, user string, fn func(*DB) error) error {
 	if err != nil {
 		return err
 	}
-	return fn(index.New(meta.db))
+	return fn(store.New(meta.db))
 }
 
 func execTx(ctx context.Context, user string, fn func(*DB) error) error {
@@ -135,7 +135,7 @@ func execTx(ctx context.Context, user string, fn func(*DB) error) error {
 		return err
 	}
 	tx, err := meta.db.BeginTx(ctx, nil)
-	err = fn(index.New(tx))
+	err = fn(store.New(tx))
 	if err != nil {
 		return err
 	}
@@ -148,5 +148,5 @@ func get[T any](ctx context.Context, user string, fn func(*DB) (T, error)) (T, e
 		var v T
 		return v, err
 	}
-	return fn(index.New(meta.db))
+	return fn(store.New(meta.db))
 }

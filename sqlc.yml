@@ -1,10 +1,10 @@
 version: "2"
 sql:
   - engine: "sqlite"
-    queries: "storage/index/query/"
-    schema: "storage/index/schema/"
+    queries: "storage/store/query/"
+    schema: "storage/store/schema/"
     gen:
       go:
-        package: "index"
-        out: "storage/index"
+        package: "store"
+        out: "storage/store"
         query_parameter_limit: 3
