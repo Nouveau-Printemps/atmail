@@ -1,6 +1,7 @@
 package mailbox
 
 import (
+	"sync"
 	"sync/atomic"
 
 	"github.com/emersion/go-imap/v2"
@@ -18,78 +19,77 @@ type View struct {
 	Name  string
 	Count atomic.Uint32
 
-	listening atomic.Bool
-
-	messages     chan uint32
-	expunge      chan uint32
-	mailboxFlags chan []imap.Flag
-	messageFlags chan MessageUpdate
+	writers map[*imapserver.UpdateWriter]chan error
+	mu      sync.RWMutex
 }
 
 func NewView(id uint32, name string) *View {
 	return &View{
-		ID:           id,
-		Name:         name,
-		messages:     make(chan uint32, 1),
-		expunge:      make(chan uint32, 1),
-		mailboxFlags: make(chan []imap.Flag, 1),
-		messageFlags: make(chan MessageUpdate, 1),
+		ID:      id,
+		Name:    name,
+		writers: make(map[*imapserver.UpdateWriter]chan error),
 	}
 }
 
 func (v *View) Idle(w *imapserver.UpdateWriter, stop <-chan struct{}) error {
-	if v.listening.Swap(true) {
-		return &imap.Error{
-			Type: imap.StatusResponseTypeNo,
-			Text: "already listening",
-		}
-	}
-	defer v.listening.Store(false)
-	for {
-		var err error
-		select {
-		case <-stop:
-			return nil
-		case n := <-v.messages:
-			err = w.WriteNumMessages(n)
-		case seq := <-v.expunge:
-			err = w.WriteExpunge(seq)
-		case flags := <-v.mailboxFlags:
-			err = w.WriteMailboxFlags(flags)
-		case up := <-v.messageFlags:
-			err = w.WriteMessageFlags(up.Seq, imap.UID(up.ID), up.Flags)
-		}
-		if err != nil {
-			return err
-		}
+	errc := make(chan error)
+	v.mu.Lock()
+	v.writers[w] = errc
+	v.mu.Unlock()
+	defer func() {
+		v.mu.Lock()
+		delete(v.writers, w)
+		v.mu.Unlock()
+	}()
+	select {
+	case <-stop:
+		return nil
+	case err := <-errc:
+		return err
 	}
 }
 
 // WriteNewMessages increases the [View.Count] by n and send its updated value.
 func (v *View) WriteNewMessages(n uint32) {
-	if v.listening.Load() {
-		v.messages <- v.Count.Add(n)
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	for w, errc := range v.writers {
+		err := w.WriteNumMessages(v.Count.Add(n))
+		if err != nil {
+			errc <- err
+		}
 	}
 }
 
 func (v *View) WriteExpunge(seq uint32) {
-	if v.listening.Load() {
-		v.expunge <- seq
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	for w, errc := range v.writers {
+		err := w.WriteExpunge(seq)
+		if err != nil {
+			errc <- err
+		}
 	}
 }
 
 func (v *View) WriteMailboxFlags(flags []imap.Flag) {
-	if v.listening.Load() {
-		v.mailboxFlags <- flags
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	for w, errc := range v.writers {
+		err := w.WriteMailboxFlags(flags)
+		if err != nil {
+			errc <- err
+		}
 	}
 }
 
 func (v *View) WriteMessageFlags(id, seq uint32, flags []imap.Flag) {
-	if v.listening.Load() {
-		v.messageFlags <- MessageUpdate{
-			ID:    id,
-			Seq:   seq,
-			Flags: flags,
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+	for w, errc := range v.writers {
+		err := w.WriteMessageFlags(seq, imap.UID(id), flags)
+		if err != nil {
+			errc <- err
 		}
 	}
 }

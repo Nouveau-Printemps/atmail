@@ -194,19 +194,7 @@ func (s *Session) Append(mailbox string, r imap.LiteralReader, options *imap.App
 }
 
 func (s *Session) Poll(w *imapserver.UpdateWriter, allowExpunge bool) error {
-	if s.selected == nil {
-		for _, box := range s.mailboxes {
-			//defer b.Close()
-			//err := b.Poll(w, allowExpunge)
-			//if err != nil {
-			//	return err
-			//}
-			_ = box
-		}
-		return nil
-	}
 	return nil
-	//return s.selected.Poll(w, allowExpunge)
 }
 
 func (s *Session) Namespace() (*imap.NamespaceData, error) {
