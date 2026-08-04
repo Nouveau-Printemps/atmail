@@ -141,7 +141,7 @@ func StatusMailbox(ctx context.Context, user, mailbox string, opt *imap.StatusOp
 
 func GetIds(ctx context.Context, user string, mailbox int64, set imap.NumSet) []int64 {
 	if set.Dynamic() {
-		panic("cannot extract seq from a dynamic")
+		panic("cannot extract ids from a dynamic set")
 	}
 	switch v := set.(type) {
 	case imap.SeqSet:

@@ -234,7 +234,6 @@ func (s *Session) Copy(set imap.NumSet, dest string) (*imap.CopyData, error) {
 	if !ok {
 		return nil, errNotFound
 	}
-
 	mails, err := storage.ListMailboxEmails(
 		s.context,
 		s.username,
@@ -249,8 +248,13 @@ func (s *Session) Copy(set imap.NumSet, dest string) (*imap.CopyData, error) {
 	if err != nil {
 		return nil, err
 	}
+	seq := imap.UIDSetNum(utils.Map(mails, func(m store.Email) imap.UID {
+		return imap.UID(m.ID)
+	})...)
 	return &imap.CopyData{
 		UIDValidity: uint32(target.ID),
+		SourceUIDs:  seq,
+		DestUIDs:    seq,
 	}, nil
 }
 

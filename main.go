@@ -19,6 +19,7 @@ import (
 	"nouveauprintemps.org/atmail/display"
 	"nouveauprintemps.org/atmail/relay"
 	"nouveauprintemps.org/atmail/storage"
+	"nouveauprintemps.org/atmail/utils"
 )
 
 //go:generate go tool sqlc generate
@@ -105,11 +106,11 @@ func main() {
 	defer smtpSrv.Close()
 
 	d := &display.Backend{
-		Context:     ctx,
+		Context:     utils.WithLogger(ctx, slog.With("module", "imap")),
 		Domains:     cfg.Domains,
 		MaxMailSize: cfg.Smtp.MaxMailSize,
 	}
-	imapSrv := imapserver.New(d.Options(slog.Default(), dev))
+	imapSrv := imapserver.New(d.Options(dev))
 	defer imapSrv.Close()
 	bck.OnReceive = func(user string, id int64) {
 		boxes, ok := d.GetUserBoxes(user)

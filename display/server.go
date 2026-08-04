@@ -12,6 +12,7 @@ import (
 	"github.com/nyttikord/logos"
 	"nouveauprintemps.org/atmail/auth"
 	"nouveauprintemps.org/atmail/mailbox"
+	"nouveauprintemps.org/atmail/utils"
 )
 
 type logger struct {
@@ -32,7 +33,7 @@ type Backend struct {
 	muBoxes     sync.RWMutex
 }
 
-func (bck *Backend) Options(log *slog.Logger, insecureAuth bool) *imapserver.Options {
+func (bck *Backend) Options(insecureAuth bool) *imapserver.Options {
 	bck.mailboxes = make(map[string]map[string]*mailbox.View, 2)
 	return &imapserver.Options{
 		NewSession: bck.NewSession,
@@ -40,7 +41,7 @@ func (bck *Backend) Options(log *slog.Logger, insecureAuth bool) *imapserver.Opt
 			imap.CapIMAP4rev1: {},
 			imap.CapIMAP4rev2: {},
 		},
-		Logger:       &logger{log},
+		Logger:       &logger{utils.Logger(bck.Context)},
 		InsecureAuth: insecureAuth,
 	}
 }
