@@ -31,7 +31,7 @@ type Backend struct {
 	muBoxes     sync.RWMutex
 }
 
-func (bck *Backend) Options(log *slog.Logger) *imapserver.Options {
+func (bck *Backend) Options(log *slog.Logger, insecureAuth bool) *imapserver.Options {
 	bck.mailboxes = make(map[string]map[string]*mailbox.View, 2)
 	return &imapserver.Options{
 		NewSession: bck.NewSession,
@@ -40,7 +40,7 @@ func (bck *Backend) Options(log *slog.Logger) *imapserver.Options {
 			imap.CapIMAP4rev2: {},
 		},
 		Logger:       &logger{log},
-		InsecureAuth: true,
+		InsecureAuth: insecureAuth,
 	}
 }
 

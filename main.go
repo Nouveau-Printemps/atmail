@@ -33,18 +33,20 @@ var (
 	configPath = DefaultConfigPath
 	verbose    = false
 	toSyslog   = false
+	dev        = false
 )
 
 func init() {
 	flag.StringVar(&configPath, "config", configPath, "sets the config path")
 	flag.BoolVar(&verbose, "v", verbose, "increase verbosity")
 	flag.BoolVar(&toSyslog, "syslog", toSyslog, "log to syslog instead of stderr")
+	flag.BoolVar(&dev, "dev", dev, "enable dev mode (insecure by definition)")
 }
 
 func main() {
 	flag.Parse()
 	lvl := slog.LevelInfo
-	if verbose {
+	if verbose || dev {
 		lvl = slog.LevelDebug
 	}
 	var lg *logos.Logos
@@ -84,10 +86,12 @@ func main() {
 	}
 	slog.Debug("users' folders created")
 	bck := relay.Backend{
-		Domains: cfg.Domains,
+		Domains:   cfg.Domains,
+		Queue:     relay.NewQueue(),
+		LocalName: cfg.MainDomain,
 	}
 	smtpSrv := smtp.NewServer(&bck)
-	smtpSrv.AllowInsecureAuth = true
+	smtpSrv.AllowInsecureAuth = dev
 	smtpSrv.MaxMessageBytes = int64(cfg.Smtp.MaxMailSize)
 	smtpSrv.Domain = cfg.MainDomain
 	smtpSrv.ReadTimeout = 10 * time.Second
@@ -98,7 +102,7 @@ func main() {
 		Domains:     cfg.Domains,
 		MaxMailSize: cfg.Smtp.MaxMailSize,
 	}
-	imapSrv := imapserver.New(d.Options(slog.Default()))
+	imapSrv := imapserver.New(d.Options(slog.Default(), dev))
 	defer imapSrv.Close()
 	bck.OnReceive = func(user string, id int64) {
 		boxes, ok := d.GetUserBoxes(user)
@@ -109,7 +113,10 @@ func main() {
 		boxes["INBOX"].WriteNewMessages(1)
 	}
 
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill, syscall.SIGINT)
+	ctx, cancel := signal.NotifyContext(
+		context.Background(),
+		os.Interrupt, os.Kill, syscall.SIGINT,
+	)
 	defer cancel()
 
 	storage.Cache.Path = cfg.Directory
@@ -141,6 +148,7 @@ func main() {
 	go func() {
 		errc <- imapSrv.Serve(imapL)
 	}()
+	go bck.Queue.Loop(ctx, &bck)
 
 	slog.Info("started")
 	select {

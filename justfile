@@ -1,6 +1,6 @@
 dev:
     go generate
-    zig build run -- -config dev.toml -v
+    zig build run -- -config dev.toml -dev
 
 build:
     go generate

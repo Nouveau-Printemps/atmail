@@ -16,8 +16,10 @@ import (
 )
 
 type Backend struct {
-	Domains map[string]auth.Config
-	Rspamd  *RspamdClient
+	Domains   map[string]auth.Config
+	Rspamd    *RspamdClient
+	Queue     *Queue
+	LocalName string
 
 	OnReceive func(user string, id int64)
 }
@@ -183,14 +185,13 @@ func (s *Session) Data(r io.Reader) error {
 	}
 valid_email:
 	user := s.RedirectTo + "@" + s.To[1]
-	if user == "" {
+	if s.RedirectTo == "" {
 		user = strings.Join(s.To[:], "@")
 	}
 	if s.ToLocal {
 		go s.relayInside(user, body, h, spam)
 	} else {
-		//TODO: queue
-		go relayOutside(
+		s.backend.Queue.Enqueue(
 			strings.Join(s.From[:], "@"),
 			strings.Join(s.To[:], "@"),
 			s.To[1],
