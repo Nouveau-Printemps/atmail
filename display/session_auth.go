@@ -44,18 +44,30 @@ func (s *Session) Unselect() error {
 	return nil
 }
 
-func (s *Session) Create(mailbox string, options *imap.CreateOptions) error {
+func (s *Session) Create(box string, options *imap.CreateOptions) error {
+	if _, ok := s.mailboxes[box]; ok {
+		return &imap.Error{
+			Type: imap.StatusResponseTypeNo,
+			Code: imap.ResponseCodeAlreadyExists,
+			Text: "already exists",
+		}
+	}
 	sep := string(storage.MailboxSeparator)
-	if strings.HasSuffix(mailbox, sep) ||
-		strings.Contains(mailbox, sep+sep) {
+	if strings.HasSuffix(box, sep) ||
+		strings.Contains(box, sep+sep) {
 		return &imap.Error{
 			Type: imap.StatusResponseTypeNo,
 			Code: imap.ResponseCodeCannot,
 			Text: "bad mailbox name",
 		}
 	}
-	mailbox = strings.TrimPrefix(mailbox, sep)
-	return storage.CreateMailbox(s.context, s.username, mailbox)
+	box = strings.TrimPrefix(box, sep)
+	id, err := storage.CreateMailbox(s.context, s.username, box)
+	if err != nil {
+		return err
+	}
+	s.mailboxes[box] = mailbox.NewView(uint32(id), box)
+	return nil
 }
 
 func (s *Session) Delete(mailbox string) error {

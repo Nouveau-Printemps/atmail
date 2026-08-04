@@ -65,10 +65,9 @@ func DescribeMailbox(ctx context.Context, user string, mailbox string) (*imap.Se
 	})
 }
 
-func CreateMailbox(ctx context.Context, user, name string) error {
-	return exec(ctx, user, func(in *DB) error {
-		_, err := in.NewMailbox(ctx, name)
-		return err
+func CreateMailbox(ctx context.Context, user, name string) (int64, error) {
+	return get(ctx, user, func(in *DB) (int64, error) {
+		return in.NewMailbox(ctx, name)
 	})
 }
 

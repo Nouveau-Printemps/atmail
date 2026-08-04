@@ -237,7 +237,7 @@ func (s *Session) Copy(set imap.NumSet, dest string) (*imap.CopyData, error) {
 	mails, err := storage.ListMailboxEmails(
 		s.context,
 		s.username,
-		int64(target.ID),
+		int64(s.selected.ID),
 		set,
 	)
 	if err != nil {
