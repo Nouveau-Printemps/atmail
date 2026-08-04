@@ -31,7 +31,7 @@ func (s *Session) Select(mailbox string, options *imap.SelectOptions) (*imap.Sel
 	}
 	s.selected = m
 	s.readOnly = options.ReadOnly
-	res, err := storage.DescribeMailbox(context.TODO(), s.username, mailbox)
+	res, err := storage.DescribeMailbox(s.context, s.username, mailbox)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (s *Session) Create(mailbox string, options *imap.CreateOptions) error {
 		}
 	}
 	mailbox = strings.TrimPrefix(mailbox, sep)
-	return storage.CreateMailbox(context.TODO(), s.username, mailbox)
+	return storage.CreateMailbox(s.context, s.username, mailbox)
 }
 
 func (s *Session) Delete(mailbox string) error {
@@ -63,7 +63,7 @@ func (s *Session) Delete(mailbox string) error {
 	if !ok {
 		return errNotFound
 	}
-	return storage.DeleteMailbox(context.TODO(), s.username, int64(box.ID))
+	return storage.DeleteMailbox(s.context, s.username, int64(box.ID))
 }
 
 func (s *Session) Rename(mailbox, newName string, options *imap.RenameOptions) error {
@@ -71,7 +71,7 @@ func (s *Session) Rename(mailbox, newName string, options *imap.RenameOptions) e
 	if !ok {
 		return errNotFound
 	}
-	return storage.RenameMailbox(context.TODO(), s.username, int64(box.ID), newName)
+	return storage.RenameMailbox(s.context, s.username, int64(box.ID), newName)
 }
 
 func (s *Session) Subscribe(mailbox string) error {
@@ -133,7 +133,7 @@ func (s *Session) Status(mailbox string, options *imap.StatusOptions) (*imap.Sta
 		return nil, errNotFound
 	}
 	return storage.StatusMailbox(
-		context.TODO(),
+		s.context,
 		s.username,
 		mailbox,
 		options,
@@ -174,7 +174,7 @@ func (s *Session) Append(mailbox string, r imap.LiteralReader, options *imap.App
 	to := m.Header.Get("To")
 	var uid imap.UID
 	err = storage.StoreEmail(
-		context.TODO(),
+		s.context,
 		relay.ParseAddress(from.Address), relay.ParseAddress(to),
 		s.username,
 		sql.NullFloat64{Float64: 0, Valid: false},

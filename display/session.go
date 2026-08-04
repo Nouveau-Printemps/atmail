@@ -13,6 +13,8 @@ type Session struct {
 	backend *Backend
 	conn    *imapserver.Conn
 
+	context context.Context
+
 	mailboxes map[string]*mailbox.View
 
 	username string
@@ -39,7 +41,7 @@ func (s *Session) Login(username, password string) error {
 		s.mailboxes = boxes
 		return nil
 	}
-	box, err := storage.LoadMailbox(context.TODO(), username)
+	box, err := storage.LoadMailbox(s.context, username)
 	if err != nil {
 		return err
 	}

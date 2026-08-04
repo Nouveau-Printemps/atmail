@@ -85,6 +85,12 @@ func main() {
 		}
 	}
 	slog.Debug("users' folders created")
+	ctx, cancel := signal.NotifyContext(
+		context.Background(),
+		os.Interrupt, os.Kill, syscall.SIGINT,
+	)
+	defer cancel()
+
 	bck := relay.Backend{
 		Domains:   cfg.Domains,
 		Queue:     relay.NewQueue(),
@@ -99,6 +105,7 @@ func main() {
 	defer smtpSrv.Close()
 
 	d := &display.Backend{
+		Context:     ctx,
 		Domains:     cfg.Domains,
 		MaxMailSize: cfg.Smtp.MaxMailSize,
 	}
@@ -112,12 +119,6 @@ func main() {
 		}
 		boxes["INBOX"].WriteNewMessages(1)
 	}
-
-	ctx, cancel := signal.NotifyContext(
-		context.Background(),
-		os.Interrupt, os.Kill, syscall.SIGINT,
-	)
-	defer cancel()
 
 	storage.Cache.Path = cfg.Directory
 	storage.Cache.Migrations = emailsMigrations + mailboxMigrations

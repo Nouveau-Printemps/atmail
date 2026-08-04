@@ -25,6 +25,7 @@ func (l *logger) Printf(format string, args ...any) {
 }
 
 type Backend struct {
+	Context     context.Context
 	Domains     map[string]auth.Config
 	MaxMailSize uint32
 	mailboxes   map[string]map[string]*mailbox.View
@@ -48,6 +49,7 @@ func (bck *Backend) NewSession(conn *imapserver.Conn) (imapserver.Session, *imap
 	return &Session{
 		backend:    bck,
 		conn:       conn,
+		context:    bck.Context,
 		subscribed: map[string]struct{}{},
 	}, &imapserver.GreetingData{PreAuth: false}, nil
 }
