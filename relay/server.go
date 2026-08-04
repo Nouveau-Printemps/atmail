@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"database/sql"
 	"io"
 	"log/slog"
 	"strconv"
@@ -14,7 +13,6 @@ import (
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
 	"nouveauprintemps.org/atmail/auth"
-	"nouveauprintemps.org/atmail/storage"
 )
 
 type Backend struct {
@@ -31,10 +29,12 @@ func (bck *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
 type Session struct {
 	backend *Backend
 	conn    *smtp.Conn
-	authFor []string
+	authAs  string
 
-	From [2]string
-	To   [2]string
+	From      [2]string
+	To        [2]string
+	FromLocal bool
+	ToLocal   bool
 
 	RedirectTo string
 }
@@ -47,10 +47,10 @@ func (s *Session) Auth(mech string) (sasl.Server, error) {
 	return sasl.NewPlainServer(func(identity, username, password string) error {
 		for k, cfg := range s.backend.Domains {
 			if cfg.VerifyUser(k, username, password) {
-				s.authFor = append(s.authFor, k)
+				s.authAs = username
 			}
 		}
-		if len(s.authFor) == 0 {
+		if len(s.authAs) == 0 {
 			return smtp.ErrAuthFailed
 		}
 		slog.Debug("client connected", "ip", s.conn.Conn().RemoteAddr(), "user", username)
@@ -59,26 +59,33 @@ func (s *Session) Auth(mech string) (sasl.Server, error) {
 }
 
 func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
-	a := ParseAddress(from)
-	if _, ok := s.backend.Domains[a[1]]; ok && len(s.authFor) == 0 {
+	s.From = ParseAddress(from)
+	_, s.FromLocal = s.backend.Domains[s.From[1]]
+	if s.FromLocal && s.authAs != from {
 		return smtp.ErrAuthRequired
 	}
-	s.From = a
 	return nil
 }
 
 func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
-	a := ParseAddress(to)
-	cfg, ok := s.backend.Domains[a[1]]
-	if !ok {
+	s.To = ParseAddress(to)
+	var cfg auth.Config
+	cfg, s.ToLocal = s.backend.Domains[s.To[1]]
+	// from local to outside
+	if s.FromLocal && !s.ToLocal {
+		return nil
+	}
+	// not to local
+	if !s.ToLocal {
 		return &smtp.SMTPError{
 			Code:         551,
 			EnhancedCode: [3]int{5, 7, 1},
 			Message:      "Forwarding to remote hosts is disabled",
 		}
 	}
+	// to local
 	if cfg.Static != nil {
-		if _, ok := cfg.Static.Users[a[0]]; !ok {
+		if _, ok := cfg.Static.Users[s.To[0]]; !ok {
 			return &smtp.SMTPError{
 				Code:         550,
 				EnhancedCode: [3]int{5, 1, 1},
@@ -88,7 +95,6 @@ func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 	} else if cfg.CatchAll != nil {
 		s.RedirectTo = cfg.CatchAll.User
 	}
-	s.To = a
 	return nil
 }
 
@@ -180,21 +186,17 @@ valid_email:
 	if user == "" {
 		user = strings.Join(s.To[:], "@")
 	}
-	go func() {
-		score := sql.NullFloat64{Float64: 0, Valid: false}
-		if spam != nil {
-			score.Float64 = spam.Score
-			score.Valid = true
-		}
-		b := formatMail(h.Map(), body)
-		id, err := storage.StoreEmailInbox(context.TODO(), s.From, s.To, user, score, b)
-		if err != nil {
-			slog.Error("cannot save email", "error", err)
-		}
-		if s.backend.OnReceive != nil {
-			s.backend.OnReceive(user, id)
-		}
-	}()
+	if s.ToLocal {
+		go s.relayInside(user, body, h, spam)
+	} else {
+		//TODO: queue
+		go relayOutside(
+			strings.Join(s.From[:], "@"),
+			strings.Join(s.To[:], "@"),
+			s.To[1],
+			body,
+		)
+	}
 	return nil
 }
 
