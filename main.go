@@ -96,6 +96,7 @@ func main() {
 		Domains:   cfg.Domains,
 		Queue:     relay.NewQueue(),
 		LocalName: cfg.MainDomain,
+		Context:   utils.WithLogger(ctx, slog.With("module", "smtp")),
 	}
 	smtpSrv := smtp.NewServer(&bck)
 	smtpSrv.AllowInsecureAuth = dev
@@ -150,7 +151,7 @@ func main() {
 	go func() {
 		errc <- imapSrv.Serve(imapL)
 	}()
-	go bck.Queue.Loop(ctx, &bck)
+	go bck.Queue.Loop(utils.WithLogger(ctx, slog.With("module", "smtp-queue")), &bck)
 
 	slog.Info("started")
 	select {

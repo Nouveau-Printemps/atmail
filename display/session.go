@@ -35,8 +35,7 @@ func (s *Session) Login(username, password string) error {
 	if len(s.username) == 0 {
 		return imapserver.ErrAuthFailed
 	}
-	l := utils.Logger(s.context)
-	l = l.With("user", username)
+	l := utils.Logger(s.context).With("user", username)
 	l.Debug("client connected", "ip", s.conn.NetConn().RemoteAddr())
 	s.context = utils.WithLogger(s.context, l)
 	boxes, ok := s.backend.GetUserBoxes(s.username)

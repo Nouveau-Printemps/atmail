@@ -15,18 +15,19 @@ import (
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
 	"nouveauprintemps.org/atmail/storage"
+	"nouveauprintemps.org/atmail/utils"
 )
 
-func (s *Session) relayInside(user string, body []byte, h textproto.Header, spam *RspamdResponse) {
+func (s *Session) relayInside(ctx context.Context, user string, body []byte, h textproto.Header, spam *RspamdResponse) {
 	score := sql.NullFloat64{Float64: 0, Valid: false}
 	if spam != nil {
 		score.Float64 = spam.Score
 		score.Valid = true
 	}
 	b := formatMail(h.Map(), body)
-	id, err := storage.StoreEmailInbox(context.TODO(), s.From, s.To, user, score, b)
+	id, err := storage.StoreEmailInbox(ctx, s.From, s.To, user, score, b)
 	if err != nil {
-		slog.Error("cannot save email", "error", err)
+		utils.Logger(ctx).Error("cannot save email", "error", err)
 		return
 	}
 	if s.backend.OnReceive != nil {

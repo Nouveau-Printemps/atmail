@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"log/slog"
 	"strconv"
 	"strings"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
 	"nouveauprintemps.org/atmail/auth"
+	"nouveauprintemps.org/atmail/utils"
 )
 
 type Backend struct {
@@ -21,17 +21,21 @@ type Backend struct {
 	Queue     *Queue
 	LocalName string
 
+	Context context.Context
+
 	OnReceive func(user string, id int64)
 }
 
 func (bck *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
-	return &Session{backend: bck, conn: c}, nil
+	return &Session{backend: bck, conn: c, context: bck.Context}, nil
 }
 
 type Session struct {
 	backend *Backend
 	conn    *smtp.Conn
 	authAs  string
+
+	context context.Context
 
 	From      [2]string
 	To        [2]string
@@ -55,7 +59,9 @@ func (s *Session) Auth(mech string) (sasl.Server, error) {
 		if len(s.authAs) == 0 {
 			return smtp.ErrAuthFailed
 		}
-		slog.Debug("client connected", "ip", s.conn.Conn().RemoteAddr(), "user", username)
+		l := utils.Logger(s.context).With("user", username)
+		s.context = utils.WithLogger(s.context, l)
+		l.Debug("client connected", "ip", s.conn.Conn().RemoteAddr(), "user", username)
 		return nil
 	}), nil
 }
@@ -106,25 +112,19 @@ var errInternal = &smtp.SMTPError{
 }
 
 func (s *Session) Data(r io.Reader) error {
+	l := utils.Logger(s.context).With(
+		"from", strings.Join(s.From[:], "@"),
+		"to", strings.Join(s.To[:], "@"),
+	)
 	b, err := io.ReadAll(r)
 	if err != nil {
-		slog.Error(
-			"reading data",
-			"error", err,
-			"from", strings.Join(s.From[:], "@"),
-			"to", strings.Join(s.To[:], "@"),
-		)
+		l.Error("reading data", "error", err)
 		return errInternal
 	}
 	buf := bufio.NewReader(bytes.NewBuffer(b))
 	h, err := textproto.ReadHeader(buf)
 	if err != nil {
-		slog.Error(
-			"parsing mail",
-			"error", err,
-			"from", strings.Join(s.From[:], "@"),
-			"to", strings.Join(s.To[:], "@"),
-		)
+		l.Error("parsing mail", "error", err)
 		return errInternal
 	}
 	body, _ := io.ReadAll(buf)
@@ -134,14 +134,9 @@ func (s *Session) Data(r io.Reader) error {
 		// thus, this goto produces a faster assembly because there is no bad branch prediction in the common case
 		goto valid_email
 	}
-	spam, err = s.backend.Rspamd.Verify(context.TODO(), nil, b)
+	spam, err = s.backend.Rspamd.Verify(s.context, nil, b)
 	if err != nil {
-		slog.Error(
-			"rspamd check",
-			"error", err,
-			"from", strings.Join(s.From[:], "@"),
-			"to", strings.Join(s.To[:], "@"),
-		)
+		l.Error("rspamd check", "error", err)
 		return errInternal
 	}
 	if spam.Skipped {
@@ -189,7 +184,7 @@ valid_email:
 		user = strings.Join(s.To[:], "@")
 	}
 	if s.ToLocal {
-		go s.relayInside(user, body, h, spam)
+		go s.relayInside(s.context, user, body, h, spam)
 	} else {
 		s.backend.Queue.Enqueue(
 			strings.Join(s.From[:], "@"),
