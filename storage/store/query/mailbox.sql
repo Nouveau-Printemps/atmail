@@ -119,7 +119,8 @@ WHERE email_id = ?;
 INSERT INTO emails_flags (email_id, flag_id)
 VALUES (?, (
         SELECT id FROM flags WHERE name = ?
-));
+))
+ON CONFLICT DO NOTHING;
 
 -- name: RemoveEmailFlagName :exec
 DELETE FROM emails_flags
