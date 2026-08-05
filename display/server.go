@@ -20,8 +20,12 @@ type logger struct {
 }
 
 func (l *logger) Printf(format string, args ...any) {
+	content := fmt.Sprintf(format, args...)
+	if strings.Contains(content, "i/o timeout") {
+		return
+	}
 	ctx := logos.NewContext(context.Background(), 1, true, false)
-	log, _, _ := strings.Cut(fmt.Sprintf(format, args...), "\n")
+	log, _, _ := strings.Cut(content, "\n")
 	l.Logger.ErrorContext(ctx, log)
 }
 
@@ -29,6 +33,7 @@ type Backend struct {
 	Context     context.Context
 	Domains     map[string]auth.Config
 	MaxMailSize uint32
+	RateLimiter *auth.RateLimiter
 	mailboxes   map[string]map[string]*mailbox.View
 	muBoxes     sync.RWMutex
 }

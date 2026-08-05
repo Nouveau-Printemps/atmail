@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"net"
 	"strconv"
 	"strings"
 
@@ -23,7 +24,8 @@ type Backend struct {
 
 	Context context.Context
 
-	OnReceive func(user string, id int64)
+	OnReceive   func(user string, id int64)
+	RateLimiter *auth.RateLimiter
 }
 
 func (bck *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
@@ -56,10 +58,18 @@ func (s *Session) Auth(mech string) (sasl.Server, error) {
 				s.authAs = username
 			}
 		}
+		l := utils.Logger(s.context)
 		if len(s.authAs) == 0 {
+			if s.backend.RateLimiter.Limit(
+				utils.WithLogger(s.context, l.With("module", "rate-limiter")),
+				s.conn.Conn().RemoteAddr().(*net.TCPAddr).IP,
+			) {
+				s.conn.Reject()
+				return nil
+			}
 			return smtp.ErrAuthFailed
 		}
-		l := utils.Logger(s.context).With("user", username)
+		l = l.With("user", username)
 		s.context = utils.WithLogger(s.context, l)
 		l.Debug("client connected", "ip", s.conn.Conn().RemoteAddr(), "user", username)
 		return nil

@@ -2,6 +2,7 @@ package display
 
 import (
 	"context"
+	"net"
 
 	"github.com/emersion/go-imap/v2/imapserver"
 	"nouveauprintemps.org/atmail/mailbox"
@@ -32,10 +33,18 @@ func (s *Session) Login(username, password string) error {
 			break
 		}
 	}
+	l := utils.Logger(s.context)
 	if len(s.username) == 0 {
+		if s.backend.RateLimiter.Limit(
+			utils.WithLogger(s.context, l.With("module", "rate-limiter")),
+			s.conn.NetConn().RemoteAddr().(*net.TCPAddr).IP,
+		) {
+			s.conn.Bye("rate limited")
+			return nil
+		}
 		return imapserver.ErrAuthFailed
 	}
-	l := utils.Logger(s.context).With("user", username)
+	l = l.With("user", username)
 	l.Debug("client connected", "ip", s.conn.NetConn().RemoteAddr())
 	s.context = utils.WithLogger(s.context, l)
 	boxes, ok := s.backend.GetUserBoxes(s.username)

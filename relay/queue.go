@@ -18,7 +18,7 @@ type emailEnqueued struct {
 	MustWait time.Duration
 }
 
-const MaxDuration = 15 * time.Minute
+const MaxDuration = 15 * 60
 
 type Queue struct {
 	sender chan emailEnqueued
@@ -78,9 +78,10 @@ func (q *Queue) Loop(ctx context.Context, b *Backend) {
 					//TODO: send fail
 					return
 				}
-				email.MustWait = (email.MustWait + 2*time.Second) * (email.MustWait + 500*time.Millisecond)
-				l.Debug("retrying later", "wait", email.MustWait)
-				time.Sleep(email.MustWait)
+				email.MustWait = max(email.MustWait, 3)
+				email.MustWait += email.MustWait / 2
+				l.Debug("retrying later", "wait", email.MustWait*time.Second)
+				time.Sleep(email.MustWait * time.Second)
 				q.sender <- email
 			}()
 		case <-ctx.Done():

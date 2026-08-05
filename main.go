@@ -16,6 +16,7 @@ import (
 	"github.com/emersion/go-smtp"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/nyttikord/logos"
+	"nouveauprintemps.org/atmail/auth"
 	"nouveauprintemps.org/atmail/display"
 	"nouveauprintemps.org/atmail/relay"
 	"nouveauprintemps.org/atmail/storage"
@@ -92,11 +93,14 @@ func main() {
 	)
 	defer cancel()
 
+	rl := auth.NewRateLimiter()
+
 	bck := relay.Backend{
-		Domains:   cfg.Domains,
-		Queue:     relay.NewQueue(),
-		LocalName: cfg.MainDomain,
-		Context:   utils.WithLogger(ctx, slog.With("module", "smtp")),
+		Domains:     cfg.Domains,
+		Queue:       relay.NewQueue(),
+		LocalName:   cfg.MainDomain,
+		Context:     utils.WithLogger(ctx, slog.With("module", "smtp")),
+		RateLimiter: rl,
 	}
 	smtpSrv := smtp.NewServer(&bck)
 	smtpSrv.AllowInsecureAuth = dev
@@ -110,6 +114,7 @@ func main() {
 		Context:     utils.WithLogger(ctx, slog.With("module", "imap")),
 		Domains:     cfg.Domains,
 		MaxMailSize: cfg.Smtp.MaxMailSize,
+		RateLimiter: rl,
 	}
 	imapSrv := imapserver.New(d.Options(dev))
 	defer imapSrv.Close()
@@ -146,10 +151,10 @@ func main() {
 
 	errc := make(chan error, 2)
 	go func() {
-		errc <- smtpSrv.Serve(smtpL)
+		errc <- smtpSrv.Serve(&auth.LimiterListener{Listener: smtpL, Limiter: rl})
 	}()
 	go func() {
-		errc <- imapSrv.Serve(imapL)
+		errc <- imapSrv.Serve(&auth.LimiterListener{Listener: imapL, Limiter: rl})
 	}()
 	go bck.Queue.Loop(utils.WithLogger(ctx, slog.With("module", "smtp-queue")), &bck)
 
