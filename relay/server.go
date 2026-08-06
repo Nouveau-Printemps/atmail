@@ -45,6 +45,7 @@ type Session struct {
 	ToLocal   bool
 
 	RedirectTo string
+	Folder     string
 }
 
 func (s *Session) AuthMechanisms() []string {
@@ -102,17 +103,16 @@ func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 		}
 	}
 	// to local
-	if cfg.Static != nil {
-		if _, ok := cfg.Static.Users[s.To[0]]; !ok {
-			return &smtp.SMTPError{
-				Code:         550,
-				EnhancedCode: [3]int{5, 1, 1},
-				Message:      "Address doesn't exist",
-			}
+	exists, username, subaddress := cfg.Exists(s.To[0])
+	if !exists {
+		return &smtp.SMTPError{
+			Code:         550,
+			EnhancedCode: [3]int{5, 1, 1},
+			Message:      "Address doesn't exist",
 		}
-	} else if cfg.CatchAll != nil {
-		s.RedirectTo = cfg.CatchAll.User
 	}
+	s.RedirectTo = username
+	s.Folder = subaddress
 	return nil
 }
 

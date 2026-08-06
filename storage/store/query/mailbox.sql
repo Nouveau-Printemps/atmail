@@ -1,6 +1,8 @@
--- name: GetMailbox :one
-SELECT * FROM mailbox
-WHERE name = ?;
+-- name: GetOrCreateMailbox :one
+INSERT INTO mailbox (name)
+VALUES (?)
+ON CONFLICT DO UPDATE SET name = name
+RETURNING *;
 
 -- name: ListMailbox :many
 SELECT m.*, (

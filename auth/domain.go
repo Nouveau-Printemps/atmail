@@ -2,15 +2,17 @@ package auth
 
 import (
 	"crypto/subtle"
+	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 type Config struct {
-	PlusAddressing bool           `toml:"plus_addressing"`
-	ATProto        *ATProtoConfig `toml:"atproto"`
-	Static         *StaticConfig  `toml:"static"`
-	CatchAll       *CatchAll      `toml:"catch_all"`
+	PlusSubaddressing         bool           `toml:"plus_subaddressing"`
+	CreateFolderSubaddressing bool           `toml:"create_folder_subaddressing"`
+	ATProto                   *ATProtoConfig `toml:"atproto"`
+	Static                    *StaticConfig  `toml:"static"`
+	CatchAll                  *CatchAll      `toml:"catch_all"`
 }
 
 type ATProtoConfig struct {
@@ -45,4 +47,25 @@ func (cfg *Config) VerifyUser(domain, username, password string) bool {
 		}
 	}
 	return bcrypt.CompareHashAndPassword([]byte(realPass), []byte(password)) == nil
+}
+
+func (cfg *Config) Exists(username string) (exists bool, user string, subaddress string) {
+	if cfg.CatchAll != nil {
+		if !cfg.CreateFolderSubaddressing {
+			username = ""
+		}
+		return true, cfg.CatchAll.User, username
+	}
+	if cfg.Static != nil {
+		var subaddress string
+		if cfg.PlusSubaddressing {
+			username, subaddress, _ = strings.Cut(username, "+")
+		}
+		if !cfg.CreateFolderSubaddressing {
+			subaddress = ""
+		}
+		_, ok := cfg.Static.Users[username]
+		return ok, username, subaddress
+	}
+	return
 }

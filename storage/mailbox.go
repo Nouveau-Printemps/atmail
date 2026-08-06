@@ -24,7 +24,7 @@ func LoadMailbox(ctx context.Context, user string) ([]store.ListMailboxRow, erro
 
 func DescribeMailbox(ctx context.Context, user string, mailbox string) (*imap.SelectData, error) {
 	return get(ctx, user, func(in *DB) (*imap.SelectData, error) {
-		box, err := in.GetMailbox(ctx, mailbox)
+		box, err := in.GetOrCreateMailbox(ctx, mailbox)
 		if err != nil {
 			return nil, err
 		}
@@ -91,7 +91,7 @@ func ListMailbox(ctx context.Context, user string) ([]store.ListMailboxRow, erro
 
 func StatusMailbox(ctx context.Context, user, mailbox string, opt *imap.StatusOptions) (*imap.StatusData, error) {
 	return get(ctx, user, func(in *DB) (*imap.StatusData, error) {
-		box, err := in.GetMailbox(ctx, mailbox)
+		box, err := in.GetOrCreateMailbox(ctx, mailbox)
 		if err != nil {
 			return nil, err
 		}

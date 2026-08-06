@@ -25,7 +25,7 @@ func (s *Session) relayInside(ctx context.Context, user string, body []byte, h t
 		score.Valid = true
 	}
 	b := formatMail(h.Map(), body)
-	id, err := storage.StoreEmailInbox(ctx, s.From, s.To, user, score, b)
+	id, err := storage.StoreEmailInbox(ctx, s.From, s.To, user, score, b, s.Folder)
 	if err != nil {
 		utils.Logger(ctx).Error("cannot save email", "error", err)
 		return

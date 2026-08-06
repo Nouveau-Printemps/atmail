@@ -92,10 +92,25 @@ func StoreEmail(
 	return nil
 }
 
-func StoreEmailInbox(ctx context.Context, from, to [2]string, user string, spamScore sql.NullFloat64, b []byte) (uid int64, err error) {
+func StoreEmailInbox(
+	ctx context.Context,
+	from, to [2]string,
+	user string,
+	spamScore sql.NullFloat64,
+	b []byte,
+	folder string,
+) (uid int64, err error) {
 	err = StoreEmail(ctx, from, to, user, spamScore, b, func(ctx context.Context, in *DB, id int64) error {
 		uid = id
-		return in.AddMailboxEmail(ctx, InboxMailbox, id)
+		boxID := InboxMailbox
+		if folder != "" {
+			box, err := in.GetOrCreateMailbox(ctx, "INBOX"+string(MailboxSeparator)+folder)
+			if err != nil {
+				return err
+			}
+			boxID = box.ID
+		}
+		return in.AddMailboxEmail(ctx, boxID, id)
 	})
 	return
 }
