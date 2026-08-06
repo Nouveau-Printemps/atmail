@@ -33,9 +33,10 @@ func (bck *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
 }
 
 type Session struct {
-	backend *Backend
-	conn    *smtp.Conn
-	authAs  string
+	backend  *Backend
+	conn     *smtp.Conn
+	username string
+	key      *string
 
 	context context.Context
 
@@ -55,12 +56,14 @@ func (s *Session) AuthMechanisms() []string {
 func (s *Session) Auth(mech string) (sasl.Server, error) {
 	return sasl.NewPlainServer(func(identity, username, password string) error {
 		for k, cfg := range s.backend.Domains {
-			if cfg.VerifyUser(k, username, password) {
-				s.authAs = username
+			ok, key := cfg.VerifyUser(k, username, password)
+			if ok {
+				s.username = username
+				s.key = key
 			}
 		}
 		l := utils.Logger(s.context)
-		if len(s.authAs) == 0 {
+		if len(s.username) == 0 {
 			if s.backend.RateLimiter.Limit(
 				utils.WithLogger(s.context, l.With("module", "rate-limiter")),
 				s.conn.Conn().RemoteAddr().(*net.TCPAddr).IP,
@@ -72,7 +75,12 @@ func (s *Session) Auth(mech string) (sasl.Server, error) {
 		}
 		l = l.With("user", username)
 		s.context = utils.WithLogger(s.context, l)
-		l.Debug("client connected", "ip", s.conn.Conn().RemoteAddr(), "user", username)
+		l.Debug(
+			"client connected",
+			"ip", s.conn.Conn().RemoteAddr(),
+			"user", username,
+			"with key", s.key != nil,
+		)
 		return nil
 	}), nil
 }
@@ -80,7 +88,7 @@ func (s *Session) Auth(mech string) (sasl.Server, error) {
 func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 	s.From = ParseAddress(from)
 	_, s.FromLocal = s.backend.Domains[s.From[1]]
-	if s.FromLocal && s.authAs != from {
+	if s.FromLocal && s.username != from {
 		return smtp.ErrAuthRequired
 	}
 	return nil

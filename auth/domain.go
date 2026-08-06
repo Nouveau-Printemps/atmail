@@ -2,10 +2,16 @@ package auth
 
 import (
 	"crypto/subtle"
+	"os"
 	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 )
+
+type Crypto struct {
+	PGPPubKey     *string `toml:"pgp_pub_key"`
+	PGPPubKeyFile *string `toml:"pgp_pub_key_file"`
+}
 
 type Config struct {
 	PlusSubaddressing         bool           `toml:"plus_subaddressing"`
@@ -22,31 +28,50 @@ type ATProtoConfig struct {
 }
 
 type StaticConfig struct {
-	// Users maps username to bcrypt password
-	Users map[string]string `toml:"users"`
+	Users map[string]StaticUser `toml:"users"`
+}
+
+type StaticUser struct {
+	// Bcrypt password
+	Password string `toml:"password"`
+	Crypto
 }
 
 type CatchAll struct {
 	User string `toml:"user"`
 	// bcrypt Password of user
 	Password string `toml:"password"`
+	Crypto
 }
 
-func (cfg *Config) VerifyUser(domain, username, password string) bool {
+func (cfg *Config) VerifyUser(domain, username, password string) (bool, *string) {
 	var realPass string
+	var crypto Crypto
 	if cfg.CatchAll != nil {
 		if subtle.ConstantTimeCompare([]byte(cfg.CatchAll.User+"@"+domain), []byte(username)) != 1 {
-			return false
+			return false, nil
 		}
 		realPass = cfg.CatchAll.Password
+		crypto = cfg.CatchAll.Crypto
 	} else if cfg.Static != nil {
-		var ok bool
-		realPass, ok = cfg.Static.Users[username]
+		user, ok := cfg.Static.Users[username]
 		if !ok {
-			return false
+			return false, nil
 		}
+		realPass = user.Password
+		crypto = user.Crypto
 	}
-	return bcrypt.CompareHashAndPassword([]byte(realPass), []byte(password)) == nil
+	var key *string
+	if crypto.PGPPubKey != nil {
+		key = crypto.PGPPubKey
+	} else if crypto.PGPPubKeyFile != nil {
+		b, err := os.ReadFile(*crypto.PGPPubKeyFile)
+		if err != nil {
+			panic(err)
+		}
+		key = new(string(b))
+	}
+	return bcrypt.CompareHashAndPassword([]byte(realPass), []byte(password)) == nil, key
 }
 
 func (cfg *Config) Exists(username string) (exists bool, user string, subaddress string) {

@@ -23,6 +23,7 @@ func StoreEmail(
 	user string,
 	spamScore sql.NullFloat64,
 	b []byte,
+	encrypted bool,
 	callback func(context.Context, *DB, int64) error,
 ) error {
 	cache, err := Cache.DB(ctx, user)
@@ -60,7 +61,7 @@ func StoreEmail(
 	if err != nil {
 		return err
 	}
-	n, err := store.WriteEmail(f, b)
+	n, err := store.WriteEmail(f, encrypted, b)
 	if err != nil {
 		return err
 	}
@@ -99,8 +100,9 @@ func StoreEmailInbox(
 	spamScore sql.NullFloat64,
 	b []byte,
 	folder string,
+	encrypted bool,
 ) (uid int64, err error) {
-	err = StoreEmail(ctx, from, to, user, spamScore, b, func(ctx context.Context, in *DB, id int64) error {
+	err = StoreEmail(ctx, from, to, user, spamScore, b, encrypted, func(ctx context.Context, in *DB, id int64) error {
 		uid = id
 		boxID := InboxMailbox
 		if folder != "" {

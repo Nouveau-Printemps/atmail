@@ -54,9 +54,10 @@ var ErrFileIsFull = errors.New("file is full")
 const (
 	EmailDeleted = 1 << iota
 	EmailCompressed
+	EmailEncrypted
 )
 
-func WriteEmail(f *os.File, b []byte) (uint32, error) {
+func WriteEmail(f *os.File, encrypted bool, b []byte) (uint32, error) {
 	s, err := f.Stat()
 	if err != nil {
 		return 0, err
@@ -77,6 +78,9 @@ func WriteEmail(f *os.File, b []byte) (uint32, error) {
 		}
 		w.Close()
 		b = buf.Bytes()
+	}
+	if encrypted {
+		header[0] |= EmailEncrypted
 	}
 	p, err := f.Write(binary.BigEndian.AppendUint32(header, uint32(len(b))))
 	if err != nil {

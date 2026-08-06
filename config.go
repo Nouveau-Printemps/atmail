@@ -72,6 +72,25 @@ func ParseConfig(p string) (Config, error) {
 			)
 			os.Exit(2)
 		}
+		if k.CatchAll != nil && k.CatchAll.PGPPubKey != nil && k.CatchAll.PGPPubKeyFile != nil {
+			slog.Error(
+				"decoding config: only one of pgp_pub_key and pgp_pub_key_file can be enabled",
+				"domain", d,
+			)
+			os.Exit(2)
+		}
+		if k.Static != nil {
+			for u, v := range k.Static.Users {
+				if v.PGPPubKey != nil && v.PGPPubKeyFile != nil {
+					slog.Error(
+						"decoding config: only one of pgp_pub_key and pgp_pub_key_file can be enabled",
+						"domain", d,
+						"user", u,
+					)
+					os.Exit(2)
+				}
+			}
+		}
 	}
 	cfg.Smtp.MaxMailSize *= 1024
 	if !strings.HasPrefix(cfg.Directory, "/") {

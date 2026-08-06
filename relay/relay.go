@@ -14,6 +14,7 @@ import (
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-smtp"
+	"nouveauprintemps.org/atmail/auth"
 	"nouveauprintemps.org/atmail/storage"
 	"nouveauprintemps.org/atmail/utils"
 )
@@ -24,8 +25,26 @@ func (s *Session) relayInside(ctx context.Context, user string, body []byte, h t
 		score.Float64 = spam.Score
 		score.Valid = true
 	}
+	var encrypted bool
+	if s.key != nil {
+		b, err := auth.EncryptEmail(*s.key, body)
+		if err != nil {
+			utils.Logger(ctx).Error("cannot encrypt email", "error", err)
+		} else {
+			body = b
+			encrypted = true
+		}
+	}
 	b := formatMail(h.Map(), body)
-	id, err := storage.StoreEmailInbox(ctx, s.From, s.To, user, score, b, s.Folder)
+	id, err := storage.StoreEmailInbox(
+		ctx,
+		s.From, s.To,
+		user,
+		score,
+		b,
+		s.Folder,
+		encrypted,
+	)
 	if err != nil {
 		utils.Logger(ctx).Error("cannot save email", "error", err)
 		return

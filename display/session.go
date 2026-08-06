@@ -26,6 +26,7 @@ type Session struct {
 	mailboxes map[string]*mailbox.View
 
 	username string
+	key      *string
 
 	selected *mailbox.View
 	readOnly bool
@@ -35,8 +36,10 @@ type Session struct {
 
 func (s *Session) Login(username, password string) error {
 	for d, cfg := range s.backend.Domains {
-		if cfg.VerifyUser(d, username, password) {
+		ok, key := cfg.VerifyUser(d, username, password)
+		if ok {
 			s.username = username
+			s.key = key
 			break
 		}
 	}

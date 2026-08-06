@@ -31,11 +31,16 @@ create_folder_subaddressing = false
 #client_secret = "my-secret"
 
 # If you wanna allow only specific users, maps them to their password (hashed with bcrypt)
-#[domains."example.org".static]
-#users.foo = "$2y$10$wWJy64n5j4pU2CscdWRq.er5Z2.V31U5Ntz5uTopLy1fMX87GQEDG"
-#users.bar = "$2y$10$fZ1tRpz2mfdRfaaTbx723.Gch7tY.f7LIBuZz1of/cLwBGvU39ivG"
+#[domains."example.org".static.users]
+#foo.password = "$2y$10$wWJy64n5j4pU2CscdWRq.er5Z2.V31U5Ntz5uTopLy1fMX87GQEDG"
+#bar.password = "$2y$10$fZ1tRpz2mfdRfaaTbx723.Gch7tY.f7LIBuZz1of/cLwBGvU39ivG"
+# You can specify their PGP public key to encrypt their message
+#foo.pgp_pub_key = ""
+#bar.pgp_pub_key_file = ""
 
 # Catch every mail into one address
 [domains."example.org".catch_all]
 user = "me"
 password = "bcrypt here"
+#pgp_pub_key = ""
+#pgp_pub_key_file = ""

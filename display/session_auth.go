@@ -209,6 +209,7 @@ func (s *Session) Append(mailbox string, r imap.LiteralReader, options *imap.App
 		s.username,
 		sql.NullFloat64{Float64: 0, Valid: false},
 		b,
+		false,
 		func(ctx context.Context, in *storage.DB, id int64) error {
 			uid = imap.UID(id)
 			return in.AddMailboxEmail(ctx, int64(box.ID), id)
