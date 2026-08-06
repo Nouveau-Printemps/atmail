@@ -20,7 +20,8 @@ func (s *Session) Close() error {
 	}
 	_, err := storage.DeleteEmailsWithFlag(s.context, s.username, storage.DeletedFlag)
 	if err != nil {
-		return err
+		utils.Logger(s.context).Error("deleting emails", "error", err)
+		return errInternal
 	}
 	s.selected = nil
 	return nil
@@ -30,7 +31,8 @@ func (s *Session) Expunge(w *imapserver.ExpungeWriter, uids *imap.UIDSet) error 
 	if uids == nil {
 		deleted, err := storage.DeleteEmailsWithFlag(s.context, s.username, storage.DeletedFlag)
 		if err != nil {
-			return err
+			utils.Logger(s.context).Error("deleting emails", "error", err)
+			return errInternal
 		}
 		for _, d := range deleted {
 			err = w.WriteExpunge(uint32(d.ID))
@@ -49,7 +51,8 @@ func (s *Session) Expunge(w *imapserver.ExpungeWriter, uids *imap.UIDSet) error 
 		keys,
 	)
 	if err != nil {
-		return err
+		utils.Logger(s.context).Error("removing emails from mailbox", "error", err)
+		return errInternal
 	}
 	for _, u := range ns {
 		err = w.WriteExpunge(uint32(u))
@@ -83,7 +86,8 @@ func (s *Session) Fetch(wr *imapserver.FetchWriter, set imap.NumSet, options *im
 		set,
 	)
 	if err != nil {
-		return err
+		utils.Logger(s.context).Error("listing emails", "error", err)
+		return errInternal
 	}
 	markSeen := true
 	for _, sec := range options.BinarySection {
@@ -96,7 +100,8 @@ func (s *Session) Fetch(wr *imapserver.FetchWriter, set imap.NumSet, options *im
 		if markSeen {
 			err = storage.AddEmailFlag(s.context, s.username, email.ID, storage.SeenFlag)
 			if err != nil {
-				return err
+				utils.Logger(s.context).Error("marking email seen", "error", err)
+				return errInternal
 			}
 			s.mailboxes[s.selected.Name].WriteMailboxFlags([]imap.Flag{imap.FlagSeen})
 		}
@@ -112,7 +117,8 @@ func (s *Session) Fetch(wr *imapserver.FetchWriter, set imap.NumSet, options *im
 		if options.Flags {
 			flags, err := storage.ListEmailFlags(s.context, s.username, email.ID)
 			if err != nil {
-				return err
+				utils.Logger(s.context).Error("listing email flags", "error", err)
+				return errInternal
 			}
 			w.WriteFlags(utils.Map(flags, func(f store.Flag) imap.Flag { return imap.Flag(f.Name) }))
 		}
@@ -121,7 +127,8 @@ func (s *Session) Fetch(wr *imapserver.FetchWriter, set imap.NumSet, options *im
 		}
 		b, err := storage.ReadEmail(s.context, s.username, email)
 		if err != nil {
-			return err
+			utils.Logger(s.context).Error("reading email", "error", err)
+			return errInternal
 		}
 		if options.RFC822Size {
 			w.WriteRFC822Size(int64(len(b)))
@@ -186,15 +193,16 @@ func (s *Session) Store(
 		set,
 	)
 	if err != nil {
-		return err
+		utils.Logger(s.context).Error("listing mailbox emails", "error", err)
+		return errInternal
 	}
 	for _, email := range emails {
 		switch flags.Op {
 		case imap.StoreFlagsSet:
 			err = storage.RemoveEmailAllFlags(s.context, s.username, email.ID)
 			if err != nil {
-				return err
-
+				utils.Logger(s.context).Error("removing email flags", "error", err)
+				return errInternal
 			}
 			fallthrough
 		case imap.StoreFlagsAdd:
@@ -205,7 +213,8 @@ func (s *Session) Store(
 			panic(fmt.Errorf("unknown STORE flag operation: %v", flags.Op))
 		}
 		if err != nil {
-			return err
+			utils.Logger(s.context).Error("applying request", "error", err, "op", flags.Op)
+			return errInternal
 		}
 		seq, err := storage.ToSequence(s.context, s.username, int64(s.selected.ID), email.ID)
 		if err != nil {
@@ -241,12 +250,14 @@ func (s *Session) Copy(set imap.NumSet, dest string) (*imap.CopyData, error) {
 		set,
 	)
 	if err != nil {
-		return nil, err
+		utils.Logger(s.context).Error("listing mailbox emails", "error", err)
+		return nil, errInternal
 	}
 	ids := utils.Map(mails, func(m store.Email) int64 { return m.ID })
 	err = storage.AddMailboxEmails(s.context, s.username, int64(target.ID), ids)
 	if err != nil {
-		return nil, err
+		utils.Logger(s.context).Error("adding emails to mailbox", "error", err)
+		return nil, errInternal
 	}
 	seq := imap.UIDSetNum(utils.Map(mails, func(m store.Email) imap.UID {
 		return imap.UID(m.ID)
@@ -267,12 +278,17 @@ func (s *Session) Move(w *imapserver.MoveWriter, set imap.NumSet, dest string) e
 	if err != nil {
 		return err
 	}
-	return storage.RemoveMailboxEmails(
+	err = storage.RemoveMailboxEmails(
 		s.context,
 		s.username,
 		int64(s.selected.ID),
 		storage.GetIds(s.context, s.username, int64(s.selected.ID), set),
 	)
+	if err != nil {
+		utils.Logger(s.context).Error("adding emails to mailbox", "error", err)
+		return errInternal
+	}
+	return nil
 }
 
 func (s *Session) Idle(w *imapserver.UpdateWriter, stop <-chan struct{}) error {

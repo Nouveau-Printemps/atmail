@@ -4,11 +4,18 @@ import (
 	"context"
 	"net"
 
+	"github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapserver"
 	"nouveauprintemps.org/atmail/mailbox"
 	"nouveauprintemps.org/atmail/storage"
 	"nouveauprintemps.org/atmail/utils"
 )
+
+var errInternal = &imap.Error{
+	Type: imap.StatusResponseTypeNo,
+	Code: imap.ResponseCodeServerBug,
+	Text: "Internal error",
+}
 
 type Session struct {
 	backend *Backend
@@ -54,7 +61,8 @@ func (s *Session) Login(username, password string) error {
 	}
 	box, err := storage.LoadMailbox(s.context, username)
 	if err != nil {
-		return err
+		l.Error("loading mailbox", "error", err)
+		return errInternal
 	}
 	s.mailboxes = make(map[string]*mailbox.View, len(box))
 	for _, b := range box {

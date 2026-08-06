@@ -33,7 +33,8 @@ func (s *Session) Select(mailbox string, options *imap.SelectOptions) (*imap.Sel
 	s.readOnly = options.ReadOnly
 	res, err := storage.DescribeMailbox(s.context, s.username, mailbox)
 	if err != nil {
-		return nil, err
+		utils.Logger(s.context).Error("describing mailbox", "error", err)
+		return nil, errInternal
 	}
 	s.selected.Count.Store(res.NumMessages)
 	return res, nil
@@ -64,6 +65,7 @@ func (s *Session) Create(box string, options *imap.CreateOptions) error {
 	box = strings.TrimPrefix(box, sep)
 	id, err := storage.CreateMailbox(s.context, s.username, box)
 	if err != nil {
+		utils.Logger(s.context).Error("creating mailbox", "error", err)
 		return err
 	}
 	s.mailboxes[box] = mailbox.NewView(uint32(id), box)
@@ -75,7 +77,12 @@ func (s *Session) Delete(mailbox string) error {
 	if !ok {
 		return errNotFound
 	}
-	return storage.DeleteMailbox(s.context, s.username, int64(box.ID))
+	err := storage.DeleteMailbox(s.context, s.username, int64(box.ID))
+	if err != nil {
+		utils.Logger(s.context).Error("deleting mailbox", "error", err)
+		return errInternal
+	}
+	return nil
 }
 
 func (s *Session) Rename(mailbox, newName string, options *imap.RenameOptions) error {
@@ -83,7 +90,12 @@ func (s *Session) Rename(mailbox, newName string, options *imap.RenameOptions) e
 	if !ok {
 		return errNotFound
 	}
-	return storage.RenameMailbox(s.context, s.username, int64(box.ID), newName)
+	err := storage.RenameMailbox(s.context, s.username, int64(box.ID), newName)
+	if err != nil {
+		utils.Logger(s.context).Error("renaming mailbox", "error", err)
+		return errInternal
+	}
+	return nil
 }
 
 func (s *Session) Subscribe(mailbox string) error {
@@ -121,7 +133,8 @@ func (s *Session) List(w *imapserver.ListWriter, ref string, patterns []string, 
 					var err error
 					status, err = s.Status(box, options.ReturnStatus)
 					if err != nil {
-						return err
+						utils.Logger(s.context).Error("fetching status", "error", err)
+						return errInternal
 					}
 				}
 				err := w.WriteList(&imap.ListData{
@@ -144,12 +157,17 @@ func (s *Session) Status(mailbox string, options *imap.StatusOptions) (*imap.Sta
 	if !ok {
 		return nil, errNotFound
 	}
-	return storage.StatusMailbox(
+	st, err := storage.StatusMailbox(
 		s.context,
 		s.username,
 		mailbox,
 		options,
 	)
+	if err != nil {
+		utils.Logger(s.context).Error("fetchin status", "error", err)
+		return nil, errInternal
+	}
+	return st, nil
 }
 
 func (s *Session) Append(mailbox string, r imap.LiteralReader, options *imap.AppendOptions) (*imap.AppendData, error) {
@@ -196,7 +214,8 @@ func (s *Session) Append(mailbox string, r imap.LiteralReader, options *imap.App
 			return in.AddMailboxEmail(ctx, int64(box.ID), id)
 		})
 	if err != nil {
-		return nil, err
+		utils.Logger(s.context).Error("storing email", "error", err)
+		return nil, errInternal
 	}
 	box.WriteNewMessages(1)
 	return &imap.AppendData{
