@@ -24,7 +24,7 @@ func (l *logger) Printf(format string, args ...any) {
 	if strings.Contains(content, "i/o timeout") {
 		return
 	}
-	ctx := logos.NewContext(context.Background(), 1, true, false)
+	ctx := logos.NewContext(context.Background(), 1, false, false)
 	log, _, _ := strings.Cut(content, "\n")
 	l.Logger.ErrorContext(ctx, log)
 }

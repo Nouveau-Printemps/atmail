@@ -6,6 +6,7 @@ import (
 	"context"
 	"io"
 	"net"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -17,10 +18,11 @@ import (
 )
 
 type Backend struct {
-	Domains   map[string]auth.Config
-	Rspamd    *RspamdClient
-	Queue     *Queue
-	LocalName string
+	Domains    map[string]auth.Config
+	Rspamd     *RspamdClient
+	Queue      *Queue
+	LocalName  string
+	AdminEmail string
 
 	Context context.Context
 
@@ -197,9 +199,15 @@ func (s *Session) Data(r io.Reader) error {
 		body, _ = io.ReadAll(spam.Body)
 	}
 valid_email:
-	user := s.RedirectTo + "@" + s.To[1]
-	if s.RedirectTo == "" {
-		user = strings.Join(s.To[:], "@")
+	var user string
+	if slices.Contains(AdminEmails, s.RedirectTo) || slices.Contains(AdminEmails, s.To[0]) {
+		user = s.backend.AdminEmail
+		s.Folder = ""
+	} else {
+		user = s.RedirectTo + "@" + s.To[1]
+		if s.RedirectTo == "" {
+			user = strings.Join(s.To[:], "@")
+		}
 	}
 	if s.ToLocal {
 		go s.relayInside(s.context, user, body, h, spam)

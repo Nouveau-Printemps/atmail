@@ -6,17 +6,20 @@ import (
 	"net"
 	"os"
 	"path"
+	"slices"
 	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/pires/go-proxyproto"
 	"nouveauprintemps.org/atmail/auth"
+	"nouveauprintemps.org/atmail/relay"
 )
 
 type Config struct {
 	DB         string                 `toml:"db"`
 	Directory  string                 `toml:"directory"`
 	MainDomain string                 `toml:"main_domain"`
+	AdminEmail string                 `toml:"admin_email"`
 	Smtp       SmtpConfig             `toml:"smtp"`
 	Imap       ImapConfig             `toml:"imap"`
 	Domains    map[string]auth.Config `toml:"domains"`
@@ -55,6 +58,9 @@ func ParseConfig(p string) (Config, error) {
 		}
 		return cfg, err
 	}
+	if !data.IsDefined("admin_email") {
+		slog.Warn("admin_email is not set")
+	}
 	for _, k := range data.Undecoded() {
 		slog.Warn("decoding config: configuration key not decoded", "key", k)
 	}
@@ -81,6 +87,10 @@ func ParseConfig(p string) (Config, error) {
 		}
 		if k.Static != nil {
 			for u, v := range k.Static.Users {
+				if slices.Contains(relay.AdminEmails, u) {
+					slog.Error("this username is reserved", "domain", d, "user", u)
+					os.Exit(2)
+				}
 				if v.PGPPubKey != nil && v.PGPPubKeyFile != nil {
 					slog.Error(
 						"decoding config: only one of pgp_pub_key and pgp_pub_key_file can be enabled",

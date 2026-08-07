@@ -99,6 +99,7 @@ func main() {
 		Domains:     cfg.Domains,
 		Queue:       relay.NewQueue(),
 		LocalName:   cfg.MainDomain,
+		AdminEmail:  cfg.AdminEmail,
 		Context:     utils.WithLogger(ctx, slog.With("module", "smtp")),
 		RateLimiter: rl,
 	}

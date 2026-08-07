@@ -19,6 +19,8 @@ import (
 	"nouveauprintemps.org/atmail/utils"
 )
 
+var AdminEmails = []string{"root", "postmaster", "operator", "mail-daemon", "daemon", "uucp", "abuse", "security"}
+
 func (s *Session) relayInside(ctx context.Context, user string, body []byte, h textproto.Header, spam *RspamdResponse) {
 	score := sql.NullFloat64{Float64: 0, Valid: false}
 	if spam != nil {

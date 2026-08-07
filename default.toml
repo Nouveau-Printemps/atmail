@@ -5,6 +5,8 @@ directory = "/var/lib/atmail/data"
 
 # domain broadcasted
 main_domain = "mail.example.org"
+# email of the admin (used to redirect postmaster@example.org and other security-related mailboxes to the right user)
+admin_email = "admin@example.org"
 
 [smtp]
 # address to listen to (tcp or unix socket)
