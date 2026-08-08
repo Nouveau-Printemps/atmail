@@ -22,7 +22,7 @@ use_proxy_v2 = false
 
 [domains."example.org"]
 # if you wanna enable support of plus addressing like 'foo+bar@example.org'
-plus_addressing = true
+plus_subaddressing = true
 # if you wanna create an IMAP folder for each subaddress, like 'INBOX/bar' for 'foo+bar@example.org'
 create_folder_subaddressing = false
 

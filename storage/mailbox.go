@@ -96,6 +96,7 @@ func StatusMailbox(ctx context.Context, user, mailbox string, opt *imap.StatusOp
 			return nil, err
 		}
 		var status imap.StatusData
+		status.Mailbox = mailbox
 		if opt.NumMessages {
 			n, err := in.CountMailboxEmails(ctx, box.ID)
 			if err != nil {

@@ -52,7 +52,7 @@ func ParseConfig(p string) (Config, error) {
 			slog.Warn("config file not found, writing the default config", "path", p)
 			err := os.WriteFile(p, defaultConfig, 0o640)
 			if err != nil {
-				panic(err)
+				slog.Error("writing config file", "error", err)
 			}
 			os.Exit(1)
 		}
