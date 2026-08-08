@@ -27,6 +27,8 @@ func GetMailboxAttributes(ctx context.Context, user, mailbox string) ([]imap.Mai
 			attrs = append(attrs, imap.MailboxAttrJunk)
 		case SentMailbox:
 			attrs = append(attrs, imap.MailboxAttrSent)
+		case TrashMailbox:
+			attrs = append(attrs, imap.MailboxAttrTrash)
 		}
 		return attrs, nil
 	})

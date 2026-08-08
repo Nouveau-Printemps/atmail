@@ -41,6 +41,10 @@ BEGIN IMMEDIATE TRANSACTION;
 	INSERT INTO mailbox (id, name)
 	VALUES (3, 'Sent')
 	ON CONFLICT DO NOTHING;
+
+	INSERT INTO mailbox (id, name)
+	VALUES (4, 'Trash')
+	ON CONFLICT DO NOTHING;
 END;
 
 -- ensure that the required flags exist
@@ -102,5 +106,9 @@ BEGIN IMMEDIATE TRANSACTION;
 
 	INSERT INTO mailbox_flags (mailbox_id, flag_id)
 	VALUES (2, 8)
+	ON CONFLICT DO NOTHING;
+
+	INSERT INTO mailbox_flags (mailbox_id, flag_id)
+	VALUES (4, 4)
 	ON CONFLICT DO NOTHING;
 END;

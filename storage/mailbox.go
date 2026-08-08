@@ -15,6 +15,7 @@ const (
 	InboxMailbox int64 = iota + 1
 	JunkMailbox
 	SentMailbox
+	TrashMailbox
 )
 
 func LoadMailbox(ctx context.Context, user string) ([]store.ListMailboxRow, error) {
