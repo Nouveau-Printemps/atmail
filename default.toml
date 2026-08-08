@@ -2,6 +2,8 @@
 db = "/var/lib/atmail/data.db"
 # directory containing the mails
 directory = "/var/lib/atmail/data"
+# folder containing domains' config file
+domains_folder = "/etc/atmail/domains.d/"
 
 # domain broadcasted
 main_domain = "mail.example.org"
@@ -30,8 +32,8 @@ user = "admin"
 # sets the IMAP folder for this account (empty for INBOX)
 #folder = "security"
 # if you wanna encrypt with PGP
-#foo.pgp_pub_key = ""
-#bar.pgp_pub_key_file = ""
+#pgp_pub_key = ""
+#pgp_pub_key_file = ""
 
 
 # If you wanna use ATProto for the auth

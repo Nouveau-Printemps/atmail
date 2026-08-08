@@ -31,11 +31,11 @@ If you want to increase the verbosity, add `-v`.
 db = "/var/lib/atmail/data.db"
 # directory containing the mails
 directory = "/var/lib/atmail/data"
+# folder containing domains' config file
+domains_folder = "/etc/atmail/domains.d/"
 
 # domain broadcasted in SMTP HELO/EHLO
 main_domain = "mail.example.org"
-# email of the admin (used to redirect postmaster@example.org and other security-related mailboxes to the right user)
-admin_email = "admin@example.org"
 ```
 
 ### SMTP and IMAP
@@ -102,6 +102,7 @@ client_secret = "my-secret"
 ```
 
 #### Subaddressing
+
 You can enable the plus subaddressing (e.g., `foo+bar@example.org` is redirected to `foo@example.org`) for one domain
 with:
 ```toml
@@ -118,6 +119,44 @@ create_folder_subaddressing = true
 If enabled, an email to `foo+bar@example.org` will be placed in `INBOX/bar`.
 If the domain is a catch all one, every redirected email is placed in `INBOX/address` (e.g., `foo@example.org` goes in
 `INBOX/foo`).
+
+#### Admin
+
+Each domain should have an administrator account.
+To promote a regular account into an administrator one, add a section `admin` to the domain:
+```toml
+[domains."example.org".admin]
+# username of the account
+user = "admin"
+# IMAP folder to use
+#folder = ""
+# if you wanna encrypt with PGP
+#pgp_pub_key = ""
+#pgp_pub_key_file = ""
+```
+
+This account can be reached with `postmaster`, `root`, `operator`, `security` and `abuse` usernames.
+These are reserved and cannot be used for a regular user.
+
+### Splitting config file
+
+Each domain can have its own config file.
+They are placed in `/etc/atmail/domains.d/` by default.
+Their name must follow this scheme: `domain.tld.toml`, where `domain.tld` is the domain.
+This configuration always overrides the one defined in the main config file.
+
+The file contains the complete definition of the domain.
+It is directly injected in the section `[domains."domain.tld"]`, thus you must omit this prefix, e.g.,
+```toml
+plus_subaddressing = true
+
+[admin]
+user = "noreply"
+
+[static.users]
+noreply.password = "$2y$10$wWJy64n5j4pU2CscdWRq.er5Z2.V31U5Ntz5uTopLy1fMX87GQEDG"
+foo.password = "$2y$10$wWJy64n5j4pU2CscdWRq.er5Z2.V31U5Ntz5uTopLy1fMX87GQEDG"
+```
 
 ## Roadmap
 
