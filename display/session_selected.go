@@ -292,5 +292,5 @@ func (s *Session) Move(w *imapserver.MoveWriter, set imap.NumSet, dest string) e
 }
 
 func (s *Session) Idle(w *imapserver.UpdateWriter, stop <-chan struct{}) error {
-	return s.selected.Idle(w, stop)
+	return s.selected.Idle(s.context, w, stop)
 }

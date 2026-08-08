@@ -24,7 +24,7 @@ import (
 
 func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, body []byte, h textproto.Header, spam *RspamdResponse) {
 	l := utils.Logger(ctx).With("to", rcpt.Address)
-	score := sql.NullFloat64{Float64: 0, Valid: false}
+	var score sql.NullFloat64
 	if spam != nil {
 		score.Float64 = spam.Score
 		score.Valid = true
@@ -67,7 +67,7 @@ func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, body []byte, h tex
 	}
 }
 
-func (b *Backend) relayOutside(from, to, domain string, body []byte) error {
+func (b *Backend) relayOutside(from string, to []string, domain string, body []byte) error {
 	l := slog.With("domain", domain, "from", from, "to", to)
 	relays, err := relaysOf(domain)
 	if err != nil {
@@ -80,14 +80,13 @@ func (b *Backend) relayOutside(from, to, domain string, body []byte) error {
 			// wrapping in anonymous function call to use defer
 			err = func() error {
 				var conn net.Conn
-				var client *smtp.Client
 				conn, err = tls.Dial("tcp", host, nil)
 				if err != nil {
 					l.Warn("dialing with tls to relay")
 					conn, err = net.Dial("tcp", host)
 				}
 				defer conn.Close()
-				client = smtp.NewClient(conn)
+				client := smtp.NewClient(conn)
 				if ok, _ := client.Extension("STARTTLS"); ok {
 					l.Debug("using STARTTLS")
 					client, err = smtp.NewClientStartTLS(conn, nil)
@@ -100,7 +99,7 @@ func (b *Backend) relayOutside(from, to, domain string, body []byte) error {
 				if err != nil {
 					return err
 				}
-				return client.SendMail(from, []string{to}, bytes.NewBuffer(body))
+				return client.SendMail(from, to, bytes.NewBuffer(body))
 			}()
 		}
 		if err == nil {

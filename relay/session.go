@@ -195,16 +195,20 @@ func (s *Session) Data(r io.Reader) error {
 		body, _ = io.ReadAll(spam.Body)
 	}
 valid_email:
-	for _, rcpt := range s.To {
-		if rcpt.Local {
-			go s.relayInside(s.context, rcpt, body, h, spam)
-		} else {
+	for d, groups := range utils.GroupBy(s.To, func(to Rcpt) string {
+		return to.Domain
+	}) {
+		if !groups[0].Local {
 			s.backend.Queue.Enqueue(
 				strings.Join(s.From[:], "@"),
-				rcpt.Address,
-				rcpt.Domain,
+				utils.Map(groups, func(rcpt Rcpt) string { return rcpt.Address }),
+				d,
 				body,
 			)
+			continue
+		}
+		for _, rcpt := range groups {
+			go s.relayInside(s.context, rcpt, body, h, spam)
 		}
 	}
 	return nil

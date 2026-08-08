@@ -12,7 +12,7 @@ import (
 
 type emailEnqueued struct {
 	From     string
-	To       string
+	To       []string
 	Domain   string
 	Body     []byte
 	MustWait time.Duration
@@ -28,7 +28,7 @@ func NewQueue() *Queue {
 	return &Queue{sender: make(chan emailEnqueued, 2)}
 }
 
-func (q *Queue) Enqueue(from, to, domain string, body []byte) {
+func (q *Queue) Enqueue(from string, to []string, domain string, body []byte) {
 	go func() {
 		q.sender <- emailEnqueued{
 			From:   from,

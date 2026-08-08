@@ -1,6 +1,7 @@
 package mailbox
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 
@@ -31,7 +32,7 @@ func NewView(id uint32, name string) *View {
 	}
 }
 
-func (v *View) Idle(w *imapserver.UpdateWriter, stop <-chan struct{}) error {
+func (v *View) Idle(ctx context.Context, w *imapserver.UpdateWriter, stop <-chan struct{}) error {
 	errc := make(chan error)
 	v.mu.Lock()
 	v.writers[w] = errc
@@ -42,6 +43,8 @@ func (v *View) Idle(w *imapserver.UpdateWriter, stop <-chan struct{}) error {
 		v.mu.Unlock()
 	}()
 	select {
+	case <-ctx.Done():
+		return ctx.Err()
 	case <-stop:
 		return nil
 	case err := <-errc:

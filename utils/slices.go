@@ -30,6 +30,20 @@ func Zip[A, B any](as iter.Seq[A], bs iter.Seq[B]) iter.Seq2[A, B] {
 	}
 }
 
+func GroupBy[A any, B comparable](in []A, fn func(A) B) map[B][]A {
+	mp := make(map[B][]A)
+	for _, a := range in {
+		key := fn(a)
+		arr, ok := mp[key]
+		if !ok {
+			mp[key] = []A{a}
+		} else {
+			arr = append(arr, a)
+		}
+	}
+	return mp
+}
+
 func Any(in []bool) bool {
 	for _, v := range in {
 		if v {
