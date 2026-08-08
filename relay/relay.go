@@ -5,9 +5,12 @@ import (
 	"context"
 	"crypto/tls"
 	"database/sql"
+	"encoding/base64"
 	"errors"
+	"io"
 	"iter"
 	"log/slog"
+	"mime/quotedprintable"
 	"net"
 	"net/netip"
 	"slices"
@@ -28,6 +31,15 @@ func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, body []byte, h tex
 	}
 	var encrypted bool
 	if rcpt.Key != nil {
+		// decode before encrypting
+		switch h.Get("Content-Transfer-Encoding") {
+		case "quoted-printable":
+			body, _ = io.ReadAll(quotedprintable.NewReader(bytes.NewBuffer(body)))
+			h.Set("Content-Transfer-Encoding", "8bit")
+		case "base64":
+			body, _ = io.ReadAll(base64.NewDecoder(base64.StdEncoding, bytes.NewBuffer(body)))
+			h.Set("Content-Transfer-Encoding", "8bit")
+		}
 		b, err := auth.EncryptEmail(*rcpt.Key, body)
 		if err != nil {
 			l.Error("cannot encrypt email", "error", err)

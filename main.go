@@ -108,6 +108,8 @@ func main() {
 	smtpSrv.Domain = cfg.MainDomain
 	smtpSrv.ReadTimeout = 10 * time.Second
 	smtpSrv.WriteTimeout = 10 * time.Second
+	smtpSrv.EnableSMTPUTF8 = true
+	smtpSrv.EnableBINARYMIME = true
 	defer smtpSrv.Close()
 
 	d := &display.Backend{
