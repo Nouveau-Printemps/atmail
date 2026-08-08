@@ -6,6 +6,7 @@ import (
 
 	"github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapserver"
+	"nouveauprintemps.org/atmail/auth"
 	"nouveauprintemps.org/atmail/mailbox"
 	"nouveauprintemps.org/atmail/storage"
 	"nouveauprintemps.org/atmail/utils"
@@ -35,11 +36,15 @@ type Session struct {
 }
 
 func (s *Session) Login(username, password string) error {
+	addr := s.conn.NetConn().RemoteAddr().(*net.TCPAddr).IP
 	for d, cfg := range s.backend.Domains {
 		ok, key := cfg.VerifyUser(d, username, password)
 		if ok {
 			s.username = username
 			s.key = key
+			break
+		} else if key != nil && *key == auth.LocalOnlyAccountKey && (addr.IsPrivate() || addr.IsLoopback()) {
+			s.username = username
 			break
 		}
 	}
@@ -47,7 +52,7 @@ func (s *Session) Login(username, password string) error {
 	if len(s.username) == 0 {
 		if s.backend.RateLimiter.Limit(
 			utils.WithLogger(s.context, l.With("module", "rate-limiter")),
-			s.conn.NetConn().RemoteAddr().(*net.TCPAddr).IP,
+			addr,
 		) {
 			s.conn.Bye("rate limited")
 			return nil

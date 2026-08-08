@@ -33,7 +33,8 @@ type StaticConfig struct {
 
 type StaticUser struct {
 	// Bcrypt password
-	Password string `toml:"password"`
+	Password  string `toml:"password"`
+	LocalOnly bool   `toml:"local_only"`
 	Crypto
 }
 
@@ -43,6 +44,8 @@ type CatchAll struct {
 	Password string `toml:"password"`
 	Crypto
 }
+
+var LocalOnlyAccountKey = "local only"
 
 func (cfg *Config) VerifyUser(domain, username, password string) (bool, *string) {
 	var realPass string
@@ -57,6 +60,9 @@ func (cfg *Config) VerifyUser(domain, username, password string) (bool, *string)
 		user, ok := cfg.Static.Users[username]
 		if !ok {
 			return false, nil
+		}
+		if user.LocalOnly {
+			return false, &LocalOnlyAccountKey
 		}
 		realPass = user.Password
 		crypto = user.Crypto

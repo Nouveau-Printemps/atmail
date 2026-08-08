@@ -77,6 +77,10 @@ bar.password = "$2y$10$fZ1tRpz2mfdRfaaTbx723.Gch7tY.f7LIBuZz1of/cLwBGvU39ivG"
 #bar.pgp_pub_key = ""
 #bar.pgp_pub_key_file = ""
 ```
+You can also limit an account to be used by only local IP address regardless of their password:
+```toml
+baz.local_only = true
+```
 
 **Catch All** redirects every emails to one address:
 ```toml

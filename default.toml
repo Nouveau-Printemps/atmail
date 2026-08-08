@@ -39,6 +39,8 @@ create_folder_subaddressing = false
 # You can specify their PGP public key to encrypt their message
 #foo.pgp_pub_key = ""
 #bar.pgp_pub_key_file = ""
+# If you want to only permit local connection regardless of the password
+#baz.local_only = true
 
 # Catch every mail into one address
 [domains."example.org".catch_all]

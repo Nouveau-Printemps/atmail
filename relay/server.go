@@ -57,18 +57,23 @@ func (s *Session) AuthMechanisms() []string {
 
 func (s *Session) Auth(mech string) (sasl.Server, error) {
 	return sasl.NewPlainServer(func(identity, username, password string) error {
+		addr := s.conn.Conn().RemoteAddr().(*net.TCPAddr).IP
 		for k, cfg := range s.backend.Domains {
 			ok, key := cfg.VerifyUser(k, username, password)
 			if ok {
 				s.username = username
 				s.key = key
+				break
+			} else if key != nil && *key == auth.LocalOnlyAccountKey && (addr.IsPrivate() || addr.IsLoopback()) {
+				s.username = username
+				break
 			}
 		}
 		l := utils.Logger(s.context)
 		if len(s.username) == 0 {
 			if s.backend.RateLimiter.Limit(
 				utils.WithLogger(s.context, l.With("module", "rate-limiter")),
-				s.conn.Conn().RemoteAddr().(*net.TCPAddr).IP,
+				addr,
 			) {
 				s.conn.Reject()
 				return nil
