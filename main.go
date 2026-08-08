@@ -99,7 +99,6 @@ func main() {
 		Domains:     cfg.Domains,
 		Queue:       relay.NewQueue(),
 		LocalName:   cfg.MainDomain,
-		AdminEmail:  cfg.AdminEmail,
 		Context:     utils.WithLogger(ctx, slog.With("module", "smtp")),
 		RateLimiter: rl,
 	}
@@ -119,13 +118,15 @@ func main() {
 	}
 	imapSrv := imapserver.New(d.Options(dev))
 	defer imapSrv.Close()
-	bck.OnReceive = func(user string, id int64) {
+	bck.OnReceive = func(user, mailbox string, id int64) {
 		boxes, ok := d.GetUserBoxes(user)
 		if !ok {
 			slog.Warn("user not found", "user", user)
 			return
 		}
-		boxes["INBOX"].WriteNewMessages(1)
+		if box, ok := boxes[mailbox]; ok {
+			box.WriteNewMessages(1)
+		}
 	}
 
 	storage.Cache.Path = cfg.Directory

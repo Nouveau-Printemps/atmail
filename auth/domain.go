@@ -4,6 +4,7 @@ import (
 	"crypto/subtle"
 	"net"
 	"os"
+	"slices"
 	"strings"
 
 	"golang.org/x/crypto/bcrypt"
@@ -14,7 +15,27 @@ type Crypto struct {
 	PGPPubKeyFile *string `toml:"pgp_pub_key_file"`
 }
 
+func (c Crypto) GetKey() *string {
+	if c.PGPPubKey != nil {
+		return c.PGPPubKey
+	} else if c.PGPPubKeyFile != nil {
+		b, err := os.ReadFile(*c.PGPPubKeyFile)
+		if err != nil {
+			panic(err)
+		}
+		return new(string(b))
+	}
+	return nil
+}
+
+type Admin struct {
+	User   string `toml:"user"`
+	Folder string `toml:"folder"`
+	Crypto
+}
+
 type Config struct {
+	Admin                     Admin          `toml:"admin"`
 	PlusSubaddressing         bool           `toml:"plus_subaddressing"`
 	CreateFolderSubaddressing bool           `toml:"create_folder_subaddressing"`
 	ATProto                   *ATProtoConfig `toml:"atproto"`
@@ -76,7 +97,12 @@ type UserData struct {
 	Key      *string
 }
 
+var AdminEmails = []string{"root", "postmaster", "operator", "mail-daemon", "daemon", "uucp", "abuse", "security"}
+
 func (cfg *Config) Exists(username string) *UserData {
+	if slices.Contains(AdminEmails, username) {
+		return &UserData{Username: username}
+	}
 	var data UserData
 	var crypto Crypto
 	if cfg.CatchAll != nil {
@@ -104,14 +130,6 @@ func (cfg *Config) Exists(username string) *UserData {
 		data.Folder = subaddress
 		crypto = u.Crypto
 	}
-	if crypto.PGPPubKey != nil {
-		data.Key = crypto.PGPPubKey
-	} else if crypto.PGPPubKeyFile != nil {
-		b, err := os.ReadFile(*crypto.PGPPubKeyFile)
-		if err != nil {
-			panic(err)
-		}
-		data.Key = new(string(b))
-	}
+	data.Key = crypto.GetKey()
 	return &data
 }

@@ -19,19 +19,18 @@ import (
 	"nouveauprintemps.org/atmail/utils"
 )
 
-var AdminEmails = []string{"root", "postmaster", "operator", "mail-daemon", "daemon", "uucp", "abuse", "security"}
-
-func (s *Session) relayInside(ctx context.Context, user string, body []byte, h textproto.Header, spam *RspamdResponse) {
+func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, body []byte, h textproto.Header, spam *RspamdResponse) {
+	l := utils.Logger(ctx).With("to", rcpt.Address)
 	score := sql.NullFloat64{Float64: 0, Valid: false}
 	if spam != nil {
 		score.Float64 = spam.Score
 		score.Valid = true
 	}
 	var encrypted bool
-	if s.key != nil {
-		b, err := auth.EncryptEmail(*s.key, body)
+	if rcpt.Key != nil {
+		b, err := auth.EncryptEmail(*rcpt.Key, body)
 		if err != nil {
-			utils.Logger(ctx).Error("cannot encrypt email", "error", err)
+			l.Error("cannot encrypt email", "error", err)
 		} else {
 			body = b
 			encrypted = true
@@ -40,19 +39,19 @@ func (s *Session) relayInside(ctx context.Context, user string, body []byte, h t
 	b := formatMail(h.Map(), body)
 	id, err := storage.StoreEmailInbox(
 		ctx,
-		s.From, s.To,
-		user,
+		s.From, [2]string{rcpt.User, rcpt.Domain},
+		rcpt.Address,
 		score,
 		b,
-		s.Folder,
+		rcpt.Folder,
 		encrypted,
 	)
 	if err != nil {
-		utils.Logger(ctx).Error("cannot save email", "error", err)
+		l.Error("cannot save email", "error", err)
 		return
 	}
 	if s.backend.OnReceive != nil {
-		s.backend.OnReceive(user, id)
+		s.backend.OnReceive(rcpt.Address, rcpt.Folder, id)
 	}
 }
 

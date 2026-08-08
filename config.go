@@ -12,7 +12,6 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/pires/go-proxyproto"
 	"nouveauprintemps.org/atmail/auth"
-	"nouveauprintemps.org/atmail/relay"
 )
 
 type Config struct {
@@ -58,43 +57,37 @@ func ParseConfig(p string) (Config, error) {
 		}
 		return cfg, err
 	}
-	if !data.IsDefined("admin_email") {
-		slog.Warn("admin_email is not set")
-	}
 	for _, k := range data.Undecoded() {
 		slog.Warn("decoding config: configuration key not decoded", "key", k)
 	}
 	for d, k := range cfg.Domains {
+		l := slog.With("domain", d)
 		if k.ATProto == nil && k.Static == nil && k.CatchAll == nil {
-			slog.Error("decoding config: one auth configuration must be enabled per domain", "domain", d)
+			l.Error("decoding config: one auth configuration must be enabled per domain")
 			os.Exit(2)
+		}
+		if !data.IsDefined("domains", d, "admin", "user") {
+			l.Warn("decoding config: admin not set")
 		}
 		if (k.ATProto != nil && k.Static != nil) ||
 			(k.ATProto != nil && k.CatchAll != nil) ||
 			(k.CatchAll != nil && k.Static != nil) {
-			slog.Error(
-				"decoding config: only one auth configuration must be enabled per domain",
-				"domain", d,
-			)
+			l.Error("decoding config: only one auth configuration must be enabled per domain")
 			os.Exit(2)
 		}
 		if k.CatchAll != nil && k.CatchAll.PGPPubKey != nil && k.CatchAll.PGPPubKeyFile != nil {
-			slog.Error(
-				"decoding config: only one of pgp_pub_key and pgp_pub_key_file can be enabled",
-				"domain", d,
-			)
+			l.Error("decoding config: only one of pgp_pub_key and pgp_pub_key_file can be enabled")
 			os.Exit(2)
 		}
 		if k.Static != nil {
 			for u, v := range k.Static.Users {
-				if slices.Contains(relay.AdminEmails, u) {
-					slog.Error("this username is reserved", "domain", d, "user", u)
+				if slices.Contains(auth.AdminEmails, u) {
+					l.Error("this username is reserved", "user", u)
 					os.Exit(2)
 				}
 				if v.PGPPubKey != nil && v.PGPPubKeyFile != nil {
-					slog.Error(
+					l.Error(
 						"decoding config: only one of pgp_pub_key and pgp_pub_key_file can be enabled",
-						"domain", d,
 						"user", u,
 					)
 					os.Exit(2)

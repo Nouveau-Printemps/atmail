@@ -5,8 +5,6 @@ directory = "/var/lib/atmail/data"
 
 # domain broadcasted
 main_domain = "mail.example.org"
-# email of the admin (used to redirect postmaster@example.org and other security-related mailboxes to the right user)
-admin_email = "admin@example.org"
 
 [smtp]
 # address to listen to (tcp or unix socket)
@@ -25,6 +23,16 @@ use_proxy_v2 = false
 plus_subaddressing = true
 # if you wanna create an IMAP folder for each subaddress, like 'INBOX/bar' for 'foo+bar@example.org'
 create_folder_subaddressing = false
+
+[domains."example.org".admin]
+# admin account (used to redirect postmaster@example.org and other security-related mailboxes to the right user)
+user = "admin"
+# sets the IMAP folder for this account (empty for INBOX)
+#folder = "security"
+# if you wanna encrypt with PGP
+#foo.pgp_pub_key = ""
+#bar.pgp_pub_key_file = ""
+
 
 # If you wanna use ATProto for the auth
 #[domains."example.org".atproto]
