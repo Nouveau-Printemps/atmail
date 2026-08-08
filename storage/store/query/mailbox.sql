@@ -145,3 +145,7 @@ SELECT email_id FROM mailbox_emails
 WHERE mailbox_id = ?
 ORDER BY email_id DESC
 LIMIT 1 OFFSET ?-1;
+
+-- name: HasMailboxChildren :one
+SELECT COUNT(*) > 1 FROM mailbox
+WHERE name LIKE ?;

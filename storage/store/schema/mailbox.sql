@@ -28,10 +28,6 @@ CREATE TABLE IF NOT EXISTS mailbox_emails (
     PRIMARY KEY(mailbox_id, email_id)
 ) strict;
 
-INSERT INTO mailbox (id, name)
-VALUES (3, 'Sent')
-ON CONFLICT DO NOTHING;
-
 -- ensure that the required mailboxes exist
 BEGIN IMMEDIATE TRANSACTION;
     INSERT INTO mailbox (id, name)
@@ -40,6 +36,10 @@ BEGIN IMMEDIATE TRANSACTION;
 
     INSERT INTO mailbox (id, name)
     VALUES (2, 'Junk')
+    ON CONFLICT DO NOTHING;
+
+    INSERT INTO mailbox (id, name)
+    VALUES (3, 'Sent')
     ON CONFLICT DO NOTHING;
 COMMIT;
 

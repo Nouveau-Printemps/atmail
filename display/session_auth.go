@@ -123,29 +123,37 @@ func (s *Session) List(w *imapserver.ListWriter, ref string, patterns []string, 
 	}
 	for _, p := range patterns {
 		for _, box := range boxes {
-			if imapserver.MatchList(box, storage.MailboxSeparator, ref, p) {
-				var attrs []imap.MailboxAttr
-				if _, ok := s.subscribed[box]; ok {
-					attrs = append(attrs, imap.MailboxAttrSubscribed)
-				}
-				var status *imap.StatusData
-				if options.ReturnStatus != nil {
-					var err error
-					status, err = s.Status(box, options.ReturnStatus)
-					if err != nil {
-						utils.Logger(s.context).Error("fetching status", "error", err)
-						return errInternal
-					}
-				}
-				err := w.WriteList(&imap.ListData{
-					Delim:   storage.MailboxSeparator,
-					Mailbox: box,
-					Attrs:   attrs,
-					Status:  status,
-				})
+			if !imapserver.MatchList(box, storage.MailboxSeparator, ref, p) {
+				continue
+			}
+			l := utils.Logger(s.context).With("box", box)
+			var attrs []imap.MailboxAttr
+			if _, ok := s.subscribed[box]; ok {
+				attrs = append(attrs, imap.MailboxAttrSubscribed)
+			}
+			a, err := storage.GetMailboxAttributes(s.context, s.username, box)
+			if err != nil {
+				l.Error("getting mailbox attributes", "error", err)
+				return errInternal
+			}
+			attrs = append(attrs, a...)
+			var status *imap.StatusData
+			if options.ReturnStatus != nil {
+				var err error
+				status, err = s.Status(box, options.ReturnStatus)
 				if err != nil {
-					return err
+					l.Error("fetching status", "error", err)
+					return errInternal
 				}
+			}
+			err = w.WriteList(&imap.ListData{
+				Delim:   storage.MailboxSeparator,
+				Mailbox: box,
+				Attrs:   attrs,
+				Status:  status,
+			})
+			if err != nil {
+				return err
 			}
 		}
 	}
