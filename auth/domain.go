@@ -2,6 +2,7 @@ package auth
 
 import (
 	"crypto/subtle"
+	"net"
 	"os"
 	"strings"
 
@@ -45,53 +46,49 @@ type CatchAll struct {
 	Crypto
 }
 
-var LocalOnlyAccountKey = "local only"
-
-func (cfg *Config) VerifyUser(domain, username, password string) (bool, *string) {
+func (cfg *Config) VerifyUser(ip net.IP, domain, username, password string) bool {
 	var realPass string
-	var crypto Crypto
 	if cfg.CatchAll != nil {
 		if subtle.ConstantTimeCompare([]byte(cfg.CatchAll.User+"@"+domain), []byte(username)) != 1 {
-			return false, nil
+			return false
 		}
 		realPass = cfg.CatchAll.Password
-		crypto = cfg.CatchAll.Crypto
 	} else if cfg.Static != nil {
 		u, d, _ := strings.Cut(username, "@")
 		if d != domain {
-			return false, nil
+			return false
 		}
 		user, ok := cfg.Static.Users[u]
 		if !ok {
-			return false, nil
+			return false
 		}
 		if user.LocalOnly {
-			return false, &LocalOnlyAccountKey
+			return ip.IsLoopback() || ip.IsPrivate()
 		}
 		realPass = user.Password
-		crypto = user.Crypto
 	}
-	var key *string
-	if crypto.PGPPubKey != nil {
-		key = crypto.PGPPubKey
-	} else if crypto.PGPPubKeyFile != nil {
-		b, err := os.ReadFile(*crypto.PGPPubKeyFile)
-		if err != nil {
-			panic(err)
-		}
-		key = new(string(b))
-	}
-	return bcrypt.CompareHashAndPassword([]byte(realPass), []byte(password)) == nil, key
+	return bcrypt.CompareHashAndPassword([]byte(realPass), []byte(password)) == nil
 }
 
-func (cfg *Config) Exists(username string) (exists bool, user string, subaddress string) {
+type UserData struct {
+	Username string
+	Folder   string
+	Key      *string
+}
+
+func (cfg *Config) Exists(username string) *UserData {
+	var data UserData
+	var crypto Crypto
 	if cfg.CatchAll != nil {
 		if !cfg.CreateFolderSubaddressing {
 			username = ""
 		}
-		return true, cfg.CatchAll.User, username
-	}
-	if cfg.Static != nil {
+		data.Username = cfg.CatchAll.User
+		if username != cfg.CatchAll.User {
+			data.Folder = username
+		}
+		crypto = cfg.CatchAll.Crypto
+	} else if cfg.Static != nil {
 		var subaddress string
 		if cfg.PlusSubaddressing {
 			username, subaddress, _ = strings.Cut(username, "+")
@@ -99,8 +96,22 @@ func (cfg *Config) Exists(username string) (exists bool, user string, subaddress
 		if !cfg.CreateFolderSubaddressing {
 			subaddress = ""
 		}
-		_, ok := cfg.Static.Users[username]
-		return ok, username, subaddress
+		u, ok := cfg.Static.Users[username]
+		if !ok {
+			return nil
+		}
+		data.Username = username
+		data.Folder = subaddress
+		crypto = u.Crypto
 	}
-	return
+	if crypto.PGPPubKey != nil {
+		data.Key = crypto.PGPPubKey
+	} else if crypto.PGPPubKeyFile != nil {
+		b, err := os.ReadFile(*crypto.PGPPubKeyFile)
+		if err != nil {
+			panic(err)
+		}
+		data.Key = new(string(b))
+	}
+	return &data
 }

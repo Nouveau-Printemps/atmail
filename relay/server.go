@@ -57,14 +57,10 @@ func (s *Session) AuthMechanisms() []string {
 
 func (s *Session) Auth(mech string) (sasl.Server, error) {
 	return sasl.NewPlainServer(func(identity, username, password string) error {
-		addr := s.conn.Conn().RemoteAddr().(*net.TCPAddr).IP
+		ip := s.conn.Conn().RemoteAddr().(*net.TCPAddr).IP
 		for k, cfg := range s.backend.Domains {
-			ok, key := cfg.VerifyUser(k, username, password)
+			ok := cfg.VerifyUser(ip, k, username, password)
 			if ok {
-				s.username = username
-				s.key = key
-				break
-			} else if key != nil && *key == auth.LocalOnlyAccountKey && (addr.IsPrivate() || addr.IsLoopback()) {
 				s.username = username
 				break
 			}
@@ -73,7 +69,7 @@ func (s *Session) Auth(mech string) (sasl.Server, error) {
 		if len(s.username) == 0 {
 			if s.backend.RateLimiter.Limit(
 				utils.WithLogger(s.context, l.With("module", "rate-limiter")),
-				addr,
+				ip,
 			) {
 				s.conn.Reject()
 				return nil
@@ -86,7 +82,6 @@ func (s *Session) Auth(mech string) (sasl.Server, error) {
 			"client connected",
 			"ip", s.conn.Conn().RemoteAddr(),
 			"user", username,
-			"with key", s.key != nil,
 		)
 		return nil
 	}), nil
@@ -118,16 +113,17 @@ func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 		}
 	}
 	// to local
-	exists, username, subaddress := cfg.Exists(s.To[0])
-	if !exists {
+	data := cfg.Exists(s.To[0])
+	if data == nil {
 		return &smtp.SMTPError{
 			Code:         550,
 			EnhancedCode: [3]int{5, 1, 1},
 			Message:      "Address doesn't exist",
 		}
 	}
-	s.RedirectTo = username
-	s.Folder = subaddress
+	s.RedirectTo = data.Username
+	s.Folder = data.Folder
+	s.key = data.Key
 	return nil
 }
 
