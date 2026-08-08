@@ -15,13 +15,14 @@ import (
 )
 
 type Config struct {
-	DB         string                 `toml:"db"`
-	Directory  string                 `toml:"directory"`
-	MainDomain string                 `toml:"main_domain"`
-	AdminEmail string                 `toml:"admin_email"`
-	Smtp       SmtpConfig             `toml:"smtp"`
-	Imap       ImapConfig             `toml:"imap"`
-	Domains    map[string]auth.Config `toml:"domains"`
+	DB            string                 `toml:"db"`
+	Directory     string                 `toml:"directory"`
+	MainDomain    string                 `toml:"main_domain"`
+	AdminEmail    string                 `toml:"admin_email"`
+	DomainsFolder *string                `toml:"domains_folder"`
+	Smtp          SmtpConfig             `toml:"smtp"`
+	Imap          ImapConfig             `toml:"imap"`
+	Domains       map[string]auth.Config `toml:"domains"`
 }
 
 type ListenConfig struct {
@@ -60,13 +61,34 @@ func ParseConfig(p string) (Config, error) {
 	for _, k := range data.Undecoded() {
 		slog.Warn("decoding config: configuration key not decoded", "key", k)
 	}
+	if cfg.DomainsFolder != nil {
+		entries, err := os.ReadDir(*cfg.DomainsFolder)
+		if err != nil {
+			return cfg, err
+		}
+		for _, entry := range entries {
+			d, rest, ok := strings.Cut(entry.Name(), ".toml")
+			if !ok || entry.IsDir() || len(rest) != 0 {
+				continue
+			}
+			var auth auth.Config
+			data, err := toml.DecodeFile(path.Join(*cfg.DomainsFolder, entry.Name()), &auth)
+			if err != nil {
+				return cfg, err
+			}
+			for _, k := range data.Undecoded() {
+				slog.Warn("decoding config: configuration key not decoded", "key", k, "file", entry.Name())
+			}
+			cfg.Domains[d] = auth
+		}
+	}
 	for d, k := range cfg.Domains {
 		l := slog.With("domain", d)
 		if k.ATProto == nil && k.Static == nil && k.CatchAll == nil {
 			l.Error("decoding config: one auth configuration must be enabled per domain")
 			os.Exit(2)
 		}
-		if !data.IsDefined("domains", d, "admin", "user") {
+		if k.Admin.User == "" {
 			l.Warn("decoding config: admin not set")
 		}
 		if (k.ATProto != nil && k.Static != nil) ||
