@@ -57,7 +57,11 @@ func (cfg *Config) VerifyUser(domain, username, password string) (bool, *string)
 		realPass = cfg.CatchAll.Password
 		crypto = cfg.CatchAll.Crypto
 	} else if cfg.Static != nil {
-		user, ok := cfg.Static.Users[username]
+		u, d, _ := strings.Cut(username, "@")
+		if d != domain {
+			return false, nil
+		}
+		user, ok := cfg.Static.Users[u]
 		if !ok {
 			return false, nil
 		}
