@@ -6,7 +6,7 @@ RETURNING *;
 
 -- name: ListMailbox :many
 SELECT m.*, (
-    SELECT COUNT(*) FROM mailbox_emails e WHERE e.mailbox_id = m.id
+	SELECT COUNT(*) FROM mailbox_emails e WHERE e.mailbox_id = m.id
 ) FROM mailbox m;
 
 -- name: NewMailbox :one
@@ -46,7 +46,7 @@ WHERE mailbox_id = ? AND flag_id = ?;
 -- name: ListEmailFlags :many
 SELECT * FROM flags f
 WHERE EXISTS(
-    SELECT * FROM emails_flags e WHERE e.email_id = ? and e.flag_id = f.id
+	SELECT * FROM emails_flags e WHERE e.email_id = ? and e.flag_id = f.id
 );
 
 -- name: AddEmailFlag :exec
@@ -73,44 +73,44 @@ WHERE mailbox_id = ?;
 -- name: GetLatestMailboxEmails :many
 SELECT * FROM emails e
 WHERE EXISTS(
-    SELECT * FROM mailbox_emails m WHERE m.mailbox_id = ? and m.email_id = e.id
+	SELECT * FROM mailbox_emails m WHERE m.mailbox_id = ? and m.email_id = e.id
 ) ORDER BY e.id ASC
 LIMIT ? OFFSET ?;
 
 -- name: GetMailboxEmails :many
 SELECT * FROM emails e
 WHERE EXISTS(
-    SELECT * FROM mailbox_emails m WHERE m.mailbox_id = ? and m.email_id = e.id
+	SELECT * FROM mailbox_emails m WHERE m.mailbox_id = ? and m.email_id = e.id
 ) AND e.id IN (sqlc.slice('ids'));
 
 -- name: ListMailboxEmails :many
 SELECT * FROM emails e
 WHERE EXISTS(
-    SELECT * FROM mailbox_emails m WHERE m.mailbox_id = ? and m.email_id = e.id
+	SELECT * FROM mailbox_emails m WHERE m.mailbox_id = ? and m.email_id = e.id
 );
 
 -- name: RemoveMailboxEmails :exec
 DELETE FROM emails
 WHERE EXISTS(
-    SELECT * FROM mailbox_emails m WHERE m.mailbox_id = ? and m.email_id = id
+	SELECT * FROM mailbox_emails m WHERE m.mailbox_id = ? and m.email_id = id
 ) AND id IN (sqlc.slice('ids'));
 
 -- name: ListEmailsNoMailbox :many
 SELECT * FROM emails e
 WHERE NOT EXISTS(
-    SELECT * FROM mailbox_emails m WHERE m.email_id = e.id
+	SELECT * FROM mailbox_emails m WHERE m.email_id = e.id
 );
 
 -- name: ListEmailsWithFlag :many
 SELECT * FROM emails e
 WHERE EXISTS (
-    SELECT * FROM emails_flags f WHERE f.flag_id = ? and f.email_id = e.id
+	SELECT * FROM emails_flags f WHERE f.flag_id = ? and f.email_id = e.id
 );
 
 -- name: RemoveEmailsWithFlag :exec
 DELETE FROM emails
 WHERE EXISTS (
-    SELECT * FROM emails_flags f WHERE f.email_id = id AND f.flag_id = ?
+	SELECT * FROM emails_flags f WHERE f.email_id = id AND f.flag_id = ?
 );
 
 -- name: RemoveEmailFlags :exec
@@ -120,20 +120,20 @@ WHERE email_id = ?;
 -- name: AddEmailFlagName :exec
 INSERT INTO emails_flags (email_id, flag_id)
 VALUES (?, (
-        SELECT id FROM flags WHERE name = ?
+		SELECT id FROM flags WHERE name = ?
 ))
 ON CONFLICT DO NOTHING;
 
 -- name: RemoveEmailFlagName :exec
 DELETE FROM emails_flags
 WHERE email_id = ? AND flag_id = (
-    SELECT id FROM flags WHERE name = ?
+	SELECT id FROM flags WHERE name = ?
 );
 
 -- name: CountEmailsWithFlagInMailbox :one
 SELECT COUNT(*) FROM emails_flags e
 WHERE e.flag_id = ? AND EXISTS(
-    SELECT * FROM mailbox_emails m WHERE m.email_id = e.email_id AND m.mailbox_id = ?
+	SELECT * FROM mailbox_emails m WHERE m.email_id = e.email_id AND m.mailbox_id = ?
 );
 
 -- name: GetSequence :one

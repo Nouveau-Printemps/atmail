@@ -29,6 +29,5 @@ SELECT * FROM meta LIMIT 1;
 INSERT INTO meta (id, last_file, offset)
 VALUES (?, ?, ?)
 ON CONFLICT DO UPDATE SET
-    last_file = excluded.last_file,
-    offset = excluded.offset;
-
+	last_file = excluded.last_file,
+	offset = excluded.offset;
