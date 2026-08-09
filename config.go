@@ -71,6 +71,9 @@ func ParseConfig(p string) (Config, error) {
 		if err != nil {
 			return cfg, err
 		}
+		if cfg.Domains == nil {
+			cfg.Domains = make(map[string]auth.Config, len(entries))
+		}
 		for _, entry := range entries {
 			d, rest, ok := strings.Cut(entry.Name(), ".toml")
 			if !ok || entry.IsDir() || len(rest) != 0 {
