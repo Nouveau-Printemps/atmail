@@ -22,7 +22,7 @@ use_proxy_v2 = false
 
 #[rspamd]
 # Address of the rspamd server
-#address = ""
+#address = "localhost:11332"
 
 [domains."example.org"]
 # if you wanna enable support of plus addressing like 'foo+bar@example.org'

@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-sasl"
@@ -145,6 +146,7 @@ func (s *Session) Data(r io.Reader) error {
 	}
 	body, _ := io.ReadAll(buf)
 	var spam *RspamdResponse
+	var wait time.Duration
 	err = func() error {
 		if s.backend.Rspamd == nil {
 			return nil
@@ -194,6 +196,7 @@ func (s *Session) Data(r io.Reader) error {
 		case RewriteSubjectResponse:
 			h.Add("Subject", spam.Subject)
 		case GreylistResponse:
+			wait = 15 * time.Minute
 		case NoActionResponse:
 		default:
 			panic("not implemented")
@@ -206,22 +209,27 @@ func (s *Session) Data(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	for d, groups := range utils.GroupBy(s.To, func(to Rcpt) string {
-		return to.Domain
-	}) {
-		if !groups[0].Local {
-			s.backend.Queue.Enqueue(
-				strings.Join(s.From[:], "@"),
-				utils.Map(groups, func(rcpt Rcpt) string { return rcpt.Address }),
-				d,
-				body,
-			)
-			continue
+	go func() {
+		if wait != 0 {
+			time.Sleep(wait)
 		}
-		for _, rcpt := range groups {
-			go s.relayInside(s.context, rcpt, body, h, spam)
+		for d, groups := range utils.GroupBy(s.To, func(to Rcpt) string {
+			return to.Domain
+		}) {
+			if !groups[0].Local {
+				s.backend.Queue.Enqueue(
+					strings.Join(s.From[:], "@"),
+					utils.Map(groups, func(rcpt Rcpt) string { return rcpt.Address }),
+					d,
+					body,
+				)
+				continue
+			}
+			for _, rcpt := range groups {
+				s.relayInside(s.context, rcpt, body, h, spam)
+			}
 		}
-	}
+	}()
 	return nil
 }
 

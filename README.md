@@ -61,7 +61,7 @@ use_proxy_v2 = false
 ```toml
 [rspamd]
 # Address of the rspamd server
-#address = ""
+#address = "localhost:11332"
 ```
 
 ### Domains
