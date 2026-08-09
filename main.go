@@ -6,6 +6,7 @@ import (
 	"flag"
 	"log/slog"
 	"log/syslog"
+	"net/http"
 	"os"
 	"os/signal"
 	"path"
@@ -101,6 +102,12 @@ func main() {
 		LocalName:   cfg.MainDomain,
 		Context:     utils.WithLogger(ctx, slog.With("module", "smtp")),
 		RateLimiter: rl,
+	}
+	if cfg.Rspamd != nil {
+		bck.Rspamd = &relay.RspamdClient{
+			Client: http.DefaultClient,
+			URL:    cfg.Rspamd.Address,
+		}
 	}
 	smtpSrv := smtp.NewServer(&bck)
 	smtpSrv.AllowInsecureAuth = dev

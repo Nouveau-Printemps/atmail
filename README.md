@@ -56,6 +56,14 @@ listen = ":993"
 use_proxy_v2 = false
 ```
 
+### rspamd
+
+```toml
+[rspamd]
+# Address of the rspamd server
+#address = ""
+```
+
 ### Domains
 
 AT Mail can handle multiple domains.

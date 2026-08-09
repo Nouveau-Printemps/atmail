@@ -20,6 +20,7 @@ type Config struct {
 	MainDomain    string                 `toml:"main_domain"`
 	AdminEmail    string                 `toml:"admin_email"`
 	DomainsFolder *string                `toml:"domains_folder"`
+	Rspamd        *RspamdConfig          `toml:"rspamd"`
 	Smtp          SmtpConfig             `toml:"smtp"`
 	Imap          ImapConfig             `toml:"imap"`
 	Domains       map[string]auth.Config `toml:"domains"`
@@ -37,6 +38,10 @@ type SmtpConfig struct {
 
 type ImapConfig struct {
 	ListenConfig
+}
+
+type RspamdConfig struct {
+	Address string `toml:"address"`
 }
 
 const DefaultConfigPath = "/etc/atmail/config.toml"

@@ -145,12 +145,21 @@ func (s *Session) Data(r io.Reader) error {
 	}
 	body, _ := io.ReadAll(buf)
 	var spam *RspamdResponse
+	metadata := RspamdMetadata{
+		IP:    s.conn.Conn().RemoteAddr().(*net.TCPAddr).IP.String(),
+		From:  strings.Join(s.From[:], "@"),
+		Rcpt:  utils.Map(s.To, func(rcpt Rcpt) string { return rcpt.Address }),
+		Flags: []string{"body_block"},
+	}
+	if s.FromLocal {
+		metadata.User = s.username
+	}
 	if s.backend.Rspamd == nil {
 		// this goto avoids an hugly condition that is almost always met
 		// thus, this goto produces a faster assembly because there is no bad branch prediction in the common case
 		goto valid_email
 	}
-	spam, err = s.backend.Rspamd.Verify(s.context, nil, b)
+	spam, err = s.backend.Rspamd.Verify(s.context, &metadata, b)
 	if err != nil {
 		l.Error("rspamd check", "error", err)
 		return errInternal
@@ -160,7 +169,7 @@ func (s *Session) Data(r io.Reader) error {
 		goto valid_email
 	}
 	if spam.Messages != nil {
-		v, ok := spam.Messages["spam_message"]
+		v, ok := spam.Messages["smtp_message"]
 		if ok {
 			return &smtp.SMTPError{
 				Code:         550,
@@ -180,7 +189,7 @@ func (s *Session) Data(r io.Reader) error {
 		return &smtp.SMTPError{
 			Code:         450,
 			EnhancedCode: [3]int{4, 7, 1},
-			Message:      "Your message is temporary unwanted, retry later",
+			Message:      "Your message is temporarily unwanted, retry later",
 		}
 	case AddHeaderResponse:
 		h.Add("X-Spam-Score", strconv.FormatFloat(spam.Score, 'f', 2, 64))

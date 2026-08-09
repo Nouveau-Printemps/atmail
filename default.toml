@@ -20,6 +20,10 @@ max_mail_size = 16416
 listen = ":2993"
 use_proxy_v2 = false
 
+#[rspamd]
+# Address of the rspamd server
+#address = ""
+
 [domains."example.org"]
 # if you wanna enable support of plus addressing like 'foo+bar@example.org'
 plus_subaddressing = true

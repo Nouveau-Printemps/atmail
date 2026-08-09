@@ -14,8 +14,8 @@ import (
 )
 
 type RspamdClient struct {
-	client *http.Client
-	url    string
+	Client *http.Client
+	URL    string
 }
 
 type RspamdMetadata struct {
@@ -25,7 +25,7 @@ type RspamdMetadata struct {
 	Flags      []string        `json:"flags,omitzero"`
 	From       string          `json:"from"`
 	QueueId    string          `json:"queue_id,omitzero"`
-	Rcpt       string          `json:"rcpt"`
+	Rcpt       []string        `json:"rcpt"`
 	User       string          `json:"user"`
 	SettingsId string          `json:"settings_id"`
 	Settings   json.RawMessage `json:"settings"`
@@ -103,14 +103,14 @@ func (spam *RspamdClient) Verify(ctx context.Context, metadata *RspamdMetadata, 
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodPost,
-		spam.url+"/checkv3",
+		spam.URL+"/checkv3",
 		&buf,
 	)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Content-Type", w.FormDataContentType())
-	rawResp, err := spam.client.Do(req)
+	rawResp, err := spam.Client.Do(req)
 	if err != nil {
 		return nil, err
 	}
