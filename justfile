@@ -4,7 +4,7 @@ dev:
 
 build:
     go generate
-    zig build --summary all
+    zig build --summary all -Doptimize=ReleaseFast
 
 clean:
     rm -fr data/*
