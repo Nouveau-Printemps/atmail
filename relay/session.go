@@ -150,11 +150,13 @@ func (s *Session) Data(r io.Reader) error {
 	if err != nil {
 		return err
 	}
+	to := s.To
+	ctx := s.context
 	go func() {
 		if wait != 0 {
 			time.Sleep(wait)
 		}
-		for d, groups := range utils.GroupBy(s.To, func(to Rcpt) string { return to.Domain }) {
+		for d, groups := range utils.GroupBy(to, func(to Rcpt) string { return to.Domain }) {
 			if !groups[0].Local {
 				s.backend.Queue.Enqueue(
 					strings.Join(s.From[:], "@"),
@@ -165,7 +167,7 @@ func (s *Session) Data(r io.Reader) error {
 				continue
 			}
 			for _, rcpt := range groups {
-				s.relayInside(s.context, rcpt, body, h, score)
+				s.relayInside(ctx, rcpt, body, h, score)
 			}
 		}
 	}()
