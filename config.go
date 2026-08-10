@@ -2,11 +2,14 @@ package main
 
 import (
 	_ "embed"
+	"errors"
 	"log/slog"
 	"net"
 	"os"
+	"os/user"
 	"path"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -27,8 +30,10 @@ type Config struct {
 }
 
 type ListenConfig struct {
-	ListenAddr string `toml:"listen"`
-	UseProxyV2 bool   `toml:"use_proxy_v2"`
+	ListenAddr       string `toml:"listen"`
+	UseProxyV2       bool   `toml:"use_proxy_v2"`
+	SocketGroup      any    `toml:"socket_group"`
+	SocketPermission uint   `toml:"socket_permission"`
 }
 
 type SmtpConfig struct {
@@ -147,6 +152,43 @@ func (cfg ListenConfig) Listen() (net.Listener, error) {
 	}
 	if cfg.UseProxyV2 {
 		l = &proxyproto.Listener{Listener: l}
+	}
+	defer func() {
+		if err != nil {
+			l.Close()
+		}
+	}()
+	if kind == "unix" {
+		if cfg.SocketPermission > 0 {
+			err = os.Chmod(cfg.ListenAddr, os.FileMode(cfg.SocketPermission))
+			if err != nil {
+				return nil, err
+			}
+		}
+		if cfg.SocketGroup != nil {
+			var gid int
+			switch v := cfg.SocketGroup.(type) {
+			case int64:
+				if gid < 0 {
+					err = errors.New("invalid socket group: must be an uint")
+					return nil, err
+				}
+				gid = int(v)
+			case string:
+				group, err := user.LookupGroup(v)
+				if err != nil {
+					return nil, err
+				}
+				gid, _ = strconv.Atoi(group.Gid)
+			default:
+				err = errors.New("invalid socket group type: must be an uint or a string")
+				return nil, err
+			}
+			err = os.Chown(cfg.ListenAddr, -1, gid)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 	return l, nil
 }

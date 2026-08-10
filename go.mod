@@ -1,6 +1,6 @@
 module nouveauprintemps.org/atmail
 
-go 1.26
+go 1.26.0
 
 require (
 	github.com/BurntSushi/toml v1.6.0
@@ -9,7 +9,7 @@ require (
 	github.com/emersion/go-message v0.18.2
 	github.com/emersion/go-sasl v0.0.0-20241020182733-b788ff22d5a6
 	github.com/emersion/go-smtp v0.24.0
-	github.com/mattn/go-sqlite3 v1.14.48
+	github.com/mattn/go-sqlite3 v1.14.49
 	github.com/nyttikord/logos v0.2.1
 	github.com/pires/go-proxyproto v0.15.0
 	golang.org/x/crypto v0.54.0
@@ -20,7 +20,7 @@ require (
 	filippo.io/edwards25519 v1.1.1 // indirect
 	github.com/ProtonMail/go-crypto v1.4.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
-	github.com/cloudflare/circl v1.6.2 // indirect
+	github.com/cloudflare/circl v1.6.5 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/cubicdaiya/gonp v1.0.4 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect

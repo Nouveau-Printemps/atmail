@@ -11,6 +11,10 @@ main_domain = "mail.example.org"
 [smtp]
 # address to listen to (tcp or unix socket)
 listen = ":2525"
+# group of unix socket (can be a name or a gid)
+#socket_group = "mail"
+# permission of the socket
+#socket_permission = 0o660
 # use PROXY V2 Protocol by HAProxy
 use_proxy_v2 = false
 # max mail size in KiB
