@@ -51,11 +51,12 @@ func (s *Session) Login(username, password string) error {
 			s.conn.Bye("rate limited")
 			return nil
 		}
+		l.Debug("auth failed", "user", username)
 		return imapserver.ErrAuthFailed
 	}
 	l = l.With("user", username)
-	l.Debug("client connected", "ip", s.conn.NetConn().RemoteAddr())
 	s.context = utils.WithLogger(s.context, l)
+	l.Debug("client connected")
 	boxes, ok := s.backend.GetUserBoxes(s.username)
 	if ok {
 		s.mailboxes = boxes

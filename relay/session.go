@@ -57,11 +57,7 @@ func (s *Session) Auth(mech string) (sasl.Server, error) {
 		}
 		l = l.With("user", username)
 		s.context = utils.WithLogger(s.context, l)
-		l.Debug(
-			"client connected",
-			"ip", s.conn.Conn().RemoteAddr(),
-			"user", username,
-		)
+		l.Debug("client connected")
 		return nil
 	}), nil
 }

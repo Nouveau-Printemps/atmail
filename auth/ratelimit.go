@@ -58,7 +58,7 @@ func (r *RateLimiter) Limit(ctx context.Context, ip net.IP) bool {
 	v.acc = max(v.acc, 2)
 	v.acc = min(4*v.acc, 24*60*60)
 	if v.acc != prev {
-		l.Debug("rate limiting", "ip", ip, "for", v.acc*time.Second)
+		l.Debug("rate limiting", "for", v.acc*time.Second)
 	}
 	v.time = time.Now().Add(v.acc)
 	v.cancel = make(chan struct{})
@@ -68,7 +68,7 @@ func (r *RateLimiter) Limit(ctx context.Context, ip net.IP) bool {
 			r.mu.Lock()
 			defer r.mu.Unlock()
 			delete(r.limited, addr)
-			l.Debug("full cleaned", "ip", addr)
+			l.Debug("full cleaned")
 		case <-v.cancel:
 		}
 	}(addr, v.acc)

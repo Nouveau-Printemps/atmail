@@ -52,10 +52,12 @@ func (bck *Backend) Options(insecureAuth bool) *imapserver.Options {
 }
 
 func (bck *Backend) NewSession(conn *imapserver.Conn) (imapserver.Session, *imapserver.GreetingData, error) {
+	l := utils.Logger(bck.Context).With("addr", conn.NetConn().RemoteAddr())
+	l.Debug("new session")
 	return &Session{
 		backend:    bck,
 		conn:       conn,
-		context:    bck.Context,
+		context:    utils.WithLogger(bck.Context, l),
 		subscribed: map[string]struct{}{},
 	}, &imapserver.GreetingData{PreAuth: false}, nil
 }

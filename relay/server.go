@@ -5,6 +5,7 @@ import (
 
 	"github.com/emersion/go-smtp"
 	"nouveauprintemps.org/atmail/auth"
+	"nouveauprintemps.org/atmail/utils"
 )
 
 type Backend struct {
@@ -20,7 +21,9 @@ type Backend struct {
 }
 
 func (bck *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
-	return &Session{backend: bck, conn: c, context: bck.Context}, nil
+	l := utils.Logger(bck.Context).With("addr", c.Conn().RemoteAddr())
+	l.Debug("new session")
+	return &Session{backend: bck, conn: c, context: utils.WithLogger(bck.Context, l)}, nil
 }
 
 type Rcpt struct {
