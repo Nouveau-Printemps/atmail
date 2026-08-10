@@ -164,7 +164,7 @@ func relaysOf(domain string) (iter.Seq2[string, error], error) {
 				})
 			}
 			for _, srv := range srvs {
-				ip := netip.MustParseAddr(srv.Target)
+				ip := netip.MustParseAddr(srv.Target[:len(srv.Target)-1])
 				if ip.IsPrivate() || ip.IsLoopback() || ip.IsUnspecified() {
 					slog.Warn("invalid srv record", "domain", domain, "target", srv.Target)
 					continue
