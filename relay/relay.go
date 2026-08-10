@@ -127,32 +127,31 @@ func relaysOf(domain string) (iter.Seq2[string, error], error) {
 		for _, mx := range mxs {
 			_, srvs, err := net.LookupSRV("submission", "tcp", mx.Host)
 			if err != nil {
-				if e, ok := errors.AsType[*net.DNSError](err); ok && e.IsNotFound {
-					slog.Debug("no srv record, fallback to standard ports", "mx", mx.Host)
-					srvs = []*net.SRV{
-						{
-							Target: mx.Host,
-							Port:   465,
-						},
-						{
-							Target: mx.Host,
-							Port:   587,
-						},
-						{
-							Target: mx.Host,
-							Port:   25,
-						},
-						// not standard but common
-						{
-							Target: mx.Host,
-							Port:   2525,
-						},
-					}
-				} else {
+				if e, ok := errors.AsType[*net.DNSError](err); !ok || !e.IsNotFound {
 					if !yield("", err) {
 						return
 					}
 					continue
+				}
+				slog.Debug("no srv record, fallback to standard ports", "mx", mx.Host)
+				srvs = []*net.SRV{
+					{
+						Target: mx.Host,
+						Port:   465,
+					},
+					{
+						Target: mx.Host,
+						Port:   587,
+					},
+					{
+						Target: mx.Host,
+						Port:   25,
+					},
+					// not standard but common
+					{
+						Target: mx.Host,
+						Port:   2525,
+					},
 				}
 			} else {
 				slices.SortFunc(srvs, func(a, b *net.SRV) int {
@@ -164,14 +163,28 @@ func relaysOf(domain string) (iter.Seq2[string, error], error) {
 				})
 			}
 			for _, srv := range srvs {
-				ip := netip.MustParseAddr(srv.Target[:len(srv.Target)-1])
-				if ip.IsPrivate() || ip.IsLoopback() || ip.IsUnspecified() {
-					slog.Warn("invalid srv record", "domain", domain, "target", srv.Target)
+				ips, err := net.LookupIP(srv.Target)
+				if err != nil {
+					if !yield("", err) {
+						return
+					}
 					continue
 				}
-				addr := netip.AddrPortFrom(ip, srv.Port)
-				if !yield(addr.String(), nil) {
-					return
+				for _, ip := range ips {
+					l := slog.With("domain", domain, "target", srv.Target)
+					ip, err := netip.ParseAddr(ip.String())
+					if err != nil {
+						l.Warn("invalid srv record", "error", err)
+						continue
+					}
+					if ip.IsPrivate() || ip.IsLoopback() || ip.IsUnspecified() {
+						l.Warn("invalid srv record")
+						continue
+					}
+					addr := netip.AddrPortFrom(ip, srv.Port)
+					if !yield(addr.String(), nil) {
+						return
+					}
 				}
 			}
 		}
