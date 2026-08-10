@@ -143,10 +143,10 @@ func (spam *RspamdClient) Verify(ctx context.Context, metadata *RspamdMetadata, 
 	p, err = r.NextPart()
 	if err == nil {
 		resp.Body = p
-		p, err = r.NextPart()
-	}
-	if err == nil {
-		return nil, errors.New("rspamd: invalid response")
+		_, err = r.NextPart()
+		if err == nil {
+			return nil, errors.New("rspamd: invalid response")
+		}
 	}
 	if !errors.Is(err, io.EOF) {
 		return nil, err

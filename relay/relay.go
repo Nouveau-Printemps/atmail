@@ -62,6 +62,7 @@ func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, body []byte, h tex
 		l.Error("cannot save email", "error", err)
 		return
 	}
+	l.Debug("email saved")
 	if s.backend.OnReceive != nil {
 		s.backend.OnReceive(rcpt.Address, rcpt.Folder, id)
 	}
