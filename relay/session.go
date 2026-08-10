@@ -140,15 +140,21 @@ func (s *Session) Data(r io.Reader) error {
 		return errInternal
 	}
 	body, _ := io.ReadAll(buf)
+	var full []byte
 	var score *float64
 	var wait time.Duration
 	if s.backend.Rspamd != nil {
 		var sc float64
-		sc, body, wait, err = s.backend.Rspamd.Analyze(s, h, b)
+		sc, full, wait, err = s.backend.Rspamd.Analyze(s, &h, b)
+		if err != nil {
+			return err
+		}
 		score = &sc
 	}
-	if err != nil {
-		return err
+	if full == nil {
+		b = formatMail(h.Map(), body)
+	} else {
+		b = full
 	}
 	to := s.To
 	ctx := s.context
@@ -162,12 +168,12 @@ func (s *Session) Data(r io.Reader) error {
 					strings.Join(s.From[:], "@"),
 					utils.Map(groups, func(rcpt Rcpt) string { return rcpt.Address }),
 					d,
-					body,
+					b,
 				)
 				continue
 			}
 			for _, rcpt := range groups {
-				s.relayInside(ctx, rcpt, body, h, score)
+				s.relayInside(ctx, rcpt, b, &h, score)
 			}
 		}
 	}()
@@ -179,7 +185,6 @@ func (s *Session) Reset() {
 }
 
 func (s *Session) Logout() error {
-	*s = Session{backend: s.backend}
 	return nil
 }
 

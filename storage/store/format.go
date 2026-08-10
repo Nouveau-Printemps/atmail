@@ -29,8 +29,7 @@ func readEmailAt(f *os.File, offset uint32) ([]byte, error) {
 	}
 	if header[0]&EmailCompressed != 0 {
 		slog.Debug("email compressed, decompressing")
-		buf := bytes.NewBuffer(b)
-		r, err := gzip.NewReader(buf)
+		r, err := gzip.NewReader(bytes.NewBuffer(b))
 		if err != nil {
 			return nil, err
 		}

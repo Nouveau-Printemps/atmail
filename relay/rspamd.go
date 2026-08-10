@@ -154,7 +154,7 @@ func (spam *RspamdClient) Verify(ctx context.Context, metadata *RspamdMetadata, 
 	return &resp, nil
 }
 
-func (spam *RspamdClient) Analyze(s *Session, h mailproto.Header, b []byte) (float64, []byte, time.Duration, error) {
+func (spam *RspamdClient) Analyze(s *Session, h *mailproto.Header, b []byte) (float64, []byte, time.Duration, error) {
 	metadata := RspamdMetadata{
 		IP:    s.conn.Conn().RemoteAddr().(*net.TCPAddr).IP.String(),
 		From:  strings.Join(s.From[:], "@"),
@@ -215,6 +215,8 @@ func (spam *RspamdClient) Analyze(s *Session, h mailproto.Header, b []byte) (flo
 	}
 	if resp.Body != nil {
 		b, _ = io.ReadAll(resp.Body)
+	} else {
+		b = nil
 	}
 	return resp.Score, b, wait, nil
 }

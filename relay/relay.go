@@ -22,7 +22,7 @@ import (
 	"nouveauprintemps.org/atmail/utils"
 )
 
-func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, body []byte, h textproto.Header, spam *float64) {
+func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, b []byte, h *textproto.Header, spam *float64) {
 	l := utils.Logger(ctx).With("to", rcpt.Address)
 	var score sql.NullFloat64
 	if spam != nil {
@@ -34,21 +34,20 @@ func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, body []byte, h tex
 		// decode before encrypting
 		switch h.Get("Content-Transfer-Encoding") {
 		case "quoted-printable":
-			body, _ = io.ReadAll(quotedprintable.NewReader(bytes.NewBuffer(body)))
+			b, _ = io.ReadAll(quotedprintable.NewReader(bytes.NewBuffer(b)))
 			h.Set("Content-Transfer-Encoding", "8bit")
 		case "base64":
-			body, _ = io.ReadAll(base64.NewDecoder(base64.StdEncoding, bytes.NewBuffer(body)))
+			b, _ = io.ReadAll(base64.NewDecoder(base64.StdEncoding, bytes.NewBuffer(b)))
 			h.Set("Content-Transfer-Encoding", "8bit")
 		}
-		b, err := auth.EncryptEmail(*rcpt.Key, body)
+		body, err := auth.EncryptEmail(*rcpt.Key, b)
 		if err != nil {
 			l.Error("cannot encrypt email", "error", err)
 		} else {
-			body = b
+			b = body
 			encrypted = true
 		}
 	}
-	b := formatMail(h.Map(), body)
 	id, err := storage.StoreEmailInbox(
 		ctx,
 		s.From, [2]string{rcpt.User, rcpt.Domain},
