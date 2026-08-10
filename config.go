@@ -38,11 +38,13 @@ type ListenConfig struct {
 
 type SmtpConfig struct {
 	ListenConfig
-	MaxMailSize uint32 `toml:"max_mail_size"`
+	AllowInsecureAuth bool   `toml:"allow_insecure_auth"`
+	MaxMailSize       uint32 `toml:"max_mail_size"`
 }
 
 type ImapConfig struct {
 	ListenConfig
+	AllowInsecureAuth bool `toml:"allow_insecure_auth"`
 }
 
 type RspamdConfig struct {

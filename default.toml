@@ -17,6 +17,7 @@ listen = ":2525"
 #socket_permission = 0o660
 # use PROXY V2 Protocol by HAProxy
 use_proxy_v2 = false
+#allow_insecure_auth = false
 # max mail size in KiB
 max_mail_size = 16416
 

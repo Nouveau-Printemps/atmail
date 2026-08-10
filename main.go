@@ -110,7 +110,7 @@ func main() {
 		}
 	}
 	smtpSrv := smtp.NewServer(&bck)
-	smtpSrv.AllowInsecureAuth = dev
+	smtpSrv.AllowInsecureAuth = cfg.Smtp.AllowInsecureAuth || dev
 	smtpSrv.MaxMessageBytes = int64(cfg.Smtp.MaxMailSize)
 	smtpSrv.Domain = cfg.MainDomain
 	smtpSrv.ReadTimeout = 10 * time.Second
@@ -125,7 +125,7 @@ func main() {
 		MaxMailSize: cfg.Smtp.MaxMailSize,
 		RateLimiter: rl,
 	}
-	imapSrv := imapserver.New(d.Options(dev))
+	imapSrv := imapserver.New(d.Options(cfg.Imap.AllowInsecureAuth || dev))
 	defer imapSrv.Close()
 	bck.OnReceive = func(user, mailbox string, id int64) {
 		boxes, ok := d.GetUserBoxes(user)
