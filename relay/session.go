@@ -7,7 +7,6 @@ import (
 	"io"
 	"net"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -141,67 +140,13 @@ func (s *Session) Data(r io.Reader) error {
 		return errInternal
 	}
 	body, _ := io.ReadAll(buf)
-	var spam *RspamdResponse
+	var score *float64
 	var wait time.Duration
-	err = func() error {
-		if s.backend.Rspamd == nil {
-			return nil
-		}
-		metadata := RspamdMetadata{
-			IP:    s.conn.Conn().RemoteAddr().(*net.TCPAddr).IP.String(),
-			From:  strings.Join(s.From[:], "@"),
-			Rcpt:  utils.Map(s.To, func(rcpt Rcpt) string { return rcpt.Address }),
-			Flags: []string{"body_block"},
-		}
-		if s.FromLocal {
-			metadata.User = s.username
-		}
-		spam, err = s.backend.Rspamd.Verify(s.context, &metadata, b)
-		if err != nil {
-			l.Error("rspamd check", "error", err)
-			return errInternal
-		}
-		if spam.Skipped {
-			return nil
-		}
-		if spam.Messages != nil {
-			v, ok := spam.Messages["smtp_message"]
-			if ok {
-				return &smtp.SMTPError{
-					Code:         550,
-					EnhancedCode: [3]int{5, 7, 1},
-					Message:      v,
-				}
-			}
-		}
-		switch spam.Action {
-		case RejectResponse:
-			return &smtp.SMTPError{
-				Code:         550,
-				EnhancedCode: [3]int{5, 7, 1},
-				Message:      "Your message is unwanted",
-			}
-		case SoftRejectResponse:
-			return &smtp.SMTPError{
-				Code:         450,
-				EnhancedCode: [3]int{4, 7, 1},
-				Message:      "Your message is temporarily unwanted, retry later",
-			}
-		case AddHeaderResponse:
-			h.Add("X-Spam-Score", strconv.FormatFloat(spam.Score, 'f', 2, 64))
-		case RewriteSubjectResponse:
-			h.Add("Subject", spam.Subject)
-		case GreylistResponse:
-			wait = 15 * time.Minute
-		case NoActionResponse:
-		default:
-			panic("not implemented")
-		}
-		if spam.Body != nil {
-			body, _ = io.ReadAll(spam.Body)
-		}
-		return nil
-	}()
+	if s.backend.Rspamd != nil {
+		var sc float64
+		sc, body, wait, err = s.backend.Rspamd.Analyze(s, h, b)
+		score = &sc
+	}
 	if err != nil {
 		return err
 	}
@@ -209,9 +154,7 @@ func (s *Session) Data(r io.Reader) error {
 		if wait != 0 {
 			time.Sleep(wait)
 		}
-		for d, groups := range utils.GroupBy(s.To, func(to Rcpt) string {
-			return to.Domain
-		}) {
+		for d, groups := range utils.GroupBy(s.To, func(to Rcpt) string { return to.Domain }) {
 			if !groups[0].Local {
 				s.backend.Queue.Enqueue(
 					strings.Join(s.From[:], "@"),
@@ -222,7 +165,7 @@ func (s *Session) Data(r io.Reader) error {
 				continue
 			}
 			for _, rcpt := range groups {
-				s.relayInside(s.context, rcpt, body, h, spam)
+				s.relayInside(s.context, rcpt, body, h, score)
 			}
 		}
 	}()

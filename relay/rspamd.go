@@ -9,8 +9,17 @@ import (
 	"log"
 	"mime"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/textproto"
+	"strconv"
+	"strings"
+	"time"
+
+	mailproto "github.com/emersion/go-message/textproto"
+
+	"github.com/emersion/go-smtp"
+	"nouveauprintemps.org/atmail/utils"
 )
 
 type RspamdClient struct {
@@ -143,4 +152,69 @@ func (spam *RspamdClient) Verify(ctx context.Context, metadata *RspamdMetadata, 
 		return nil, err
 	}
 	return &resp, nil
+}
+
+func (spam *RspamdClient) Analyze(s *Session, h mailproto.Header, b []byte) (float64, []byte, time.Duration, error) {
+	metadata := RspamdMetadata{
+		IP:    s.conn.Conn().RemoteAddr().(*net.TCPAddr).IP.String(),
+		From:  strings.Join(s.From[:], "@"),
+		Rcpt:  utils.Map(s.To, func(rcpt Rcpt) string { return rcpt.Address }),
+		Flags: []string{"body_block"},
+	}
+	l := utils.Logger(s.context).With("module", "rspamd")
+	ctx := utils.WithLogger(s.context, l)
+	if s.FromLocal {
+		metadata.User = s.username
+	}
+	resp, err := spam.Verify(ctx, &metadata, b)
+	if err != nil {
+		l.Error("rspamd check", "error", err)
+		return 0, nil, 0, errInternal
+	}
+	if resp.Skipped {
+		return 0, b, 0, nil
+	}
+	if resp.Messages != nil {
+		v, ok := resp.Messages["smtp_message"]
+		if ok {
+			return 0, nil, 0, &smtp.SMTPError{
+				Code:         550,
+				EnhancedCode: [3]int{5, 7, 1},
+				Message:      v,
+			}
+		}
+	}
+	var wait time.Duration
+	switch resp.Action {
+	case RejectResponse:
+		l.Debug("rejecting message as spam")
+		return 0, nil, 0, &smtp.SMTPError{
+			Code:         550,
+			EnhancedCode: [3]int{5, 7, 1},
+			Message:      "Your message is unwanted",
+		}
+	case SoftRejectResponse:
+		l.Debug("soft rejecting message")
+		return 0, nil, 0, &smtp.SMTPError{
+			Code:         450,
+			EnhancedCode: [3]int{4, 7, 1},
+			Message:      "Your message is temporarily unwanted, retry later",
+		}
+	case AddHeaderResponse:
+		l.Debug("adding header")
+		h.Add("X-Spam-Score", strconv.FormatFloat(resp.Score, 'f', 2, 64))
+	case RewriteSubjectResponse:
+		l.Debug("modifying subject")
+		h.Add("Subject", resp.Subject)
+	case GreylistResponse:
+		l.Debug("greylisting message")
+		wait = 15 * time.Minute
+	case NoActionResponse:
+	default:
+		panic("not implemented")
+	}
+	if resp.Body != nil {
+		b, _ = io.ReadAll(resp.Body)
+	}
+	return resp.Score, b, wait, nil
 }

@@ -22,11 +22,11 @@ import (
 	"nouveauprintemps.org/atmail/utils"
 )
 
-func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, body []byte, h textproto.Header, spam *RspamdResponse) {
+func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, body []byte, h textproto.Header, spam *float64) {
 	l := utils.Logger(ctx).With("to", rcpt.Address)
 	var score sql.NullFloat64
 	if spam != nil {
-		score.Float64 = spam.Score
+		score.Float64 = *spam
 		score.Valid = true
 	}
 	var encrypted bool
