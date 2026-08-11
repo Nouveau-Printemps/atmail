@@ -35,10 +35,10 @@ type RspamdMetadata struct {
 	From       string          `json:"from"`
 	QueueId    string          `json:"queue_id,omitzero"`
 	Rcpt       []string        `json:"rcpt"`
-	User       string          `json:"user"`
-	SettingsId string          `json:"settings_id"`
-	Settings   json.RawMessage `json:"settings"`
-	Mime       string          `json:"mime"`
+	User       string          `json:"user,omitzero"`
+	SettingsId string          `json:"settings_id,omitzero"`
+	Settings   json.RawMessage `json:"settings,omitzero"`
+	Mime       string          `json:"mime,omitzero"`
 }
 
 type ActionResponse string
@@ -116,6 +116,7 @@ func (spam *RspamdClient) Verify(ctx context.Context, metadata *RspamdMetadata, 
 		return nil, err
 	}
 	req.Header.Set("Content-Type", w.FormDataContentType())
+	req.Header.Set("PerformDkimSign", "Yes")
 	rawResp, err := spam.Client.Do(req)
 	if err != nil {
 		return nil, err
@@ -128,7 +129,7 @@ func (spam *RspamdClient) Verify(ctx context.Context, metadata *RspamdMetadata, 
 	p, err := r.NextPart()
 	if err != nil {
 		if errors.Is(err, io.EOF) {
-			return nil, errors.New("rspamd: no content")
+			return nil, errors.New("no content")
 		}
 		return nil, err
 	}
@@ -142,7 +143,7 @@ func (spam *RspamdClient) Verify(ctx context.Context, metadata *RspamdMetadata, 
 		email.Body = p
 		_, err = r.NextPart()
 		if err == nil {
-			return nil, errors.New("rspamd: invalid response")
+			return nil, errors.New("invalid response")
 		}
 	}
 	if !errors.Is(err, io.EOF) {
@@ -156,7 +157,7 @@ func (spam *RspamdClient) Analyze(s *Session, email *message.Entity) (float64, t
 		IP:    s.conn.Conn().RemoteAddr().(*net.TCPAddr).IP.String(),
 		From:  strings.Join(s.From[:], "@"),
 		Rcpt:  utils.Map(s.To, func(rcpt Rcpt) string { return rcpt.Address }),
-		Flags: []string{"body_block"},
+		Flags: []string{"body_block", "milter"},
 	}
 	l := utils.Logger(s.context).With("module", "rspamd")
 	ctx := utils.WithLogger(s.context, l)
