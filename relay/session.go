@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/emersion/go-message"
 	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
@@ -36,9 +37,8 @@ func (s *Session) AuthMechanisms() []string {
 func (s *Session) Auth(mech string) (sasl.Server, error) {
 	return sasl.NewPlainServer(func(identity, username, password string) error {
 		ip := s.conn.Conn().RemoteAddr().(*net.TCPAddr).IP
-		for k, cfg := range s.backend.Domains {
-			ok := cfg.VerifyUser(ip, k, username, password)
-			if ok {
+		for d, cfg := range s.backend.Domains {
+			if cfg.VerifyUser(ip, d, username, password) {
 				s.username = username
 				break
 			}
@@ -133,31 +133,30 @@ func (s *Session) Data(r io.Reader) error {
 		l.Error("reading data", "error", err)
 		return errInternal
 	}
-	buf := bufio.NewReader(bytes.NewBuffer(b))
-	h, err := textproto.ReadHeader(buf)
+	body := bufio.NewReader(bytes.NewBuffer(b))
+	h, err := textproto.ReadHeader(body)
 	if err != nil {
 		l.Error("parsing mail", "error", err)
 		return errInternal
 	}
-	body, _ := io.ReadAll(buf)
-	var full []byte
+	msg, err := message.New(message.HeaderFromMap(h.Map()), body)
+	if err != nil {
+		return err
+	}
 	var score *float64
 	var wait time.Duration
 	if s.backend.Rspamd != nil {
 		var sc float64
-		sc, full, wait, err = s.backend.Rspamd.Analyze(s, &h, b)
+		sc, wait, err = s.backend.Rspamd.Analyze(s, msg)
 		if err != nil {
 			return err
 		}
 		score = &sc
 	}
-	if full == nil {
-		b = formatMail(h.Map(), body)
-	} else {
-		b = full
-	}
 	to := s.To
 	ctx := s.context
+	var buf bytes.Buffer
+	msg.WriteTo(&buf)
 	go func() {
 		if wait != 0 {
 			time.Sleep(wait)
@@ -168,12 +167,12 @@ func (s *Session) Data(r io.Reader) error {
 					strings.Join(s.From[:], "@"),
 					utils.Map(groups, func(rcpt Rcpt) string { return rcpt.Address }),
 					d,
-					b,
+					buf.Bytes(),
 				)
 				continue
 			}
 			for _, rcpt := range groups {
-				s.relayInside(ctx, rcpt, b, &h, score)
+				s.relayInside(ctx, rcpt, buf.Bytes(), &h, score)
 			}
 		}
 	}()
@@ -191,23 +190,4 @@ func (s *Session) Logout() error {
 func ParseAddress(address string) [2]string {
 	mailbox, domain, _ := strings.Cut(address, "@")
 	return [2]string{mailbox, domain}
-}
-
-func formatMail(headers map[string][]string, body []byte) []byte {
-	var buf bytes.Buffer
-	buf.Grow(len(headers) + len(body))
-	for k, arr := range headers {
-		for _, v := range arr {
-			buf.WriteString("\r\n")
-			buf.WriteString(k)
-			buf.WriteString(": ")
-			buf.WriteString(v)
-		}
-	}
-	if len(headers) > 0 {
-		buf.WriteString("\r\n\r\n")
-	}
-	buf.Grow(len(body))
-	buf.Write(body)
-	return buf.Bytes()[2:]
 }

@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	mailproto "github.com/emersion/go-message/textproto"
+	"github.com/emersion/go-message"
 
 	"github.com/emersion/go-smtp"
 	"nouveauprintemps.org/atmail/utils"
@@ -73,12 +73,9 @@ type RspamdResponse struct {
 	MessageId string   `json:"message-id,omitzero"`
 	// Messages returned by Rspamd (smtp_message key is intended to be returned as SMTP response)
 	Messages map[string]string `json:"messages,omitzero"`
-
-	// Set if body is given
-	Body io.Reader `json:"-"`
 }
 
-func (spam *RspamdClient) Verify(ctx context.Context, metadata *RspamdMetadata, mail []byte) (*RspamdResponse, error) {
+func (spam *RspamdClient) Verify(ctx context.Context, metadata *RspamdMetadata, email *message.Entity) (*RspamdResponse, error) {
 	var buf bytes.Buffer
 	w := multipart.NewWriter(&buf)
 	if metadata != nil {
@@ -101,7 +98,7 @@ func (spam *RspamdClient) Verify(ctx context.Context, metadata *RspamdMetadata, 
 	if err != nil {
 		return nil, err
 	}
-	_, err = msg.Write(mail)
+	err = email.WriteTo(msg)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +139,7 @@ func (spam *RspamdClient) Verify(ctx context.Context, metadata *RspamdMetadata, 
 	}
 	p, err = r.NextPart()
 	if err == nil {
-		resp.Body = p
+		email.Body = p
 		_, err = r.NextPart()
 		if err == nil {
 			return nil, errors.New("rspamd: invalid response")
@@ -154,7 +151,7 @@ func (spam *RspamdClient) Verify(ctx context.Context, metadata *RspamdMetadata, 
 	return &resp, nil
 }
 
-func (spam *RspamdClient) Analyze(s *Session, h *mailproto.Header, b []byte) (float64, []byte, time.Duration, error) {
+func (spam *RspamdClient) Analyze(s *Session, email *message.Entity) (float64, time.Duration, error) {
 	metadata := RspamdMetadata{
 		IP:    s.conn.Conn().RemoteAddr().(*net.TCPAddr).IP.String(),
 		From:  strings.Join(s.From[:], "@"),
@@ -166,18 +163,18 @@ func (spam *RspamdClient) Analyze(s *Session, h *mailproto.Header, b []byte) (fl
 	if s.FromLocal {
 		metadata.User = s.username
 	}
-	resp, err := spam.Verify(ctx, &metadata, b)
+	resp, err := spam.Verify(ctx, &metadata, email)
 	if err != nil {
 		l.Error("rspamd check", "error", err)
-		return 0, nil, 0, errInternal
+		return 0, 0, errInternal
 	}
 	if resp.Skipped {
-		return 0, b, 0, nil
+		return 0, 0, nil
 	}
 	if resp.Messages != nil {
 		v, ok := resp.Messages["smtp_message"]
 		if ok {
-			return 0, nil, 0, &smtp.SMTPError{
+			return 0, 0, &smtp.SMTPError{
 				Code:         550,
 				EnhancedCode: [3]int{5, 7, 1},
 				Message:      v,
@@ -188,24 +185,24 @@ func (spam *RspamdClient) Analyze(s *Session, h *mailproto.Header, b []byte) (fl
 	switch resp.Action {
 	case RejectResponse:
 		l.Debug("rejecting message as spam")
-		return 0, nil, 0, &smtp.SMTPError{
+		return 0, 0, &smtp.SMTPError{
 			Code:         550,
 			EnhancedCode: [3]int{5, 7, 1},
 			Message:      "Your message is unwanted",
 		}
 	case SoftRejectResponse:
 		l.Debug("soft rejecting message")
-		return 0, nil, 0, &smtp.SMTPError{
+		return 0, 0, &smtp.SMTPError{
 			Code:         450,
 			EnhancedCode: [3]int{4, 7, 1},
 			Message:      "Your message is temporarily unwanted, retry later",
 		}
 	case AddHeaderResponse:
 		l.Debug("adding header")
-		h.Add("X-Spam-Score", strconv.FormatFloat(resp.Score, 'f', 2, 64))
+		email.Header.Add("X-Spam", strconv.FormatFloat(resp.Score, 'f', 2, 64))
 	case RewriteSubjectResponse:
 		l.Debug("modifying subject")
-		h.Add("Subject", resp.Subject)
+		email.Header.Set("Subject", resp.Subject)
 	case GreylistResponse:
 		l.Debug("greylisting message")
 		wait = 15 * time.Minute
@@ -213,10 +210,5 @@ func (spam *RspamdClient) Analyze(s *Session, h *mailproto.Header, b []byte) (fl
 	default:
 		panic("not implemented")
 	}
-	if resp.Body != nil {
-		b, _ = io.ReadAll(resp.Body)
-	} else {
-		b = nil
-	}
-	return resp.Score, b, wait, nil
+	return resp.Score, wait, nil
 }
