@@ -79,6 +79,7 @@ func (b *Backend) relayOutside(ctx context.Context, from string, to []string, do
 			// wrapping in anonymous function call to use defer
 			err = func() error {
 				var client *smtp.Client
+				l.Debug("dialing...")
 				if host.withTLS {
 					client, err = smtp.DialTLS(host.address, nil)
 				} else {
@@ -96,12 +97,14 @@ func (b *Backend) relayOutside(ctx context.Context, from string, to []string, do
 				if err != nil {
 					return err
 				}
+				l.Debug("trying to send email")
 				return client.SendMail(from, to, bytes.NewBuffer(body))
 			}()
 			if err == nil {
 				l.Debug("email sent")
 				return nil
 			}
+			l.Debug("email not sent", "error", err)
 		}
 		if accErr != nil {
 			accErr = errors.Join(accErr, err)
@@ -165,16 +168,17 @@ func relaysOf(domain string) (iter.Seq2[relay, error], error) {
 					return int(b.Weight) - int(a.Weight)
 				})
 			}
-			for _, srv := range srvs {
-				ips, err := net.LookupIP(srv.Target)
+			groups := utils.GroupBy(srvs, func(srv *net.SRV) string { return srv.Target })
+			for target, srvs := range groups {
+				ips, err := net.LookupIP(target)
 				if err != nil {
 					if !yield(relay{}, err) {
 						return
 					}
 					continue
 				}
+				l := slog.With("domain", domain, "target", target)
 				for _, ip := range ips {
-					l := slog.With("domain", domain, "target", srv.Target)
 					ip, err := netip.ParseAddr(ip.String())
 					if err != nil {
 						l.Warn("invalid srv record", "error", err)
@@ -184,9 +188,11 @@ func relaysOf(domain string) (iter.Seq2[relay, error], error) {
 						l.Warn("invalid srv record", "error", "invalid IP")
 						continue
 					}
-					addr := netip.AddrPortFrom(ip, srv.Port)
-					if !yield(relay{address: addr.String(), withTLS: srv.Port == 465}, nil) {
-						return
+					for _, srv := range srvs {
+						addr := netip.AddrPortFrom(ip, srv.Port)
+						if !yield(relay{address: addr.String(), withTLS: srv.Port == 465}, nil) {
+							return
+						}
 					}
 				}
 			}
