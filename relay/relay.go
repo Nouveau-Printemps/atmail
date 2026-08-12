@@ -15,14 +15,14 @@ import (
 	"net/netip"
 	"slices"
 
-	"github.com/emersion/go-message/textproto"
+	"github.com/emersion/go-message"
 	"github.com/emersion/go-smtp"
 	"nouveauprintemps.org/atmail/auth"
 	"nouveauprintemps.org/atmail/storage"
 	"nouveauprintemps.org/atmail/utils"
 )
 
-func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, b []byte, h *textproto.Header, spam *float64) {
+func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, b []byte, h message.Header, spam *float64) {
 	l := utils.Logger(ctx).With("to", rcpt.Address)
 	var score sql.NullFloat64
 	if spam != nil {

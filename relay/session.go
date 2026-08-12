@@ -1,7 +1,6 @@
 package relay
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"io"
@@ -11,7 +10,6 @@ import (
 	"time"
 
 	"github.com/emersion/go-message"
-	"github.com/emersion/go-message/textproto"
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
 	"nouveauprintemps.org/atmail/auth"
@@ -128,20 +126,10 @@ func (s *Session) Data(r io.Reader) error {
 			",",
 		),
 	)
-	b, err := io.ReadAll(r)
+	msg, err := message.Read(r)
 	if err != nil {
 		l.Error("reading data", "error", err)
 		return errInternal
-	}
-	body := bufio.NewReader(bytes.NewBuffer(b))
-	h, err := textproto.ReadHeader(body)
-	if err != nil {
-		l.Error("parsing mail", "error", err)
-		return errInternal
-	}
-	msg, err := message.New(message.HeaderFromMap(h.Map()), body)
-	if err != nil {
-		return err
 	}
 	var score *float64
 	var wait time.Duration
@@ -149,14 +137,19 @@ func (s *Session) Data(r io.Reader) error {
 		var sc float64
 		sc, wait, err = s.backend.Rspamd.Analyze(s, msg)
 		if err != nil {
-			return err
+			l.Error("analyzing email with rspamd", "error", err)
+			return errInternal
 		}
 		score = &sc
 	}
 	to := s.To
 	ctx := s.context
 	var buf bytes.Buffer
-	msg.WriteTo(&buf)
+	err = msg.WriteTo(&buf)
+	if err != nil {
+		l.Error("reading email", "error", err)
+		return errInternal
+	}
 	go func() {
 		if wait != 0 {
 			time.Sleep(wait)
@@ -172,7 +165,7 @@ func (s *Session) Data(r io.Reader) error {
 				continue
 			}
 			for _, rcpt := range groups {
-				s.relayInside(ctx, rcpt, buf.Bytes(), &h, score)
+				s.relayInside(ctx, rcpt, buf.Bytes(), msg.Header, score)
 			}
 		}
 	}()
