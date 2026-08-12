@@ -84,6 +84,9 @@ func (b *Backend) relayOutside(from string, to []string, domain string, body []b
 				if err != nil {
 					l.Warn("dialing with tls to relay")
 					conn, err = net.Dial("tcp", host)
+					if err != nil {
+						return err
+					}
 				}
 				defer conn.Close()
 				client := smtp.NewClient(conn)
