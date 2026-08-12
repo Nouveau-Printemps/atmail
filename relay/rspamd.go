@@ -72,7 +72,8 @@ type RspamdResponse struct {
 	Emails    []string `json:"emails,omitzero"`
 	MessageId string   `json:"message-id,omitzero"`
 	// Messages returned by Rspamd (smtp_message key is intended to be returned as SMTP response)
-	Messages map[string]string `json:"messages,omitzero"`
+	Messages      map[string]string `json:"messages,omitzero"`
+	DkimSignature *string           `json:"dkim-signature,omitzero"`
 }
 
 func (spam *RspamdClient) Verify(ctx context.Context, metadata *RspamdMetadata, email *message.Entity) (*RspamdResponse, error) {
@@ -137,6 +138,9 @@ func (spam *RspamdClient) Verify(ctx context.Context, metadata *RspamdMetadata, 
 	err = json.NewDecoder(p).Decode(&resp)
 	if err != nil {
 		return nil, err
+	}
+	if resp.DkimSignature != nil {
+		email.Header.Add("DKIM-Signature", *resp.DkimSignature)
 	}
 	p, err = r.NextPart()
 	if err == nil {
