@@ -38,7 +38,7 @@ func GroupBy[A any, B comparable](in []A, fn func(A) B) map[B][]A {
 		if !ok {
 			mp[key] = []A{a}
 		} else {
-			arr = append(arr, a)
+			mp[key] = append(arr, a)
 		}
 	}
 	return mp
