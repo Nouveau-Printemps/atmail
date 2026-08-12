@@ -66,7 +66,7 @@ func (q *Queue) send(ctx context.Context, b *Backend, email emailEnqueued) {
 	defer func() {
 		q.ok <- struct{}{}
 	}()
-	l := utils.Logger(ctx).With("email", email)
+	l := utils.Logger(ctx).With("from", email.From, "to", email.To, "domain", email.Domain)
 	err := b.relayOutside(
 		utils.WithLogger(ctx, l),
 		email.From,

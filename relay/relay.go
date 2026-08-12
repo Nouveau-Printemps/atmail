@@ -3,7 +3,6 @@ package relay
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"database/sql"
 	"encoding/base64"
 	"errors"
@@ -14,7 +13,6 @@ import (
 	"net"
 	"net/netip"
 	"slices"
-	"time"
 
 	"github.com/emersion/go-message"
 	"github.com/emersion/go-smtp"
@@ -69,38 +67,29 @@ func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, b []byte, h messag
 }
 
 func (b *Backend) relayOutside(ctx context.Context, from string, to []string, domain string, body []byte) error {
-	l := utils.Logger(ctx).With("domain", domain, "from", from, "to", to)
+	l := utils.Logger(ctx)
 	relays, err := relaysOf(domain)
 	if err != nil {
 		return err
 	}
 	var accErr error
-	dialer := net.Dialer{
-		Timeout: 10 * time.Second,
-	}
-	tlsDialer := tls.Dialer{NetDialer: &dialer}
 	for host, err := range relays {
 		if err == nil {
 			l := l.With("host", host)
 			// wrapping in anonymous function call to use defer
 			err = func() error {
-				var conn net.Conn
+				var client *smtp.Client
 				if host.withTLS {
-					conn, err = tlsDialer.DialContext(ctx, "tcp", host.address)
+					client, err = smtp.DialTLS(host.address, nil)
 				} else {
-					conn, err = dialer.DialContext(ctx, "tcp", host.address)
+					client, err = smtp.DialStartTLS(host.address, nil)
+					if err != nil {
+						l.Warn("fallback to unencrypted", "error", err)
+						client, err = smtp.Dial(host.address)
+					}
 				}
 				if err != nil {
 					return err
-				}
-				defer conn.Close()
-				client := smtp.NewClient(conn)
-				if ok, _ := client.Extension("STARTTLS"); ok {
-					l.Debug("using STARTTLS")
-					client, err = smtp.NewClientStartTLS(conn, tlsDialer.Config)
-					if err != nil {
-						return err
-					}
 				}
 				defer client.Close()
 				err = client.Hello(b.LocalName)
