@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/emersion/go-message"
-
 	"github.com/emersion/go-smtp"
 	"nouveauprintemps.org/atmail/utils"
 )
@@ -95,11 +94,23 @@ func (spam *RspamdClient) Verify(ctx context.Context, metadata *RspamdMetadata, 
 	h := make(textproto.MIMEHeader)
 	h.Set("Content-Disposition", `form-data; name="message"`)
 	h.Set("Content-Type", "application/octet-stream")
+	// store a copy of the body email
+	body, err := io.ReadAll(email.Body)
+	if err != nil {
+		return nil, err
+	}
+	email.Body = bytes.NewBuffer(body)
+	var cp bytes.Buffer
+	err = email.WriteTo(&cp) // because it formats the header + body
+	if err != nil {
+		return nil, err
+	}
+	// write the copy of the email in multipart
 	msg, err := w.CreatePart(h)
 	if err != nil {
 		return nil, err
 	}
-	err = email.WriteTo(msg)
+	_, err = cp.WriteTo(msg)
 	if err != nil {
 		return nil, err
 	}
@@ -139,9 +150,6 @@ func (spam *RspamdClient) Verify(ctx context.Context, metadata *RspamdMetadata, 
 	if err != nil {
 		return nil, err
 	}
-	if resp.DkimSignature != nil {
-		email.Header.Add("DKIM-Signature", *resp.DkimSignature)
-	}
 	p, err = r.NextPart()
 	if err == nil {
 		email.Body = p
@@ -149,6 +157,9 @@ func (spam *RspamdClient) Verify(ctx context.Context, metadata *RspamdMetadata, 
 		if err == nil {
 			return nil, errors.New("invalid response")
 		}
+	} else {
+		// restore email's body (see comments above)
+		email.Body = bytes.NewBuffer(body)
 	}
 	if !errors.Is(err, io.EOF) {
 		return nil, err
@@ -175,6 +186,10 @@ func (spam *RspamdClient) Analyze(s *Session, email *message.Entity) (float64, t
 	}
 	if resp.Skipped {
 		return 0, 0, nil
+	}
+	if resp.DkimSignature != nil {
+		// because go-message.Entity doesn't accept \n\t in headers
+		email.Header.Add("DKIM-Signature", strings.ReplaceAll(*resp.DkimSignature, "\n\t", " "))
 	}
 	if resp.Messages != nil {
 		v, ok := resp.Messages["smtp_message"]

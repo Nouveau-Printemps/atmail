@@ -147,7 +147,7 @@ func (s *Session) Data(r io.Reader) error {
 	var buf bytes.Buffer
 	err = msg.WriteTo(&buf)
 	if err != nil {
-		l.Error("reading email", "error", err)
+		l.Error("rendering email", "error", err)
 		return errInternal
 	}
 	go func() {
