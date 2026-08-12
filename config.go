@@ -40,6 +40,7 @@ type SmtpConfig struct {
 	ListenConfig
 	AllowInsecureAuth bool   `toml:"allow_insecure_auth"`
 	MaxMailSize       uint32 `toml:"max_mail_size"`
+	ConcurrentSender  uint8  `toml:"concurrent_sender"`
 }
 
 type ImapConfig struct {

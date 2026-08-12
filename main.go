@@ -98,7 +98,7 @@ func main() {
 
 	bck := relay.Backend{
 		Domains:     cfg.Domains,
-		Queue:       relay.NewQueue(),
+		Queue:       relay.NewQueue(cfg.Smtp.ConcurrentSender),
 		LocalName:   cfg.MainDomain,
 		Context:     utils.WithLogger(ctx, slog.With("module", "smtp")),
 		RateLimiter: rl,

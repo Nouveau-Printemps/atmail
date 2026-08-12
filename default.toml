@@ -20,6 +20,8 @@ use_proxy_v2 = false
 #allow_insecure_auth = false
 # max mail size in KiB
 max_mail_size = 16416
+# number of concurrent thread to relay email outside
+concurrent_sender = 3
 
 [imap]
 listen = ":2993"
