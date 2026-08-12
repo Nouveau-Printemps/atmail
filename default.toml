@@ -63,6 +63,16 @@ user = "admin"
 # If you want to only permit local connection regardless of the password
 #baz.local_only = true
 
+# If you wanna create system users
+#[domains."example.org".static.system_users]
+# address to listen to (tcp or unix socket)
+#noreply.listen = ":2525"
+# group of unix socket (can be a name or a gid)
+#noreply.socket_group = "mail"
+# permission of the socket
+#noreply.socket_permission = 0o660
+#noreply.use_proxy_v2 = false
+
 # Catch every mail into one address
 [domains."example.org".catch_all]
 user = "me"

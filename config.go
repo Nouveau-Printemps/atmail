@@ -2,19 +2,15 @@ package main
 
 import (
 	_ "embed"
-	"errors"
 	"log/slog"
-	"net"
 	"os"
-	"os/user"
 	"path"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/BurntSushi/toml"
-	"github.com/pires/go-proxyproto"
 	"nouveauprintemps.org/atmail/auth"
+	"nouveauprintemps.org/atmail/utils"
 )
 
 type Config struct {
@@ -29,22 +25,15 @@ type Config struct {
 	Domains       map[string]auth.Config `toml:"domains"`
 }
 
-type ListenConfig struct {
-	ListenAddr       string `toml:"listen"`
-	UseProxyV2       bool   `toml:"use_proxy_v2"`
-	SocketGroup      any    `toml:"socket_group"`
-	SocketPermission uint   `toml:"socket_permission"`
-}
-
 type SmtpConfig struct {
-	ListenConfig
+	utils.ListenConfig
 	AllowInsecureAuth bool   `toml:"allow_insecure_auth"`
 	MaxMailSize       uint32 `toml:"max_mail_size"`
 	ConcurrentSender  uint8  `toml:"concurrent_sender"`
 }
 
 type ImapConfig struct {
-	ListenConfig
+	utils.ListenConfig
 	AllowInsecureAuth bool `toml:"allow_insecure_auth"`
 }
 
@@ -98,29 +87,39 @@ func ParseConfig(p string) (Config, error) {
 			cfg.Domains[d] = auth
 		}
 	}
-	for d, k := range cfg.Domains {
-		l := slog.With("domain", d)
-		if k.ATProto == nil && k.Static == nil && k.CatchAll == nil {
+	for domain, d := range cfg.Domains {
+		l := slog.With("domain", domain)
+		if d.ATProto == nil && d.Static == nil && d.CatchAll == nil {
 			l.Error("decoding config: one auth configuration must be enabled per domain")
 			os.Exit(2)
 		}
-		if k.Admin.User == "" {
+		if d.Admin.User == "" {
 			l.Warn("decoding config: admin not set")
 		}
-		if (k.ATProto != nil && k.Static != nil) ||
-			(k.ATProto != nil && k.CatchAll != nil) ||
-			(k.CatchAll != nil && k.Static != nil) {
+		if (d.ATProto != nil && d.Static != nil) ||
+			(d.ATProto != nil && d.CatchAll != nil) ||
+			(d.CatchAll != nil && d.Static != nil) {
 			l.Error("decoding config: only one auth configuration must be enabled per domain")
 			os.Exit(2)
 		}
-		if k.CatchAll != nil && k.CatchAll.PGPPubKey != nil && k.CatchAll.PGPPubKeyFile != nil {
+		if d.CatchAll != nil && d.CatchAll.PGPPubKey != nil && d.CatchAll.PGPPubKeyFile != nil {
 			l.Error("decoding config: only one of pgp_pub_key and pgp_pub_key_file can be enabled")
 			os.Exit(2)
 		}
-		if k.Static != nil {
-			for u, v := range k.Static.Users {
+		if d.Static != nil {
+			if d.Static.Users == nil {
+				d.Static.Users = make(map[string]auth.StaticUser)
+			}
+			if d.Static.SystemUsers == nil {
+				d.Static.SystemUsers = make(map[string]auth.SystemUser)
+			}
+			for u, v := range d.Static.Users {
 				if slices.Contains(auth.AdminEmails, u) {
 					l.Error("this username is reserved", "user", u)
+					os.Exit(2)
+				}
+				if _, ok := d.Static.SystemUsers[u]; ok {
+					l.Error("user is defined twice", "user", u)
 					os.Exit(2)
 				}
 				if v.PGPPubKey != nil && v.PGPPubKeyFile != nil {
@@ -142,56 +141,4 @@ func ParseConfig(p string) (Config, error) {
 		cfg.Directory = path.Join(base, cfg.Directory)
 	}
 	return cfg, nil
-}
-
-func (cfg ListenConfig) Listen() (net.Listener, error) {
-	kind := "tcp"
-	if strings.ContainsAny(cfg.ListenAddr, "/") {
-		kind = "unix"
-	}
-	l, err := net.Listen(kind, cfg.ListenAddr)
-	if err != nil {
-		return nil, err
-	}
-	if cfg.UseProxyV2 {
-		l = &proxyproto.Listener{Listener: l}
-	}
-	defer func() {
-		if err != nil {
-			l.Close()
-		}
-	}()
-	if kind == "unix" {
-		if cfg.SocketPermission > 0 {
-			err = os.Chmod(cfg.ListenAddr, os.FileMode(cfg.SocketPermission))
-			if err != nil {
-				return nil, err
-			}
-		}
-		if cfg.SocketGroup != nil {
-			var gid int
-			switch v := cfg.SocketGroup.(type) {
-			case int64:
-				if gid < 0 {
-					err = errors.New("invalid socket group: must be an uint")
-					return nil, err
-				}
-				gid = int(v)
-			case string:
-				group, err := user.LookupGroup(v)
-				if err != nil {
-					return nil, err
-				}
-				gid, _ = strconv.Atoi(group.Gid)
-			default:
-				err = errors.New("invalid socket group type: must be an uint or a string")
-				return nil, err
-			}
-			err = os.Chown(cfg.ListenAddr, -1, gid)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-	return l, nil
 }

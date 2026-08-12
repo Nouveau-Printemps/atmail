@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"golang.org/x/crypto/bcrypt"
+	"nouveauprintemps.org/atmail/utils"
 )
 
 type Crypto struct {
@@ -50,14 +51,18 @@ type ATProtoConfig struct {
 }
 
 type StaticConfig struct {
-	Users map[string]StaticUser `toml:"users"`
+	Users       map[string]StaticUser `toml:"users"`
+	SystemUsers map[string]SystemUser `toml:"system_users"`
 }
 
 type StaticUser struct {
 	// Bcrypt password
-	Password  string `toml:"password"`
-	LocalOnly bool   `toml:"local_only"`
+	Password string `toml:"password"`
 	Crypto
+}
+
+type SystemUser struct {
+	utils.ListenConfig
 }
 
 type CatchAll struct {
@@ -81,10 +86,11 @@ func (cfg *Config) VerifyUser(ip net.IP, domain, username, password string) bool
 		}
 		user, ok := cfg.Static.Users[u]
 		if !ok {
+			if ip.IsLoopback() || ip.IsPrivate() {
+				_, ok = cfg.Static.SystemUsers[u]
+				return ok
+			}
 			return false
-		}
-		if user.LocalOnly {
-			return ip.IsLoopback() || ip.IsPrivate()
 		}
 		realPass = user.Password
 	}

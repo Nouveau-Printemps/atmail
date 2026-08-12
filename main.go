@@ -6,6 +6,7 @@ import (
 	"flag"
 	"log/slog"
 	"log/syslog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -70,6 +71,7 @@ func main() {
 		os.Exit(2)
 	}
 	slog.Debug("config parsed", "path", configPath)
+	var ls []net.Listener
 	for d, v := range cfg.Domains {
 		if v.CatchAll != nil {
 			err = os.Mkdir(path.Join(cfg.Directory, v.CatchAll.User+"@"+d), 0o750)
@@ -84,6 +86,13 @@ func main() {
 					slog.Error("creating folders", "domain", d, "user", u, "error", err)
 					os.Exit(3)
 				}
+			}
+			for usr, u := range v.Static.SystemUsers {
+				l, err := u.Listen()
+				if err != nil {
+					slog.Error("listening", "domain", d, "user", usr, "error", err)
+				}
+				ls = append(ls, l)
 			}
 		}
 	}
@@ -162,7 +171,8 @@ func main() {
 
 	errc := make(chan error, 2)
 	go func() {
-		errc <- smtpSrv.Serve(&auth.LimiterListener{Listener: smtpL, Limiter: rl})
+		l := utils.NewMultiListener(append(ls, smtpL))
+		errc <- smtpSrv.Serve(&auth.LimiterListener{Listener: l, Limiter: rl})
 	}()
 	go func() {
 		errc <- imapSrv.Serve(&auth.LimiterListener{Listener: imapL, Limiter: rl})

@@ -90,9 +90,20 @@ bar.password = "$2y$10$fZ1tRpz2mfdRfaaTbx723.Gch7tY.f7LIBuZz1of/cLwBGvU39ivG"
 #bar.pgp_pub_key = ""
 #bar.pgp_pub_key_file = ""
 ```
-You can also limit an account to be used by only local IP address regardless of their password:
+You can also create system users.
+This is a kind of user that only have access to the SMTP relay via a custom address (unix socket or tcp) without a
+password.
+With a Unix socket, you can easily manage the permissions.
 ```toml
-baz.local_only = true
+[domains."example.org".static.system_users]
+# address to listen to (tcp or unix socket)
+noreply.listen = "/run/atmail/noreply.sock"
+# group of unix socket (can be a name or a gid)
+noreply.socket_group = "mail"
+# permission of the socket
+noreply.socket_permission = 0o660
+# use PROXY V2 Protocol by HAProxy
+noreply.use_proxy_v2 = false
 ```
 
 **Catch All** redirects every emails to one address:
