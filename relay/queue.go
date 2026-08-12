@@ -46,6 +46,7 @@ func (q *Queue) Loop(ctx context.Context, b *Backend) {
 		case email := <-q.sender:
 			l := l.With("email", email)
 			err := b.relayOutside(
+				utils.WithLogger(ctx, l),
 				email.From,
 				email.To,
 				email.Domain,
@@ -54,7 +55,7 @@ func (q *Queue) Loop(ctx context.Context, b *Backend) {
 			if err == nil {
 				continue
 			}
-			l.Debug("sending mail", "error", err)
+			l.Debug("cannot send email")
 			if e, ok := errors.AsType[*net.DNSError](err); ok {
 				if e.IsNotFound {
 					l.Debug("invalid DNS records", "missing record", e.Name, "DNS server", e.Server)
@@ -68,7 +69,7 @@ func (q *Queue) Loop(ctx context.Context, b *Backend) {
 					continue
 				}
 			} else {
-				l.Error("unknown reason")
+				l.Error("unknown reason", "error", err)
 				//TODO: send fail
 				continue
 			}

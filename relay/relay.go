@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/netip"
 	"slices"
+	"time"
 
 	"github.com/emersion/go-message"
 	"github.com/emersion/go-smtp"
@@ -67,32 +68,36 @@ func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, b []byte, h messag
 	}
 }
 
-func (b *Backend) relayOutside(from string, to []string, domain string, body []byte) error {
-	l := slog.With("domain", domain, "from", from, "to", to)
+func (b *Backend) relayOutside(ctx context.Context, from string, to []string, domain string, body []byte) error {
+	l := utils.Logger(ctx).With("domain", domain, "from", from, "to", to)
 	relays, err := relaysOf(domain)
 	if err != nil {
 		return err
 	}
 	var accErr error
+	dialer := net.Dialer{
+		Timeout: 10 * time.Second,
+	}
+	tlsDialer := tls.Dialer{NetDialer: &dialer}
 	for host, err := range relays {
 		if err == nil {
 			l := l.With("host", host)
 			// wrapping in anonymous function call to use defer
 			err = func() error {
 				var conn net.Conn
-				conn, err = tls.Dial("tcp", host, nil)
+				if host.withTLS {
+					conn, err = tlsDialer.DialContext(ctx, "tcp", host.address)
+				} else {
+					conn, err = dialer.DialContext(ctx, "tcp", host.address)
+				}
 				if err != nil {
-					l.Warn("dialing with tls to relay")
-					conn, err = net.Dial("tcp", host)
-					if err != nil {
-						return err
-					}
+					return err
 				}
 				defer conn.Close()
 				client := smtp.NewClient(conn)
 				if ok, _ := client.Extension("STARTTLS"); ok {
 					l.Debug("using STARTTLS")
-					client, err = smtp.NewClientStartTLS(conn, nil)
+					client, err = smtp.NewClientStartTLS(conn, tlsDialer.Config)
 					if err != nil {
 						return err
 					}
@@ -104,9 +109,10 @@ func (b *Backend) relayOutside(from string, to []string, domain string, body []b
 				}
 				return client.SendMail(from, to, bytes.NewBuffer(body))
 			}()
-		}
-		if err == nil {
-			return nil
+			if err == nil {
+				l.Debug("email sent")
+				return nil
+			}
 		}
 		if accErr != nil {
 			accErr = errors.Join(accErr, err)
@@ -117,8 +123,13 @@ func (b *Backend) relayOutside(from string, to []string, domain string, body []b
 	return accErr
 }
 
+type relay struct {
+	address string
+	withTLS bool
+}
+
 // Single-use iterator.
-func relaysOf(domain string) (iter.Seq2[string, error], error) {
+func relaysOf(domain string) (iter.Seq2[relay, error], error) {
 	mxs, err := net.LookupMX(domain)
 	if err != nil {
 		return nil, err
@@ -126,12 +137,12 @@ func relaysOf(domain string) (iter.Seq2[string, error], error) {
 	slices.SortFunc(mxs, func(a, b *net.MX) int {
 		return int(b.Pref) - int(a.Pref)
 	})
-	return func(yield func(string, error) bool) {
+	return func(yield func(relay, error) bool) {
 		for _, mx := range mxs {
 			_, srvs, err := net.LookupSRV("submission", "tcp", mx.Host)
 			if err != nil {
 				if e, ok := errors.AsType[*net.DNSError](err); !ok || !e.IsNotFound {
-					if !yield("", err) {
+					if !yield(relay{}, err) {
 						return
 					}
 					continue
@@ -168,7 +179,7 @@ func relaysOf(domain string) (iter.Seq2[string, error], error) {
 			for _, srv := range srvs {
 				ips, err := net.LookupIP(srv.Target)
 				if err != nil {
-					if !yield("", err) {
+					if !yield(relay{}, err) {
 						return
 					}
 					continue
@@ -181,11 +192,11 @@ func relaysOf(domain string) (iter.Seq2[string, error], error) {
 						continue
 					}
 					if ip.IsPrivate() || ip.IsLoopback() || ip.IsUnspecified() {
-						l.Warn("invalid srv record")
+						l.Warn("invalid srv record", "error", "invalid IP")
 						continue
 					}
 					addr := netip.AddrPortFrom(ip, srv.Port)
-					if !yield(addr.String(), nil) {
+					if !yield(relay{address: addr.String(), withTLS: srv.Port == 465}, nil) {
 						return
 					}
 				}
