@@ -5,14 +5,14 @@ A simple SMTP and IMAP4 server.
 ## Goals
 
 Easy to deploy, to configure and to use, because connecting an SMTP server and an IMAP server is never straightforward.
-Integrates well with rspamd to sign outgoing emails (via DKIM) and to filter unwanted emails.
+Integrates well with rspamd 4.0+ to sign outgoing emails (via DKIM) and to filter unwanted emails.
 
-Encrypt emails with user's GPG public key to avoid storing sensitive information.
+Encrypt emails with user's PGP public key to avoid storing sensitive information.
 
 Custom storage backend to be fast and lightweigth.
 Automatically compress big emails with gzip.
 
-Use one sqlite3 database per user to avoid using a centralized database.
+Use one sqlite3 database per user to avoid using one centralized database.
 
 ## Usage
 
@@ -90,10 +90,11 @@ bar.password = "$2y$10$fZ1tRpz2mfdRfaaTbx723.Gch7tY.f7LIBuZz1of/cLwBGvU39ivG"
 #bar.pgp_pub_key = ""
 #bar.pgp_pub_key_file = ""
 ```
-You can also create system users.
+You can also create system users that can't receive emails.
 This is a kind of user that only have access to the SMTP relay via a custom address (unix socket or tcp) without a
 password.
 With a Unix socket, you can easily manage the permissions.
+(Sadly, many applications can't use a socket to connect to a SMTP server...)
 ```toml
 [domains."example.org".static.system_users]
 # address to listen to (tcp or unix socket)
@@ -187,6 +188,7 @@ foo.password = "$2y$10$wWJy64n5j4pU2CscdWRq.er5Z2.V31U5Ntz5uTopLy1fMX87GQEDG"
 Planned features:
 - QUOTA IMAP capability
 - better PGP integration
+- ATProto integration (PDS -> email account -> OIDC provider)
 
 Features considered:
 - JMAP support
