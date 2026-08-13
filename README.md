@@ -106,6 +106,14 @@ noreply.socket_permission = 0o660
 # use PROXY V2 Protocol by HAProxy
 noreply.use_proxy_v2 = false
 ```
+You can create groups to forward emails to a group of people:
+```toml
+[domains."example.org".static.groups]
+# users in the group
+somegroupname.members = ["foo@example.org", "bar@example.org"]
+# users that can email the group (if unspecified, everyone can)
+somegroupname.authorized_senders = ["foo@example.org"]
+```
 
 **Catch All** redirects every emails to one address:
 ```toml

@@ -33,4 +33,5 @@ type Rcpt struct {
 	Address string
 	Key     *string
 	Local   bool
+	Group   *auth.Group
 }

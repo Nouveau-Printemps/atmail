@@ -53,6 +53,7 @@ type ATProtoConfig struct {
 type StaticConfig struct {
 	Users       map[string]StaticUser `toml:"users"`
 	SystemUsers map[string]SystemUser `toml:"system_users"`
+	Groups      map[string]Group      `toml:"groups"`
 }
 
 type StaticUser struct {
@@ -63,6 +64,11 @@ type StaticUser struct {
 
 type SystemUser struct {
 	utils.ListenConfig
+}
+
+type Group struct {
+	Members           []string `toml:"members"`
+	AuthorizedSenders []string `toml:"authorized_senders"`
 }
 
 type CatchAll struct {
@@ -101,11 +107,12 @@ type UserData struct {
 	Username string
 	Folder   string
 	Key      *string
+	Group    *Group
 }
 
 var AdminEmails = []string{"root", "postmaster", "operator", "mail-daemon", "daemon", "uucp", "abuse", "security"}
 
-func (cfg *Config) Exists(username string) *UserData {
+func (cfg *Config) Exists(from, username string) *UserData {
 	if slices.Contains(AdminEmails, username) {
 		return &UserData{Username: username}
 	}
@@ -124,10 +131,15 @@ func (cfg *Config) Exists(username string) *UserData {
 		}
 		u, ok := cfg.Static.Users[username]
 		if !ok {
-			return nil
+			g, ok := cfg.Static.Groups[username]
+			if !ok || (len(g.AuthorizedSenders) != 0 && slices.Contains(g.AuthorizedSenders, from)) {
+				return nil
+			}
+			data.Group = &g
+			return &data
 		}
 		data.Username = username
-		if cfg.CreateFolderSubaddressing {
+		if cfg.CreateFolderSubaddressing && ok {
 			data.Folder = subaddress
 		}
 		crypto = u.Crypto

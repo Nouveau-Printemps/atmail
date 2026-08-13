@@ -24,9 +24,8 @@ type Session struct {
 
 	context context.Context
 
-	From      [2]string
-	To        []Rcpt
-	FromLocal bool
+	From Rcpt
+	To   []Rcpt
 }
 
 func (s *Session) AuthMechanisms() []string {
@@ -61,15 +60,20 @@ func (s *Session) Auth(mech string) (sasl.Server, error) {
 }
 
 func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
-	s.From = ParseAddress(from)
-	_, s.FromLocal = s.backend.Domains[s.From[1]]
-	if s.FromLocal && s.username != from {
+	parsed := ParseAddress(from)
+	s.From = Rcpt{
+		User:    parsed[0],
+		Domain:  parsed[1],
+		Address: from,
+	}
+	_, s.From.Local = s.backend.Domains[s.From.Domain]
+	if s.From.Local && s.username != from {
 		return smtp.ErrAuthRequired
 	}
 	return nil
 }
 
-func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
+func (s *Session) rcpt(to string, opts *smtp.RcptOptions) (Rcpt, error) {
 	too := ParseAddress(to)
 	rcpt := Rcpt{
 		User:    too[0],
@@ -79,36 +83,46 @@ func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 	var cfg auth.Config
 	cfg, rcpt.Local = s.backend.Domains[rcpt.Domain]
 	// from local to outside
-	if s.FromLocal && !rcpt.Local {
-		s.To = append(s.To, rcpt)
-		return nil
+	if s.From.Local && !rcpt.Local {
+		return rcpt, nil
 	}
 	// not to local
 	if !rcpt.Local {
-		return &smtp.SMTPError{
+		return rcpt, &smtp.SMTPError{
 			Code:         551,
 			EnhancedCode: [3]int{5, 7, 1},
 			Message:      "Forwarding to remote hosts is disabled",
 		}
 	}
 	// to local
-	data := cfg.Exists(rcpt.User)
+	data := cfg.Exists(s.From.Address, rcpt.User)
 	if data == nil {
-		return &smtp.SMTPError{
+		return rcpt, &smtp.SMTPError{
 			Code:         550,
 			EnhancedCode: [3]int{5, 1, 1},
 			Message:      "Address doesn't exist",
 		}
 	}
-	if slices.Contains(auth.AdminEmails, data.Username) {
+	switch {
+	case slices.Contains(auth.AdminEmails, data.Username):
 		rcpt.User = cfg.Admin.User
 		rcpt.Folder = cfg.Admin.Folder
 		rcpt.Key = cfg.Admin.Crypto.GetKey()
 		rcpt.Address = cfg.Admin.User + "@" + rcpt.Domain
-	} else {
+	case data.Group != nil:
+		rcpt.Group = data.Group
+	default:
 		rcpt.User = data.Username
 		rcpt.Folder = data.Folder
 		rcpt.Key = data.Key
+	}
+	return rcpt, nil
+}
+
+func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
+	rcpt, err := s.rcpt(to, opts)
+	if err != nil {
+		return err
 	}
 	s.To = append(s.To, rcpt)
 	return nil
@@ -121,7 +135,7 @@ var errInternal = &smtp.SMTPError{
 
 func (s *Session) Data(r io.Reader) error {
 	l := utils.Logger(s.context).With(
-		"from", strings.Join(s.From[:], "@"),
+		"from", s.From.Address,
 		"to", strings.Join(
 			utils.Map(s.To, func(r Rcpt) string { return r.Address }),
 			",",
@@ -146,33 +160,18 @@ func (s *Session) Data(r io.Reader) error {
 		}
 		score = &sc
 	}
-	to := s.To
-	ctx := s.context
 	var buf bytes.Buffer
 	err = msg.WriteTo(&buf)
 	if err != nil {
 		l.Error("rendering email", "error", err)
 		return errInternal
 	}
-	go func() {
+	go func(ctx context.Context, to []Rcpt) {
 		if wait != 0 {
 			time.Sleep(wait)
 		}
-		for d, groups := range utils.GroupBy(to, func(to Rcpt) string { return to.Domain }) {
-			if !groups[0].Local {
-				s.backend.Queue.Enqueue(
-					strings.Join(s.From[:], "@"),
-					utils.Map(groups, func(rcpt Rcpt) string { return rcpt.Address }),
-					d,
-					buf.Bytes(),
-				)
-				continue
-			}
-			for _, rcpt := range groups {
-				s.relayInside(ctx, rcpt, buf.Bytes(), msg.Header, score)
-			}
-		}
-	}()
+		s.send(ctx, s.From.Address, to, buf.Bytes(), msg.Header, score)
+	}(s.context, s.To)
 	return nil
 }
 

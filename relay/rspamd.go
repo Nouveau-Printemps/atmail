@@ -172,13 +172,13 @@ func (spam *RspamdClient) Verify(ctx context.Context, metadata *RspamdMetadata, 
 func (spam *RspamdClient) Analyze(s *Session, email *message.Entity) (float64, time.Duration, error) {
 	metadata := RspamdMetadata{
 		IP:    s.conn.Conn().RemoteAddr().(*net.TCPAddr).IP.String(),
-		From:  strings.Join(s.From[:], "@"),
+		From:  s.From.Address,
 		Rcpt:  utils.Map(s.To, func(rcpt Rcpt) string { return rcpt.Address }),
 		Flags: []string{"body_block", "milter"},
 	}
 	l := utils.Logger(s.context).With("module", "rspamd")
 	ctx := utils.WithLogger(s.context, l)
-	if s.FromLocal {
+	if s.From.Local {
 		metadata.User = s.username
 	}
 	resp, err := spam.Verify(ctx, &metadata, email)

@@ -73,6 +73,13 @@ user = "admin"
 #noreply.socket_permission = 0o660
 #noreply.use_proxy_v2 = false
 
+# If you wanna create groups
+#[domains."example.org".static.groups]
+# users in the group
+#somegroupname.members = ["foo@example.org", "bar@example.org"]
+# users that can email the group (if unspecified, everyone can)
+#somegroupname.authorized_senders = ["foo@example.org"]
+
 # Catch every mail into one address
 [domains."example.org".catch_all]
 user = "me"

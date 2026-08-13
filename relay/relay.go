@@ -21,13 +21,40 @@ import (
 	"nouveauprintemps.org/atmail/utils"
 )
 
+func (s *Session) send(ctx context.Context, from string, to []Rcpt, b []byte, h message.Header, spam *float64) {
+	for d, members := range utils.GroupBy(to, func(rcpt Rcpt) string {
+		return rcpt.Domain
+	}) {
+		if !members[0].Local {
+			s.backend.Queue.Enqueue(from, members, d, b)
+			continue
+		}
+		for _, rcpt := range members {
+			s.relayInside(ctx, rcpt, b, h, spam)
+		}
+	}
+}
+
 func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, b []byte, h message.Header, spam *float64) {
-	l := utils.Logger(ctx).With("to", rcpt.Address)
+	if rcpt.Group != nil {
+		l := utils.Logger(ctx).With("group", rcpt.Address)
+		rcpts := utils.MapFilter(rcpt.Group.Members, func(member string) *Rcpt {
+			rcpt, err := s.rcpt(member, nil)
+			if err != nil {
+				l.Warn("cannot parse member", "error", err)
+				return nil
+			}
+			return &rcpt
+		})
+		s.send(ctx, rcpt.Address, rcpts, b, h, spam)
+		return
+	}
 	var score sql.NullFloat64
 	if spam != nil {
 		score.Float64 = *spam
 		score.Valid = true
 	}
+	l := utils.Logger(ctx).With("to", rcpt.Address)
 	var encrypted bool
 	if rcpt.Key != nil {
 		// decode before encrypting
@@ -52,7 +79,7 @@ func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, b []byte, h messag
 	if h.Header.Has(SpamHeader) {
 		id, err = storage.StoreSpam(
 			ctx,
-			s.From, [2]string{rcpt.User, rcpt.Domain},
+			[2]string{s.From.User, s.From.Domain}, [2]string{rcpt.User, rcpt.Domain},
 			rcpt.Address,
 			score,
 			b,
@@ -61,7 +88,7 @@ func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, b []byte, h messag
 	} else {
 		id, err = storage.StoreEmailInbox(
 			ctx,
-			s.From, [2]string{rcpt.User, rcpt.Domain},
+			[2]string{s.From.User, s.From.Domain}, [2]string{rcpt.User, rcpt.Domain},
 			rcpt.Address,
 			score,
 			b,
@@ -160,11 +187,11 @@ func relaysOf(domain string) (iter.Seq2[relay, error], error) {
 					},
 					{
 						Target: mx.Host,
-						Port:   587,
+						Port:   25,
 					},
 					{
 						Target: mx.Host,
-						Port:   25,
+						Port:   587,
 					},
 					// not standard but common
 					{

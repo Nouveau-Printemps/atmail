@@ -35,7 +35,7 @@ func NewView(id uint32, name string, count uint32) *View {
 }
 
 func (v *View) Idle(ctx context.Context, w *imapserver.UpdateWriter, stop <-chan struct{}) error {
-	errc := make(chan error)
+	errc := make(chan error, 1)
 	v.mu.Lock()
 	v.writers[w] = errc
 	v.mu.Unlock()
@@ -54,7 +54,7 @@ func (v *View) Idle(ctx context.Context, w *imapserver.UpdateWriter, stop <-chan
 	}
 }
 
-// WriteNewMessages increases the [View.Count] by n and send its updated value.
+// WriteNewMessages increases the [View.Count] by n and sends its updated value to the user.
 func (v *View) WriteNewMessages(n uint32) {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
@@ -62,6 +62,7 @@ func (v *View) WriteNewMessages(n uint32) {
 		err := w.WriteNumMessages(v.Count.Add(n))
 		if err != nil {
 			errc <- err
+			return
 		}
 	}
 }
@@ -73,6 +74,7 @@ func (v *View) WriteExpunge(seq uint32) {
 		err := w.WriteExpunge(seq)
 		if err != nil {
 			errc <- err
+			return
 		}
 	}
 }
@@ -84,6 +86,7 @@ func (v *View) WriteMailboxFlags(flags []imap.Flag) {
 		err := w.WriteMailboxFlags(flags)
 		if err != nil {
 			errc <- err
+			return
 		}
 	}
 }
@@ -95,6 +98,7 @@ func (v *View) WriteMessageFlags(id, seq uint32, flags []imap.Flag) {
 		err := w.WriteMessageFlags(seq, imap.UID(id), flags)
 		if err != nil {
 			errc <- err
+			return
 		}
 	}
 }

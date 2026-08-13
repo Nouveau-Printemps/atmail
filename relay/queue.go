@@ -12,7 +12,7 @@ import (
 
 type emailEnqueued struct {
 	From     string
-	To       []string
+	To       []Rcpt
 	Domain   string
 	Body     []byte
 	MustWait time.Duration
@@ -33,7 +33,7 @@ func NewQueue(concurrent uint8) *Queue {
 	return &Queue{sender: make(chan emailEnqueued, 2), ok: ok}
 }
 
-func (q *Queue) Enqueue(from string, to []string, domain string, body []byte) {
+func (q *Queue) Enqueue(from string, to []Rcpt, domain string, body []byte) {
 	go func() {
 		q.sender <- emailEnqueued{
 			From:   from,
@@ -70,7 +70,7 @@ func (q *Queue) send(ctx context.Context, b *Backend, email emailEnqueued) {
 	err := b.relayOutside(
 		utils.WithLogger(ctx, l),
 		email.From,
-		email.To,
+		utils.Map(email.To, func(r Rcpt) string { return r.Address }),
 		email.Domain,
 		email.Body,
 	)

@@ -10,6 +10,17 @@ func Map[T, V any](in []T, fn func(T) V) []V {
 	return out
 }
 
+func MapFilter[T, V any](in []T, fn func(T) *V) []V {
+	out := make([]V, 0, len(in))
+	for _, v := range in {
+		res := fn(v)
+		if res != nil {
+			out = append(out, *res)
+		}
+	}
+	return out
+}
+
 func ReduceMapToSlice[A comparable, B, V any](in map[A]B, fn func(A, B) V) []V {
 	out := make([]V, 0, len(in))
 	for a, b := range in {
