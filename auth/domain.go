@@ -112,11 +112,8 @@ func (cfg *Config) Exists(username string) *UserData {
 	var data UserData
 	var crypto Crypto
 	if cfg.CatchAll != nil {
-		if !cfg.CreateFolderSubaddressing {
-			username = ""
-		}
 		data.Username = cfg.CatchAll.User
-		if username != cfg.CatchAll.User {
+		if cfg.CreateFolderSubaddressing && username != cfg.CatchAll.User {
 			data.Folder = username
 		}
 		crypto = cfg.CatchAll.Crypto
@@ -125,15 +122,14 @@ func (cfg *Config) Exists(username string) *UserData {
 		if cfg.PlusSubaddressing {
 			username, subaddress, _ = strings.Cut(username, "+")
 		}
-		if !cfg.CreateFolderSubaddressing {
-			subaddress = ""
-		}
 		u, ok := cfg.Static.Users[username]
 		if !ok {
 			return nil
 		}
 		data.Username = username
-		data.Folder = subaddress
+		if cfg.CreateFolderSubaddressing {
+			data.Folder = subaddress
+		}
 		crypto = u.Crypto
 	}
 	data.Key = crypto.GetKey()

@@ -3,6 +3,7 @@ package relay
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"net"
 	"slices"
@@ -137,6 +138,9 @@ func (s *Session) Data(r io.Reader) error {
 		var sc float64
 		sc, wait, err = s.backend.Rspamd.Analyze(s, msg)
 		if err != nil {
+			if _, ok := errors.AsType[*smtp.SMTPError](err); ok {
+				return err
+			}
 			l.Error("analyzing email with rspamd", "error", err)
 			return errInternal
 		}

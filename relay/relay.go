@@ -47,15 +47,28 @@ func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, b []byte, h messag
 			encrypted = true
 		}
 	}
-	id, err := storage.StoreEmailInbox(
-		ctx,
-		s.From, [2]string{rcpt.User, rcpt.Domain},
-		rcpt.Address,
-		score,
-		b,
-		rcpt.Folder,
-		encrypted,
-	)
+	var id int64
+	var err error
+	if h.Header.Has(SpamHeader) {
+		id, err = storage.StoreSpam(
+			ctx,
+			s.From, [2]string{rcpt.User, rcpt.Domain},
+			rcpt.Address,
+			score,
+			b,
+			encrypted,
+		)
+	} else {
+		id, err = storage.StoreEmailInbox(
+			ctx,
+			s.From, [2]string{rcpt.User, rcpt.Domain},
+			rcpt.Address,
+			score,
+			b,
+			rcpt.Folder,
+			encrypted,
+		)
+	}
 	if err != nil {
 		l.Error("cannot save email", "error", err)
 		return

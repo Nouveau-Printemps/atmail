@@ -21,6 +21,8 @@ import (
 	"nouveauprintemps.org/atmail/utils"
 )
 
+const SpamHeader = `X-Spam`
+
 type RspamdClient struct {
 	Client *http.Client
 	URL    string
@@ -201,6 +203,7 @@ func (spam *RspamdClient) Analyze(s *Session, email *message.Entity) (float64, t
 			}
 		}
 	}
+	email.Header.Del(SpamHeader)
 	var wait time.Duration
 	switch resp.Action {
 	case RejectResponse:
@@ -219,7 +222,7 @@ func (spam *RspamdClient) Analyze(s *Session, email *message.Entity) (float64, t
 		}
 	case AddHeaderResponse:
 		l.Debug("adding header")
-		email.Header.Add("X-Spam", strconv.FormatFloat(resp.Score, 'f', 2, 64))
+		email.Header.Add(SpamHeader, strconv.FormatFloat(resp.Score, 'f', 2, 64))
 	case RewriteSubjectResponse:
 		l.Debug("modifying subject")
 		email.Header.Set("Subject", resp.Subject)

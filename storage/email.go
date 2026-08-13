@@ -93,6 +93,25 @@ func StoreEmail(
 	return nil
 }
 
+func StoreSpam(
+	ctx context.Context,
+	from, to [2]string,
+	user string,
+	spamScore sql.NullFloat64,
+	b []byte,
+	encrypted bool,
+) (uid int64, err error) {
+	err = StoreEmail(ctx, from, to, user, spamScore, b, encrypted, func(ctx context.Context, in *DB, id int64) error {
+		uid = id
+		err = in.AddEmailFlag(ctx, id, JunkFlag)
+		if err != nil {
+			return err
+		}
+		return in.AddMailboxEmail(ctx, JunkMailbox, id)
+	})
+	return
+}
+
 func StoreEmailInbox(
 	ctx context.Context,
 	from, to [2]string,
