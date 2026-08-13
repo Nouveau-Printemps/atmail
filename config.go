@@ -114,7 +114,7 @@ func ParseConfig(p string) (Config, error) {
 				d.Static.SystemUsers = make(map[string]auth.SystemUser)
 			}
 			for u, v := range d.Static.Users {
-				if slices.Contains(auth.AdminEmails, u) {
+				if u != d.Admin.User && slices.Contains(auth.AdminEmails, u) {
 					l.Error("this username is reserved", "user", u)
 					os.Exit(2)
 				}
