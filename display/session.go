@@ -69,7 +69,7 @@ func (s *Session) Login(username, password string) error {
 	}
 	s.mailboxes = make(map[string]*mailbox.View, len(box))
 	for _, b := range box {
-		s.mailboxes[b.Name] = mailbox.NewView(uint32(b.ID), b.Name)
+		s.mailboxes[b.Name] = mailbox.NewView(uint32(b.ID), b.Name, uint32(b.Count))
 	}
 	s.backend.SetUserBoxes(username, s.mailboxes)
 	return nil

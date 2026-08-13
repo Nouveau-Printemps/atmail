@@ -139,7 +139,7 @@ func main() {
 	bck.OnReceive = func(user, mailbox string, id int64) {
 		boxes, ok := d.GetUserBoxes(user)
 		if !ok {
-			slog.Warn("user not found, cannot notify", "user", user)
+			slog.Debug("user not found, cannot notify", "user", user)
 			return
 		}
 		if box, ok := boxes[mailbox]; ok {

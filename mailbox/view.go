@@ -24,12 +24,14 @@ type View struct {
 	mu      sync.RWMutex
 }
 
-func NewView(id uint32, name string) *View {
-	return &View{
+func NewView(id uint32, name string, count uint32) *View {
+	v := &View{
 		ID:      id,
 		Name:    name,
 		writers: make(map[*imapserver.UpdateWriter]chan error),
 	}
+	v.Count.Store(count)
+	return v
 }
 
 func (v *View) Idle(ctx context.Context, w *imapserver.UpdateWriter, stop <-chan struct{}) error {

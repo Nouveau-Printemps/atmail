@@ -68,7 +68,7 @@ func (s *Session) Create(box string, options *imap.CreateOptions) error {
 		utils.Logger(s.context).Error("creating mailbox", "error", err)
 		return err
 	}
-	s.mailboxes[box] = mailbox.NewView(uint32(id), box)
+	s.mailboxes[box] = mailbox.NewView(uint32(id), box, 0)
 	return nil
 }
 
