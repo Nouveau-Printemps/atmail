@@ -28,7 +28,7 @@ type Config struct {
 type SmtpConfig struct {
 	utils.ListenConfig
 	AllowInsecureAuth bool   `toml:"allow_insecure_auth"`
-	MaxMailSize       uint32 `toml:"max_mail_size"`
+	MaxEmailSize      uint32 `toml:"max_email_size"`
 	ConcurrentSender  uint8  `toml:"concurrent_sender"`
 }
 
@@ -132,7 +132,7 @@ func ParseConfig(p string) (Config, error) {
 			}
 		}
 	}
-	cfg.Smtp.MaxMailSize *= 1024
+	cfg.Smtp.MaxEmailSize *= 1024
 	if !strings.HasPrefix(cfg.Directory, "/") {
 		base, err := os.Getwd()
 		if err != nil {

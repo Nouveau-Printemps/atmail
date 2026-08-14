@@ -177,7 +177,7 @@ func (s *Session) Status(mailbox string, options *imap.StatusOptions) (*imap.Sta
 }
 
 func (s *Session) Append(mailbox string, r imap.LiteralReader, options *imap.AppendOptions) (*imap.AppendData, error) {
-	if uint32(r.Size()) >= s.backend.MaxMailSize {
+	if uint32(r.Size()) >= s.backend.MaxEmailSize {
 		return nil, &imap.Error{
 			Type: imap.StatusResponseTypeNo,
 			Code: imap.ResponseCodeLimit,

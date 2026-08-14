@@ -51,8 +51,8 @@ listen = ":25"
 # use PROXY V2 Protocol by HAProxy
 use_proxy_v2 = false
 #allow_insecure_auth = false
-# max mail size in KiB: a single email cannot exceed this.
-max_mail_size = 16416
+# max email size in KiB: a single email cannot exceed this.
+max_email_size = 16416
 ```
 
 ```toml

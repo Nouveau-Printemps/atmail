@@ -30,12 +30,12 @@ func (l *logger) Printf(format string, args ...any) {
 }
 
 type Backend struct {
-	Context     context.Context
-	Domains     map[string]auth.Config
-	MaxMailSize uint32
-	RateLimiter *auth.RateLimiter
-	mailboxes   map[string]map[string]*mailbox.View
-	muBoxes     sync.RWMutex
+	Context      context.Context
+	Domains      map[string]auth.Config
+	MaxEmailSize uint32
+	RateLimiter  *auth.RateLimiter
+	mailboxes    map[string]map[string]*mailbox.View
+	muBoxes      sync.RWMutex
 }
 
 func (bck *Backend) Options(insecureAuth bool) *imapserver.Options {

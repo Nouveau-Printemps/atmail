@@ -120,7 +120,7 @@ func main() {
 	}
 	smtpSrv := smtp.NewServer(&bck)
 	smtpSrv.AllowInsecureAuth = cfg.Smtp.AllowInsecureAuth || dev
-	smtpSrv.MaxMessageBytes = int64(cfg.Smtp.MaxMailSize)
+	smtpSrv.MaxMessageBytes = int64(cfg.Smtp.MaxEmailSize)
 	smtpSrv.Domain = cfg.MainDomain
 	smtpSrv.ReadTimeout = 10 * time.Second
 	smtpSrv.WriteTimeout = 10 * time.Second
@@ -129,10 +129,10 @@ func main() {
 	defer smtpSrv.Close()
 
 	d := &display.Backend{
-		Context:     utils.WithLogger(ctx, slog.With("module", "imap")),
-		Domains:     cfg.Domains,
-		MaxMailSize: cfg.Smtp.MaxMailSize,
-		RateLimiter: rl,
+		Context:      utils.WithLogger(ctx, slog.With("module", "imap")),
+		Domains:      cfg.Domains,
+		MaxEmailSize: cfg.Smtp.MaxEmailSize,
+		RateLimiter:  rl,
 	}
 	imapSrv := imapserver.New(d.Options(cfg.Imap.AllowInsecureAuth || dev))
 	defer imapSrv.Close()

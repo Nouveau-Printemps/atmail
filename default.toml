@@ -18,8 +18,8 @@ listen = ":2525"
 # use PROXY V2 Protocol by HAProxy
 use_proxy_v2 = false
 #allow_insecure_auth = false
-# max mail size in KiB
-max_mail_size = 16416
+# max email size in KiB
+max_email_size = 16416
 # number of concurrent thread to relay email outside
 concurrent_sender = 3
 
@@ -80,7 +80,7 @@ user = "admin"
 # users that can email the group (if unspecified, everyone can)
 #somegroupname.authorized_senders = ["foo@example.org"]
 
-# Catch every mail into one address
+# Catch every email into one address
 [domains."example.org".catch_all]
 user = "me"
 password = "bcrypt here"
