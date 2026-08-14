@@ -106,6 +106,7 @@ func (cfg *Config) VerifyUser(ip net.IP, domain, username, password string) bool
 type UserData struct {
 	Username string
 	Folder   string
+	Address  string
 	Key      *string
 	Group    *Group
 }

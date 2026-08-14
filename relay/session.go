@@ -72,7 +72,7 @@ func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 	return nil
 }
 
-func (s *Session) rcpt(to string, opts *smtp.RcptOptions) (Rcpt, error) {
+func (s *Session) rcpt(to string, _ *smtp.RcptOptions) (Rcpt, error) {
 	too := ParseAddress(to)
 	rcpt := Rcpt{
 		User:    too[0],
@@ -114,6 +114,7 @@ func (s *Session) rcpt(to string, opts *smtp.RcptOptions) (Rcpt, error) {
 		rcpt.User = data.Username
 		rcpt.Folder = data.Folder
 		rcpt.Key = data.Key
+		rcpt.Address = data.Username + "@" + rcpt.Domain
 	}
 	return rcpt, nil
 }
