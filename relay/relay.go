@@ -21,18 +21,27 @@ import (
 	"nouveauprintemps.org/atmail/utils"
 )
 
-func (s *Session) send(ctx context.Context, from string, to []Rcpt, email *message.Entity, spam *float64) {
+func (s *Session) send(ctx context.Context, from string, to []Rcpt, email *message.Entity, spam *float64) error {
+	body, err := io.ReadAll(email.Body)
+	if err != nil {
+		return err
+	}
 	for d, members := range utils.GroupBy(to, func(rcpt Rcpt) string {
 		return rcpt.Domain
 	}) {
 		if !members[0].Local {
+			buf := bytes.NewBuffer(body)
+			email.Body = buf
 			s.backend.Queue.Enqueue(from, members, d, email)
 			continue
 		}
 		for _, rcpt := range members {
+			buf := bytes.NewBuffer(body)
+			email.Body = buf
 			s.relayInside(ctx, rcpt, email, spam)
 		}
 	}
+	return nil
 }
 
 func encryptEmail(l *slog.Logger, key string, email *message.Entity) bool {
