@@ -3,7 +3,9 @@ package display
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/emersion/go-imap/v2"
@@ -97,10 +99,11 @@ func (s *Session) Fetch(wr *imapserver.FetchWriter, set imap.NumSet, options *im
 		markSeen = markSeen && !sec.Peek
 	}
 	for _, email := range emails {
+		l := utils.Logger(s.context).With("email", email.ID)
 		if markSeen {
 			err = storage.AddEmailFlag(s.context, s.username, email.ID, storage.SeenFlag)
 			if err != nil {
-				utils.Logger(s.context).Error("marking email seen", "error", err)
+				l.Error("marking email seen", "error", err)
 				return errInternal
 			}
 			s.mailboxes[s.selected.Name].WriteMailboxFlags([]imap.Flag{imap.FlagSeen})
@@ -117,7 +120,7 @@ func (s *Session) Fetch(wr *imapserver.FetchWriter, set imap.NumSet, options *im
 		if options.Flags {
 			flags, err := storage.ListEmailFlags(s.context, s.username, email.ID)
 			if err != nil {
-				utils.Logger(s.context).Error("listing email flags", "error", err)
+				l.Error("listing email flags", "error", err)
 				return errInternal
 			}
 			w.WriteFlags(utils.Map(flags, func(f store.Flag) imap.Flag { return imap.Flag(f.Name) }))
@@ -127,8 +130,11 @@ func (s *Session) Fetch(wr *imapserver.FetchWriter, set imap.NumSet, options *im
 		}
 		b, err := storage.ReadEmail(s.context, s.username, email)
 		if err != nil {
-			utils.Logger(s.context).Error("reading email", "error", err)
-			return errInternal
+			l.Error("reading email", "error", err)
+			if !errors.Is(err, io.ErrUnexpectedEOF) {
+				return errInternal
+			}
+			continue
 		}
 		if options.RFC822Size {
 			w.WriteRFC822Size(int64(len(b)))

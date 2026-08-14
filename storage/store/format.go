@@ -24,6 +24,9 @@ func readEmailAt(f *os.File, offset uint32) ([]byte, error) {
 	ln := binary.BigEndian.Uint32(header[1:])
 	b := make([]byte, ln)
 	_, err = f.ReadAt(b, int64(offset)+int64(len(header)))
+	if errors.Is(err, io.EOF) {
+		return nil, io.ErrUnexpectedEOF
+	}
 	if err != nil {
 		return nil, err
 	}

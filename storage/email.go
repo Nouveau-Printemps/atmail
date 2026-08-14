@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"io"
 	"os"
 	"path"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"nouveauprintemps.org/atmail/storage/store"
+	"nouveauprintemps.org/atmail/utils"
 )
 
 func newFileName() string {
@@ -31,6 +33,8 @@ func StoreEmail(
 		return err
 	}
 	lastFile := cache.LastFile()
+detect_file:
+	var offset int64
 	var p string
 	if lastFile == "" {
 		lastFile = newFileName()
@@ -44,6 +48,7 @@ func StoreEmail(
 			lastFile = newFileName()
 		}
 		p = lastFile
+		offset = int64(cache.Offset())
 	} else {
 		p = newFileName()
 	}
@@ -55,9 +60,14 @@ func StoreEmail(
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	offset := int64(cache.Offset())
 	_, err = f.Seek(offset, io.SeekStart)
+	if errors.Is(err, io.EOF) {
+		f.Close()
+		utils.Logger(ctx).Error("invalid file", "error", io.ErrUnexpectedEOF)
+		lastFile = ""
+		goto detect_file
+	}
+	defer f.Close()
 	if err != nil {
 		return err
 	}
