@@ -21,21 +21,45 @@ import (
 	"nouveauprintemps.org/atmail/utils"
 )
 
-func (s *Session) send(ctx context.Context, from string, to []Rcpt, b []byte, h message.Header, spam *float64) {
+func (s *Session) send(ctx context.Context, from string, to []Rcpt, email *message.Entity, spam *float64) {
 	for d, members := range utils.GroupBy(to, func(rcpt Rcpt) string {
 		return rcpt.Domain
 	}) {
 		if !members[0].Local {
-			s.backend.Queue.Enqueue(from, members, d, b)
+			s.backend.Queue.Enqueue(from, members, d, email)
 			continue
 		}
 		for _, rcpt := range members {
-			s.relayInside(ctx, rcpt, b, h, spam)
+			s.relayInside(ctx, rcpt, email, spam)
 		}
 	}
 }
 
-func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, b []byte, h message.Header, spam *float64) {
+func encryptEmail(l *slog.Logger, key string, email *message.Entity) bool {
+	// decode before encrypting
+	switch email.Header.Get("Content-Transfer-Encoding") {
+	case "quoted-printable":
+		email.Body = quotedprintable.NewReader(email.Body)
+		email.Header.Set("Content-Transfer-Encoding", "8bit")
+	case "base64":
+		email.Body = base64.NewDecoder(base64.StdEncoding, email.Body)
+		email.Header.Set("Content-Transfer-Encoding", "8bit")
+	}
+	body, err := io.ReadAll(email.Body)
+	if err != nil {
+		l.Error("cannot encrypt email", "error", err)
+		return false
+	}
+	body, err = auth.EncryptEmail(key, body)
+	if err != nil {
+		l.Error("cannot encrypt email", "error", err)
+		return false
+	}
+	email.Body = bytes.NewBuffer(body)
+	return true
+}
+
+func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, email *message.Entity, spam *float64) {
 	if rcpt.Group != nil {
 		l := utils.Logger(ctx).With("group", rcpt.Address)
 		rcpts := utils.MapFilter(rcpt.Group.Members, func(member string) *Rcpt {
@@ -46,7 +70,7 @@ func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, b []byte, h messag
 			}
 			return &rcpt
 		})
-		s.send(ctx, rcpt.Address, rcpts, b, h, spam)
+		s.send(ctx, rcpt.Address, rcpts, email, spam)
 		return
 	}
 	var score sql.NullFloat64
@@ -57,32 +81,22 @@ func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, b []byte, h messag
 	l := utils.Logger(ctx).With("to", rcpt.Address)
 	var encrypted bool
 	if rcpt.Key != nil {
-		// decode before encrypting
-		switch h.Get("Content-Transfer-Encoding") {
-		case "quoted-printable":
-			b, _ = io.ReadAll(quotedprintable.NewReader(bytes.NewBuffer(b)))
-			h.Set("Content-Transfer-Encoding", "8bit")
-		case "base64":
-			b, _ = io.ReadAll(base64.NewDecoder(base64.StdEncoding, bytes.NewBuffer(b)))
-			h.Set("Content-Transfer-Encoding", "8bit")
-		}
-		body, err := auth.EncryptEmail(*rcpt.Key, b)
-		if err != nil {
-			l.Error("cannot encrypt email", "error", err)
-		} else {
-			b = body
-			encrypted = true
-		}
+		encrypted = encryptEmail(l, *rcpt.Key, email)
+	}
+	var buf bytes.Buffer
+	err := email.WriteTo(&buf)
+	if err != nil {
+		l.Error("rendering email", "error", err)
+		return
 	}
 	var id int64
-	var err error
-	if h.Header.Has(SpamHeader) {
+	if email.Header.Has(SpamHeader) {
 		id, err = storage.StoreSpam(
 			ctx,
 			[2]string{s.From.User, s.From.Domain}, [2]string{rcpt.User, rcpt.Domain},
 			rcpt.Address,
 			score,
-			b,
+			buf.Bytes(),
 			encrypted,
 		)
 	} else {
@@ -91,7 +105,7 @@ func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, b []byte, h messag
 			[2]string{s.From.User, s.From.Domain}, [2]string{rcpt.User, rcpt.Domain},
 			rcpt.Address,
 			score,
-			b,
+			buf.Bytes(),
 			rcpt.Folder,
 			encrypted,
 		)
@@ -106,7 +120,12 @@ func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, b []byte, h messag
 	}
 }
 
-func (b *Backend) relayOutside(ctx context.Context, from string, to []string, domain string, body []byte) error {
+func (b *Backend) relayOutside(ctx context.Context, from string, to []string, domain string, email *message.Entity) error {
+	var buf bytes.Buffer
+	err := email.WriteTo(&buf)
+	if err != nil {
+		return err
+	}
 	l := utils.Logger(ctx)
 	relays, err := relaysOf(domain)
 	if err != nil {
@@ -138,7 +157,7 @@ func (b *Backend) relayOutside(ctx context.Context, from string, to []string, do
 					return err
 				}
 				l.Debug("trying to send email")
-				return client.SendMail(from, to, bytes.NewBuffer(body))
+				return client.SendMail(from, to, &buf)
 			}()
 			if err == nil {
 				l.Debug("email sent")

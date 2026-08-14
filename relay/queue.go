@@ -6,6 +6,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/emersion/go-message"
 	"github.com/emersion/go-smtp"
 	"nouveauprintemps.org/atmail/utils"
 )
@@ -14,7 +15,7 @@ type emailEnqueued struct {
 	From     string
 	To       []Rcpt
 	Domain   string
-	Body     []byte
+	Email    *message.Entity
 	MustWait time.Duration
 }
 
@@ -33,13 +34,13 @@ func NewQueue(concurrent uint8) *Queue {
 	return &Queue{sender: make(chan emailEnqueued, 2), ok: ok}
 }
 
-func (q *Queue) Enqueue(from string, to []Rcpt, domain string, body []byte) {
+func (q *Queue) Enqueue(from string, to []Rcpt, domain string, email *message.Entity) {
 	go func() {
 		q.sender <- emailEnqueued{
 			From:   from,
 			To:     to,
 			Domain: domain,
-			Body:   body,
+			Email:  email,
 		}
 	}()
 }
@@ -72,7 +73,7 @@ func (q *Queue) send(ctx context.Context, b *Backend, email emailEnqueued) {
 		email.From,
 		utils.Map(email.To, func(r Rcpt) string { return r.Address }),
 		email.Domain,
-		email.Body,
+		email.Email,
 	)
 	if err == nil {
 		return

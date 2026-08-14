@@ -1,7 +1,6 @@
 package relay
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -160,17 +159,11 @@ func (s *Session) Data(r io.Reader) error {
 		}
 		score = &sc
 	}
-	var buf bytes.Buffer
-	err = msg.WriteTo(&buf)
-	if err != nil {
-		l.Error("rendering email", "error", err)
-		return errInternal
-	}
 	go func(ctx context.Context, to []Rcpt) {
 		if wait != 0 {
 			time.Sleep(wait)
 		}
-		s.send(ctx, s.From.Address, to, buf.Bytes(), msg.Header, score)
+		s.send(ctx, s.From.Address, to, msg, score)
 	}(s.context, s.To)
 	return nil
 }
