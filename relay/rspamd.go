@@ -21,7 +21,7 @@ import (
 	"nouveauprintemps.org/atmail/utils"
 )
 
-const SpamHeader = `X-Spam`
+const SpamHeader = `X-Spam-Score`
 
 type RspamdClient struct {
 	Client *http.Client

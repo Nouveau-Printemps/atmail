@@ -11,8 +11,8 @@ import (
 	"log/slog"
 	"mime/quotedprintable"
 	"net"
-	"net/netip"
 	"slices"
+	"strconv"
 
 	"github.com/emersion/go-message"
 	"github.com/emersion/go-smtp"
@@ -148,6 +148,7 @@ func (b *Backend) relayOutside(ctx context.Context, from string, to []string, do
 			err = func() error {
 				var client *smtp.Client
 				l.Debug("dialing...")
+				var err error
 				if host.withTLS {
 					client, err = smtp.DialTLS(host.address, nil)
 				} else {
@@ -238,29 +239,12 @@ func relaysOf(domain string) (iter.Seq2[relay, error], error) {
 			}
 			groups := utils.GroupBy(srvs, func(srv *net.SRV) string { return srv.Target })
 			for target, srvs := range groups {
-				ips, err := net.LookupIP(target)
-				if err != nil {
-					if !yield(relay{}, err) {
+				for _, srv := range srvs {
+					if !yield(relay{
+						address: target + ":" + strconv.Itoa(int(srv.Port)),
+						withTLS: srv.Port == 465,
+					}, nil) {
 						return
-					}
-					continue
-				}
-				l := slog.With("domain", domain, "target", target)
-				for _, ip := range ips {
-					ip, err := netip.ParseAddr(ip.String())
-					if err != nil {
-						l.Warn("invalid srv record", "error", err)
-						continue
-					}
-					if ip.IsPrivate() || ip.IsLoopback() || ip.IsUnspecified() {
-						l.Warn("invalid srv record", "error", "invalid IP")
-						continue
-					}
-					for _, srv := range srvs {
-						addr := netip.AddrPortFrom(ip, srv.Port)
-						if !yield(relay{address: addr.String(), withTLS: srv.Port == 465}, nil) {
-							return
-						}
 					}
 				}
 			}
