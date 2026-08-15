@@ -24,6 +24,11 @@ If you want to send logs to syslog MAIL facility, add `-syslog`.
 
 If you want to increase the verbosity, add `-v`.
 
+You can reload the domains' config with a `SIGHUP`:
+```shell
+kill -s HUP <pid>
+```
+
 ### Common config
 
 ```toml

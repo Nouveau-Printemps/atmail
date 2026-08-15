@@ -150,6 +150,23 @@ func main() {
 		}
 	}
 
+	go func() {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, syscall.SIGHUP)
+		for {
+			<-sig
+			slog.Info("reloading config")
+			cfg, err := ParseConfig(configPath)
+			if err != nil {
+				slog.Error("reloading config failed", "error", err)
+				continue
+			}
+			bck.Domains = cfg.Domains
+			d.Domains = cfg.Domains
+			slog.Info("config reloaded")
+		}
+	}()
+
 	storage.Cache.Path = cfg.Directory
 	storage.Cache.Migrations = emailsMigrations + mailboxMigrations
 	defer func() {
