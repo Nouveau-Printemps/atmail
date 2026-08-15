@@ -4,12 +4,10 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"encoding/base64"
 	"errors"
 	"io"
 	"iter"
 	"log/slog"
-	"mime/quotedprintable"
 	"net"
 	"slices"
 	"strconv"
@@ -30,14 +28,12 @@ func (s *Session) send(ctx context.Context, from string, to []Rcpt, email *messa
 		return rcpt.Domain
 	}) {
 		if !members[0].Local {
-			buf := bytes.NewBuffer(body)
-			email.Body = buf
+			email.Body = bytes.NewBuffer(body)
 			s.backend.Queue.Enqueue(from, members, d, email)
 			continue
 		}
 		for _, rcpt := range members {
-			buf := bytes.NewBuffer(body)
-			email.Body = buf
+			email.Body = bytes.NewBuffer(body)
 			s.relayInside(ctx, rcpt, email, spam)
 		}
 	}
@@ -45,26 +41,11 @@ func (s *Session) send(ctx context.Context, from string, to []Rcpt, email *messa
 }
 
 func encryptEmail(l *slog.Logger, key string, email *message.Entity) bool {
-	// decode before encrypting
-	switch email.Header.Get("Content-Transfer-Encoding") {
-	case "quoted-printable":
-		email.Body = quotedprintable.NewReader(email.Body)
-		email.Header.Set("Content-Transfer-Encoding", "8bit")
-	case "base64":
-		email.Body = base64.NewDecoder(base64.StdEncoding, email.Body)
-		email.Header.Set("Content-Transfer-Encoding", "8bit")
-	}
-	body, err := io.ReadAll(email.Body)
+	err := auth.EncryptEmail(key, email)
 	if err != nil {
 		l.Error("cannot encrypt email", "error", err)
 		return false
 	}
-	body, err = auth.EncryptEmail(key, body)
-	if err != nil {
-		l.Error("cannot encrypt email", "error", err)
-		return false
-	}
-	email.Body = bytes.NewBuffer(body)
 	return true
 }
 
@@ -79,7 +60,7 @@ func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, email *message.Ent
 			}
 			return &rcpt
 		})
-		s.send(ctx, rcpt.Address, rcpts, email, spam)
+		s.send(utils.WithLogger(ctx, l), rcpt.Address, rcpts, email, spam)
 		return
 	}
 	var score sql.NullFloat64
