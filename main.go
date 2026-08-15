@@ -136,7 +136,7 @@ func main() {
 	}
 	imapSrv := imapserver.New(d.Options(cfg.Imap.AllowInsecureAuth || dev))
 	defer imapSrv.Close()
-	bck.OnReceive = func(user, mailbox string, id int64) {
+	bck.OnReceive = func(user, box string, id int64) {
 		boxes, ok := d.GetUserBoxes(user)
 		if !ok {
 			slog.Debug("user not found, cannot notify", "user", user)

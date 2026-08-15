@@ -23,7 +23,7 @@ type Session struct {
 
 	context context.Context
 
-	mailboxes map[string]*mailbox.View
+	mailboxes *Boxes
 
 	username string
 
@@ -67,10 +67,11 @@ func (s *Session) Login(username, password string) error {
 		l.Error("loading mailbox", "error", err)
 		return errInternal
 	}
-	s.mailboxes = make(map[string]*mailbox.View, len(box))
+	mp := make(map[string]*mailbox.View, len(box))
 	for _, b := range box {
-		s.mailboxes[b.Name] = mailbox.NewView(uint32(b.ID), b.Name, uint32(b.Count))
+		mp[b.Name] = mailbox.NewView(uint32(b.ID), b.Name, uint32(b.Count))
 	}
+	s.mailboxes = &Boxes{mp: mp}
 	s.backend.SetUserBoxes(username, s.mailboxes)
 	return nil
 }

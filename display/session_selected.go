@@ -106,7 +106,8 @@ func (s *Session) Fetch(wr *imapserver.FetchWriter, set imap.NumSet, options *im
 				l.Error("marking email seen", "error", err)
 				return errInternal
 			}
-			s.mailboxes[s.selected.Name].WriteMailboxFlags([]imap.Flag{imap.FlagSeen})
+			box, _ := s.mailboxes.Get(s.selected.Name)
+			box.WriteMailboxFlags([]imap.Flag{imap.FlagSeen})
 		}
 		seq, err := storage.ToSequence(s.context, s.username, int64(s.selected.ID), email.ID)
 		if err != nil {
@@ -226,7 +227,8 @@ func (s *Session) Store(
 		if err != nil {
 			return err
 		}
-		s.mailboxes[s.selected.Name].WriteMessageFlags(
+		box, _ := s.mailboxes.Get(s.selected.Name)
+		box.WriteMessageFlags(
 			seq,
 			s.selected.ID,
 			flags.Flags,
@@ -245,7 +247,7 @@ func (s *Session) Copy(set imap.NumSet, dest string) (*imap.CopyData, error) {
 			Text: "This is the same mailbox",
 		}
 	}
-	target, ok := s.mailboxes[dest]
+	target, ok := s.mailboxes.Get(dest)
 	if !ok {
 		return nil, errNotFound
 	}

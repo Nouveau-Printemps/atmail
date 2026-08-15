@@ -29,17 +29,22 @@ func (l *logger) Printf(format string, args ...any) {
 	l.Logger.ErrorContext(ctx, log)
 }
 
+type Boxes struct {
+	mp map[string]*mailbox.View
+	mu sync.RWMutex
+}
+
 type Backend struct {
 	Context      context.Context
 	Domains      map[string]auth.Config
 	MaxEmailSize uint32
 	RateLimiter  *auth.RateLimiter
-	mailboxes    map[string]map[string]*mailbox.View
+	mailboxes    map[string]*Boxes
 	muBoxes      sync.RWMutex
 }
 
 func (bck *Backend) Options(insecureAuth bool) *imapserver.Options {
-	bck.mailboxes = make(map[string]map[string]*mailbox.View, 2)
+	bck.mailboxes = make(map[string]*Boxes, 2)
 	return &imapserver.Options{
 		NewSession: bck.NewSession,
 		Caps: imap.CapSet{
@@ -62,15 +67,28 @@ func (bck *Backend) NewSession(conn *imapserver.Conn) (imapserver.Session, *imap
 	}, &imapserver.GreetingData{PreAuth: false}, nil
 }
 
-func (bck *Backend) GetUserBoxes(user string) (map[string]*mailbox.View, bool) {
+func (bck *Backend) GetUserBoxes(user string) (*Boxes, bool) {
 	bck.muBoxes.RLock()
 	defer bck.muBoxes.RUnlock()
 	bxs, ok := bck.mailboxes[user]
 	return bxs, ok
 }
 
-func (bck *Backend) SetUserBoxes(user string, boxes map[string]*mailbox.View) {
+func (bck *Backend) SetUserBoxes(user string, boxes *Boxes) {
 	bck.muBoxes.Lock()
 	defer bck.muBoxes.Unlock()
 	bck.mailboxes[user] = boxes
+}
+
+func (boxes *Boxes) Get(name string) (*mailbox.View, bool) {
+	boxes.mu.RLock()
+	defer boxes.mu.RUnlock()
+	v, ok := boxes.mp[name]
+	return v, ok
+}
+
+func (boxes *Boxes) Add(box *mailbox.View) {
+	boxes.mu.Lock()
+	defer boxes.mu.Unlock()
+	boxes.mp[box.Name] = box
 }

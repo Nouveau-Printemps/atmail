@@ -25,7 +25,7 @@ var errNotFound = &imap.Error{
 }
 
 func (s *Session) Select(mailbox string, options *imap.SelectOptions) (*imap.SelectData, error) {
-	m, ok := s.mailboxes[mailbox]
+	m, ok := s.mailboxes.Get(mailbox)
 	if !ok {
 		return nil, errNotFound
 	}
@@ -46,7 +46,7 @@ func (s *Session) Unselect() error {
 }
 
 func (s *Session) Create(box string, options *imap.CreateOptions) error {
-	if _, ok := s.mailboxes[box]; ok {
+	if _, ok := s.mailboxes.Get(box); ok {
 		return &imap.Error{
 			Type: imap.StatusResponseTypeNo,
 			Code: imap.ResponseCodeAlreadyExists,
@@ -68,12 +68,12 @@ func (s *Session) Create(box string, options *imap.CreateOptions) error {
 		utils.Logger(s.context).Error("creating mailbox", "error", err)
 		return err
 	}
-	s.mailboxes[box] = mailbox.NewView(uint32(id), box, 0)
+	s.mailboxes.Add(mailbox.NewView(uint32(id), box, 0))
 	return nil
 }
 
 func (s *Session) Delete(mailbox string) error {
-	box, ok := s.mailboxes[mailbox]
+	box, ok := s.mailboxes.Get(mailbox)
 	if !ok {
 		return errNotFound
 	}
@@ -86,7 +86,7 @@ func (s *Session) Delete(mailbox string) error {
 }
 
 func (s *Session) Rename(mailbox, newName string, options *imap.RenameOptions) error {
-	box, ok := s.mailboxes[mailbox]
+	box, ok := s.mailboxes.Get(mailbox)
 	if !ok {
 		return errNotFound
 	}
@@ -99,7 +99,7 @@ func (s *Session) Rename(mailbox, newName string, options *imap.RenameOptions) e
 }
 
 func (s *Session) Subscribe(mailbox string) error {
-	_, ok := s.mailboxes[mailbox]
+	_, ok := s.mailboxes.Get(mailbox)
 	if !ok {
 		return errNotFound
 	}
@@ -117,9 +117,11 @@ func (s *Session) List(w *imapserver.ListWriter, ref string, patterns []string, 
 	if options.ReturnSubscribed {
 		boxes = slices.Collect(maps.Keys(s.subscribed))
 	} else {
-		boxes = utils.ReduceMapToSlice(s.mailboxes, func(k string, _ *mailbox.View) string {
+		s.mailboxes.mu.RLock()
+		boxes = utils.ReduceMapToSlice(s.mailboxes.mp, func(k string, _ *mailbox.View) string {
 			return k
 		})
+		s.mailboxes.mu.RUnlock()
 	}
 	for p, box := range utils.Zip(slices.Values(patterns), slices.Values(boxes)) {
 		if !imapserver.MatchList(box, storage.MailboxSeparator, ref, p) {
@@ -159,7 +161,7 @@ func (s *Session) List(w *imapserver.ListWriter, ref string, patterns []string, 
 }
 
 func (s *Session) Status(mailbox string, options *imap.StatusOptions) (*imap.StatusData, error) {
-	_, ok := s.mailboxes[mailbox]
+	_, ok := s.mailboxes.Get(mailbox)
 	if !ok {
 		return nil, errNotFound
 	}
@@ -184,7 +186,7 @@ func (s *Session) Append(mailbox string, r imap.LiteralReader, options *imap.App
 			Text: "mail is too big to be added",
 		}
 	}
-	box, ok := s.mailboxes[mailbox]
+	box, ok := s.mailboxes.Get(mailbox)
 	if !ok {
 		return nil, errNotFound
 	}
