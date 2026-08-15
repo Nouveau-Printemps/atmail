@@ -20,6 +20,7 @@ import (
 	"github.com/nyttikord/logos"
 	"nouveauprintemps.org/atmail/auth"
 	"nouveauprintemps.org/atmail/display"
+	"nouveauprintemps.org/atmail/mailbox"
 	"nouveauprintemps.org/atmail/relay"
 	"nouveauprintemps.org/atmail/storage"
 	"nouveauprintemps.org/atmail/utils"
@@ -142,8 +143,10 @@ func main() {
 			slog.Debug("user not found, cannot notify", "user", user)
 			return
 		}
-		if box, ok := boxes[mailbox]; ok {
-			box.WriteNewMessages(1)
+		if bx, ok := boxes.Get(box); ok {
+			bx.WriteNewMessages(1)
+		} else {
+			boxes.Add(mailbox.NewView(uint32(id), box, 1))
 		}
 	}
 
