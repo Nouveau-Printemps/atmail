@@ -100,7 +100,7 @@ func main() {
 	slog.Debug("users' folders created")
 	ctx, cancel := signal.NotifyContext(
 		context.Background(),
-		os.Interrupt, os.Kill, syscall.SIGINT,
+		os.Interrupt, os.Kill, syscall.SIGTERM,
 	)
 	defer cancel()
 
