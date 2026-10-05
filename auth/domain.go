@@ -92,11 +92,8 @@ func (cfg *Config) VerifyUser(ip net.IP, domain, username, password string) bool
 		}
 		user, ok := cfg.Static.Users[u]
 		if !ok {
-			if ip.IsLoopback() || ip.IsPrivate() {
-				_, ok = cfg.Static.SystemUsers[u]
-				return ok
-			}
-			return false
+			_, ok = cfg.Static.SystemUsers[u]
+			return ok
 		}
 		realPass = user.Password
 	}
