@@ -16,10 +16,9 @@ type DB = store.Queries
 var Cache = &Meta{subs: make(map[string]*meta)}
 
 type Meta struct {
-	mu         sync.Mutex
-	Path       string
-	Migrations string
-	subs       map[string]*meta
+	mu   sync.Mutex
+	Path string
+	subs map[string]*meta
 }
 
 func (m *Meta) Close(ctx context.Context) error {
@@ -57,7 +56,7 @@ func (m *Meta) DB(ctx context.Context, user string) (*meta, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = db.ExecContext(ctx, m.Migrations)
+	err = migrate(ctx, db)
 	if err != nil {
 		return nil, err
 	}
