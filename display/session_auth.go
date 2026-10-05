@@ -55,7 +55,8 @@ func (s *Session) Create(box string, options *imap.CreateOptions) error {
 	}
 	sep := string(storage.MailboxSeparator)
 	if strings.HasSuffix(box, sep) ||
-		strings.Contains(box, sep+sep) {
+		strings.Contains(box, sep+sep) ||
+		len(box) == 0 {
 		return &imap.Error{
 			Type: imap.StatusResponseTypeNo,
 			Code: imap.ResponseCodeCannot,
