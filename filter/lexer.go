@@ -1,6 +1,9 @@
 package filter
 
 import (
+	"bufio"
+	"errors"
+	"io"
 	"strings"
 )
 
@@ -24,8 +27,11 @@ const (
 )
 
 type Lexer struct {
-	content []rune
-	current uint
+	content *bufio.Reader
+}
+
+func NewLexer(r io.Reader) *Lexer {
+	return &Lexer{content: bufio.NewReader(r)}
 }
 
 type Lexem struct {
@@ -38,26 +44,43 @@ func (lm *Lexem) IsHardSep() bool {
 }
 
 func (l *Lexer) Next() *Lexem {
-	ln := uint(len(l.content))
-	beg := l.current
+	var sb strings.Builder
 	var kind *Kind
-	for ; l.current < ln; l.current++ {
+	for {
+		var current rune
 		var next *rune
-		if l.current+1 < ln {
-			next = &l.content[l.current+1]
+		n, err := l.content.Peek(2)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				// nothing was read
+				if len(n) == 0 {
+					break
+				}
+				// only current was read
+			} else {
+				panic(err)
+			}
+		} else {
+			// everything was read
+			next = new(rune(n[1]))
 		}
-		ckind := kindOf(kind, l.content[l.current], next)
+		current = rune(n[0])
+		ckind := kindOf(kind, current, next)
 		if kind != nil && *kind != ckind {
 			break
 		}
+		_, _ = l.content.ReadByte()
+		sb.WriteRune(current)
 		kind = &ckind
+		if next == nil {
+			break
+		}
 	}
 	if kind == nil {
 		return nil
 	}
-	content := string(l.content[beg:l.current])
 	if *kind == identifier {
-		switch content {
+		switch sb.String() {
 		case "do":
 			*kind = block_beg
 		case "end":
@@ -66,7 +89,7 @@ func (l *Lexer) Next() *Lexem {
 			*kind = filter
 		}
 	}
-	return &Lexem{Kind: *kind, Value: content}
+	return &Lexem{Kind: *kind, Value: sb.String()}
 }
 
 func nilOr[T comparable](val *T, or T) bool {

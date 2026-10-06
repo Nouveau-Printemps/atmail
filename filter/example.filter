@@ -5,7 +5,6 @@ filter "spam" do
     header.object:contains("SPAM")
 
     spam
-    reject
 end
 
 filter "uwu" do
@@ -13,4 +12,5 @@ filter "uwu" do
 
     mailbox "owo"
     forward "here@example.com"
+    finish
 end

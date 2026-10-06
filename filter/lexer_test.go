@@ -1,6 +1,7 @@
 package filter
 
 import (
+	"bytes"
 	"testing"
 )
 
@@ -18,7 +19,7 @@ func verifyLexem(t *testing.T, lexem *Lexem, kind Kind, val string) {
 }
 
 func TestLexer_Next(t *testing.T) {
-	lx := Lexer{content: []rune(`from = "hello@example.org"
+	lx := NewLexer(bytes.NewBufferString(`from = "hello@example.org"
 to = "me@example.com"
 
 filter "spam" do
@@ -33,7 +34,7 @@ filter "uwu" do
     mailbox "owo"
     forward "here@example.com"
     finish
-end`)}
+end`))
 	verifyLexem(t, lx.Next(), identifier, "from")
 	verifyLexem(t, lx.Next(), separator, " ")
 	verifyLexem(t, lx.Next(), operator, "=")

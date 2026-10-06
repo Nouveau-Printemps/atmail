@@ -1,6 +1,9 @@
 package filter
 
-import "errors"
+import (
+	"errors"
+	"io"
+)
 
 type Statement interface {
 	// Eval returns true if the evaluation can continue
@@ -17,9 +20,9 @@ var (
 	ErrBlockEnded        = errors.New("block ended")
 )
 
-func Parse(content string) (*Tree, error) {
-	lx := Lexer{content: []rune(content)}
-	stmts, err := ParseStatements(&lx)
+func Parse(r io.Reader) (*Tree, error) {
+	lx := NewLexer(r)
+	stmts, err := ParseStatements(lx)
 	return &Tree{Statements: stmts}, err
 }
 
