@@ -22,10 +22,9 @@ func TestLexer_Next(t *testing.T) {
 to = "me@example.com"
 
 filter "spam" do
-    header.x_spam_score >= 5.3
+    header.x-spam-score >= 5.3
 
     spam
-    reject
 end
 
 filter "uwu" do
@@ -33,6 +32,7 @@ filter "uwu" do
 
     mailbox "owo"
     forward "here@example.com"
+    finish
 end`)}
 	verifyLexem(t, lx.Next(), identifier, "from")
 	verifyLexem(t, lx.Next(), separator, " ")
@@ -40,8 +40,7 @@ end`)}
 	verifyLexem(t, lx.Next(), separator, " ")
 	verifyLexem(t, lx.Next(), string_del, "\"")
 	verifyLexem(t, lx.Next(), identifier, "hello")
-	verifyLexem(t, lx.Next(), generic, "@")
-	verifyLexem(t, lx.Next(), identifier, "example")
+	verifyLexem(t, lx.Next(), generic, "@example")
 	verifyLexem(t, lx.Next(), identifier_compose, ".")
 	verifyLexem(t, lx.Next(), identifier, "org")
 	verifyLexem(t, lx.Next(), string_del, "\"")
@@ -52,8 +51,7 @@ end`)}
 	verifyLexem(t, lx.Next(), separator, " ")
 	verifyLexem(t, lx.Next(), string_del, "\"")
 	verifyLexem(t, lx.Next(), identifier, "me")
-	verifyLexem(t, lx.Next(), generic, "@")
-	verifyLexem(t, lx.Next(), identifier, "example")
+	verifyLexem(t, lx.Next(), generic, "@example")
 	verifyLexem(t, lx.Next(), identifier_compose, ".")
 	verifyLexem(t, lx.Next(), identifier, "com")
 	verifyLexem(t, lx.Next(), string_del, "\"")
@@ -68,15 +66,13 @@ end`)}
 	verifyLexem(t, lx.Next(), separator, "\n    ")
 	verifyLexem(t, lx.Next(), identifier, "header")
 	verifyLexem(t, lx.Next(), identifier_compose, ".")
-	verifyLexem(t, lx.Next(), identifier, "x_spam_score")
+	verifyLexem(t, lx.Next(), identifier, "x-spam-score")
 	verifyLexem(t, lx.Next(), separator, " ")
 	verifyLexem(t, lx.Next(), operator, ">=")
 	verifyLexem(t, lx.Next(), separator, " ")
 	verifyLexem(t, lx.Next(), number, "5.3")
 	verifyLexem(t, lx.Next(), separator, "\n\n    ")
 	verifyLexem(t, lx.Next(), identifier, "spam")
-	verifyLexem(t, lx.Next(), separator, "\n    ")
-	verifyLexem(t, lx.Next(), identifier, "reject")
 	verifyLexem(t, lx.Next(), separator, "\n")
 	verifyLexem(t, lx.Next(), block_end, "end")
 	verifyLexem(t, lx.Next(), separator, "\n\n")
@@ -107,11 +103,12 @@ end`)}
 	verifyLexem(t, lx.Next(), separator, " ")
 	verifyLexem(t, lx.Next(), string_del, "\"")
 	verifyLexem(t, lx.Next(), identifier, "here")
-	verifyLexem(t, lx.Next(), generic, "@")
-	verifyLexem(t, lx.Next(), identifier, "example")
+	verifyLexem(t, lx.Next(), generic, "@example")
 	verifyLexem(t, lx.Next(), identifier_compose, ".")
 	verifyLexem(t, lx.Next(), identifier, "com")
 	verifyLexem(t, lx.Next(), string_del, "\"")
+	verifyLexem(t, lx.Next(), separator, "\n    ")
+	verifyLexem(t, lx.Next(), identifier, "finish")
 	verifyLexem(t, lx.Next(), separator, "\n")
 	verifyLexem(t, lx.Next(), block_end, "end")
 	if lx.Next() != nil {

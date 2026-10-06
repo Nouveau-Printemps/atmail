@@ -6,7 +6,8 @@ literal = identifier *("." identifier) / number / string
 crlf = *WSP [CR] LF *WSP
 sep = WSP / crlf
 
-expression = expression [":" 1*identifier "(" [expression 1*sep] ")"]
+expression = literal
+expression =/ identifier 1*(":" identifier "(" [expression 1*sep] ")")
 
 operator = "=" / "!=" / ">" / "<" / ">=" / "<="
 condition = expression [*sep operator *sep expression]

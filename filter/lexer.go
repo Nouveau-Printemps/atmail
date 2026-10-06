@@ -1,6 +1,8 @@
 package filter
 
-import "strings"
+import (
+	"strings"
+)
 
 type Kind uint8
 
@@ -96,9 +98,17 @@ func kindOf(before *Kind, current rune, next *rune) Kind {
 		}
 		return identifier_compose
 	}
-	if (nilOr(before, identifier) || nilOr(before, generic)) &&
-		current >= 'A' && current <= 'z' {
+	if (nilOr(before, identifier) && (current >= 'A' && current <= 'z')) ||
+		(before != nil && (current == '_' || current == '-' || (current >= '0' && current <= '9'))) {
 		return identifier
 	}
 	return generic
+}
+
+func (l *Lexer) NextOrErr() (Lexem, error) {
+	lm := l.Next()
+	if lm == nil {
+		return Lexem{}, ErrInvalidExpression
+	}
+	return *lm, nil
 }
