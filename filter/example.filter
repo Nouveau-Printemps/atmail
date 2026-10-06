@@ -1,0 +1,16 @@
+from = "hello@example.org"
+to = "me@example.com"
+
+filter "spam" do
+    header.object:contains("SPAM")
+
+    spam
+    reject
+end
+
+filter "uwu" do
+    body:contains("uwu")
+
+    mailbox "owo"
+    forward "here@example.com"
+end

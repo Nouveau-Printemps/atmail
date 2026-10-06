@@ -1,0 +1,17 @@
+identifier = 1*ASCII
+string = DQUOTE *OCTET DQUOTE
+literal = identifier *("." identifier) / 1*DIGIT / string
+expression = expression [":" 1*identifier "(" [expression 1*WSP] ")"]
+
+operator = "=" / "!=" / ">" / "<" / ">=" / "<="
+condition = expression [*WSP operator *WSP expression]
+condition =/ condition 1*WSP "or" 1*WSP condition
+
+crlf = *WSP [CR] LF *WSP
+
+block = "do" *(crlf statement) crlf "end"
+filter = "filter" [1*WSP string] 1*WSP block
+
+action = variable [1*WSP expression]
+
+statement = filter / condition / action
