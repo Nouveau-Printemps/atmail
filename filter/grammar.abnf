@@ -1,17 +1,20 @@
-identifier = 1*ASCII
+identifier = 1*ALPHA *["_" / "-" / ALPHA / DIGIT ]
 string = DQUOTE *OCTET DQUOTE
-literal = identifier *("." identifier) / 1*DIGIT / string
-expression = expression [":" 1*identifier "(" [expression 1*WSP] ")"]
-
-operator = "=" / "!=" / ">" / "<" / ">=" / "<="
-condition = expression [*WSP operator *WSP expression]
-condition =/ condition 1*WSP "or" 1*WSP condition
+number = 1*DIGIT / *DIGIT "." 1*DIGIT
+literal = identifier *("." identifier) / number / string
 
 crlf = *WSP [CR] LF *WSP
+sep = WSP / crlf
+
+expression = expression [":" 1*identifier "(" [expression 1*sep] ")"]
+
+operator = "=" / "!=" / ">" / "<" / ">=" / "<="
+condition = expression [*sep operator *sep expression]
+condition =/ condition 1*sep "or" 1*sep condition
 
 block = "do" *(crlf statement) crlf "end"
-filter = "filter" [1*WSP string] 1*WSP block
+filter = "filter" [1*sep string] 1*WSP block
 
-action = variable [1*WSP expression]
+action = identifier [1*WSP expression]
 
 statement = filter / condition / action
