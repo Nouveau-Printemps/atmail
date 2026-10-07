@@ -105,6 +105,14 @@ func (l *Lexer) Peek() *Lexem {
 	return l.current
 }
 
+func (l *Lexer) PeekOrErr() (Lexem, error) {
+	next := l.Peek()
+	if next == nil {
+		return Lexem{}, ErrInvalidExpression
+	}
+	return *next, nil
+}
+
 func nilOr[T comparable](val *T, or T) bool {
 	return val == nil || *val == or
 }
