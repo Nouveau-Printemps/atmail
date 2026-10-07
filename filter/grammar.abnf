@@ -1,13 +1,16 @@
-identifier = 1*ALPHA *["_" / "-" / ALPHA / DIGIT ]
+identifier = 1*ALPHA *( "_" / "-" / ALPHA / DIGIT )
 string = DQUOTE *OCTET DQUOTE
 number = 1*DIGIT / *DIGIT "." 1*DIGIT
-literal = identifier *("." identifier) / number / string
+literal = number / string
 
 crlf = *WSP [CR] LF *WSP
 sep = WSP / crlf
 
-expression = literal
-expression =/ identifier 1*(":" identifier "(" [expression 1*sep] ")")
+eval = identifier
+eval =/ eval *("." identifier)
+eval =/ eval *(":" identifier "(" *sep [expression (1*sep expression)] *sep ")")
+
+expression = literal / eval
 
 operator = "=" / "!=" / ">" / "<" / ">=" / "<="
 condition = expression [*sep operator *sep expression]

@@ -28,6 +28,7 @@ const (
 
 type Lexer struct {
 	content *bufio.Reader
+	current *Lexem
 }
 
 func NewLexer(r io.Reader) *Lexer {
@@ -44,6 +45,11 @@ func (lm *Lexem) IsHardSep() bool {
 }
 
 func (l *Lexer) Next() *Lexem {
+	if l.current != nil {
+		lm := l.current
+		l.current = nil
+		return lm
+	}
 	var sb strings.Builder
 	var kind *Kind
 	for {
@@ -90,6 +96,13 @@ func (l *Lexer) Next() *Lexem {
 		}
 	}
 	return &Lexem{Kind: *kind, Value: sb.String()}
+}
+
+func (l *Lexer) Peek() *Lexem {
+	if l.current == nil {
+		l.current = l.Next()
+	}
+	return l.current
 }
 
 func nilOr[T comparable](val *T, or T) bool {

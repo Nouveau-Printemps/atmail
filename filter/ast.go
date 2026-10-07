@@ -27,18 +27,17 @@ func Parse(r io.Reader) (*Tree, error) {
 }
 
 func ParseStatements(lx *Lexer) ([]Statement, error) {
-	lm := lx.Next()
 	var stmts []Statement
-	for lm != nil {
+	for lm := lx.Peek(); lm != nil; lm = lx.Peek() {
 		var stmt Statement
 		var err error
 		switch lm.Kind {
 		case filter:
+			lx.Next()
 			stmt, err = ParseFilter(lx)
-		case identifier:
-		case number:
-		case string_del:
+		case identifier, number, string_del:
 		case block_end:
+			lx.Next()
 			return stmts, ErrBlockEnded
 		default:
 			return nil, ErrExpectedStatement
@@ -47,7 +46,6 @@ func ParseStatements(lx *Lexer) ([]Statement, error) {
 			return nil, err
 		}
 		stmts = append(stmts, stmt)
-		lm = lx.Next()
 	}
 	return nil, nil
 }
