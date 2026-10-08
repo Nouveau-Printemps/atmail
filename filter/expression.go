@@ -127,9 +127,10 @@ func (m *Method) Eval() (Expression, error) {
 func parseEval(lx *Lexer) (Expression, error) {
 	var before Expression
 	before = &Variable{Name: lx.Next().Value}
-	for cur := lx.Next(); cur != nil && !cur.IsHardSep(); cur = lx.Next() {
+	for cur := lx.Peek(); cur != nil && !cur.IsHardSep(); cur = lx.Peek() {
 		switch cur.Kind {
 		case identifier_compose:
+			lx.Next()
 			cur, err := lx.NextOrErr()
 			if err != nil {
 				return nil, err
@@ -139,6 +140,7 @@ func parseEval(lx *Lexer) (Expression, error) {
 			}
 			before = &Field{Name: cur.Value, Variable: before}
 		case identifier_execute:
+			lx.Next()
 			cur, err := lx.NextOrErr()
 			if err != nil {
 				return nil, err
@@ -161,12 +163,14 @@ func parseEval(lx *Lexer) (Expression, error) {
 				if err != nil {
 					return nil, err
 				}
+				lx.SkipSep()
 				next := lx.Peek()
-				if next == nil || (next.Kind != identifier_param_end && next.Kind != separator) {
+				if next == nil || (next.Kind != identifier_param_end && next.Kind != identifier_param_sep) {
 					return nil, ErrInvalidExpression
 				}
-				if next.Kind == separator {
+				if next.Kind == identifier_param_sep {
 					lx.Next()
+					lx.SkipSep()
 				}
 				params = append(params, expr)
 			}
@@ -176,7 +180,7 @@ func parseEval(lx *Lexer) (Expression, error) {
 			lx.Next()
 			before = &Method{Name: name, Variable: before, Params: params}
 		default:
-			return nil, ErrInvalidExpression
+			return before, nil
 		}
 	}
 	return before, nil

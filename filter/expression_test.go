@@ -103,9 +103,9 @@ func TestAST_Expression(t *testing.T) {
 		t.Fatalf("invalid params: %#v wanted %#v", m.Params, op1)
 	}
 
-	/*expr = testExpression(t, `var.field:method(1, var)`)
+	expr = testExpression(t, `var.field:method(1, var)`)
 	m = expr.(*Method)
-	if len(m.Params) != 2 || !reflect.DeepEqual(m.Params[0], op1) || reflect.DeepEqual(m.Params[1], v) {
+	if len(m.Params) != 2 || !reflect.DeepEqual(m.Params[0], op1) || !reflect.DeepEqual(m.Params[1], v) {
 		t.Fatalf("invalid params: %#v wanted %#v and %#v", m.Params, op1, v)
-	}*/
+	}
 }

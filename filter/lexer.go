@@ -16,6 +16,7 @@ const (
 	identifier_execute
 	identifier_param_beg
 	identifier_param_end
+	identifier_param_sep
 	string_del
 	number
 	operator_low
@@ -141,14 +142,24 @@ func kindOf(before *Kind, current rune, next *rune) Kind {
 	switch current {
 	case '=', '!', '>', '<':
 		return operator_low
-	case ':':
-		return identifier_execute
-	case '(':
-		return identifier_param_beg
-	case ')':
-		return identifier_param_end
 	case ' ', '\n', '\r', '\t':
 		return separator
+	case ':':
+		if before == nil {
+			return identifier_execute
+		}
+	case '(':
+		if before == nil {
+			return identifier_param_beg
+		}
+	case ')':
+		if before == nil {
+			return identifier_param_end
+		}
+	case ',':
+		if before == nil {
+			return identifier_param_sep
+		}
 	case '"':
 		if before == nil {
 			return string_del
