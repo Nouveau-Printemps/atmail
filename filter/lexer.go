@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"io"
+	"slices"
 	"strings"
 )
 
@@ -17,7 +18,8 @@ const (
 	identifier_param_end
 	string_del
 	number
-	operator
+	operator_low
+	operator_high
 	super_operator
 	block_beg
 	block_end
@@ -30,6 +32,8 @@ type Lexer struct {
 	content *bufio.Reader
 	current *Lexem
 }
+
+var validOps = [6]string{"=", "!=", ">=", "<=", ">", "<"}
 
 func NewLexer(r io.Reader) *Lexer {
 	return &Lexer{content: bufio.NewReader(r)}
@@ -85,7 +89,8 @@ func (l *Lexer) Next() *Lexem {
 	if kind == nil {
 		return nil
 	}
-	if *kind == identifier {
+	switch *kind {
+	case identifier:
 		switch sb.String() {
 		case "do":
 			*kind = block_beg
@@ -93,6 +98,12 @@ func (l *Lexer) Next() *Lexem {
 			*kind = block_end
 		case "filter":
 			*kind = filter
+		case "or":
+			*kind = operator_high
+		}
+	case operator_high:
+		if !slices.Contains(validOps[:], sb.String()) {
+			*kind = generic
 		}
 	}
 	return &Lexem{Kind: *kind, Value: sb.String()}
@@ -113,6 +124,15 @@ func (l *Lexer) PeekOrErr() (Lexem, error) {
 	return *next, nil
 }
 
+func (l *Lexer) SkipSep() bool {
+	lm := l.Peek()
+	if lm == nil || lm.Kind != separator {
+		return false
+	}
+	l.Next()
+	return true
+}
+
 func nilOr[T comparable](val *T, or T) bool {
 	return val == nil || *val == or
 }
@@ -120,7 +140,7 @@ func nilOr[T comparable](val *T, or T) bool {
 func kindOf(before *Kind, current rune, next *rune) Kind {
 	switch current {
 	case '=', '!', '>', '<':
-		return operator
+		return operator_low
 	case ':':
 		return identifier_execute
 	case '(':

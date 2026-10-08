@@ -36,6 +36,7 @@ func ParseStatements(lx *Lexer) ([]Statement, error) {
 			lx.Next()
 			stmt, err = ParseFilter(lx)
 		case identifier, number, string_del:
+			stmt, err = parseExprStatement(lx)
 		case block_end:
 			lx.Next()
 			return stmts, ErrBlockEnded
@@ -47,5 +48,33 @@ func ParseStatements(lx *Lexer) ([]Statement, error) {
 		}
 		stmts = append(stmts, stmt)
 	}
-	return nil, nil
+	return stmts, nil
+}
+
+type ExpressionStatement struct {
+	Expr Expression
+}
+
+func (expr ExpressionStatement) Eval() bool {
+	res, err := expr.Expr.Eval()
+	if err != nil {
+		return false
+	}
+	cv, ok := res.(Literal[bool])
+	if !ok {
+		return false
+	}
+	return cv.Value
+}
+
+func parseExprStatement(lx *Lexer) (Statement, error) {
+	expr, err := parseExpression(lx)
+	if err != nil {
+		return nil, err
+	}
+	next := lx.Next()
+	if next != nil && !next.IsHardSep() {
+		return nil, ErrInvalidExpression
+	}
+	return ExpressionStatement{Expr: expr}, nil
 }

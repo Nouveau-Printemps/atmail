@@ -12,7 +12,77 @@ func (l Literal[T]) Eval() (Expression, error) {
 	return l, nil
 }
 
+type OperatorExpression struct {
+	Operator string
+	A, B     Expression
+}
+
+func (op *OperatorExpression) Eval() (Expression, error) {
+	return op, nil
+}
+
 func parseExpression(lx *Lexer) (Expression, error) {
+	next := lx.Peek()
+	switch next.Kind {
+	case identifier_param_beg:
+		lx.Next()
+		lx.SkipSep()
+		expr, err := parseExpression(lx)
+		if err != nil {
+			return nil, err
+		}
+		lx.SkipSep()
+		next, err := lx.NextOrErr()
+		if err != nil || next.Kind != identifier_param_end {
+			return nil, ErrInvalidExpression
+		}
+		return expr, nil
+	default:
+		return parseExpressionHigh(lx)
+	}
+}
+
+type parseOperatorFunc = func(*Lexer) (Expression, error)
+
+func parseOperator(kind Kind, nextOp parseOperatorFunc) parseOperatorFunc {
+	return func(lx *Lexer) (Expression, error) {
+		left, err := nextOp(lx)
+		if err != nil {
+			return nil, err
+		}
+		for next := lx.Peek(); next != nil && !next.IsHardSep(); next = lx.Peek() {
+			if next.Kind == separator {
+				lx.Next()
+			}
+			op := lx.Peek()
+			if op == nil || op.Kind != kind {
+				break
+			}
+			lx.Next()
+			lx.SkipSep()
+			_, err = lx.PeekOrErr()
+			if err != nil {
+				return nil, err
+			}
+			right, err := parseExpression(lx)
+			if err != nil {
+				return nil, err
+			}
+			left = &OperatorExpression{Operator: op.Value, A: left, B: right}
+		}
+		return left, nil
+	}
+}
+
+func parseExpressionHigh(lx *Lexer) (Expression, error) {
+	return parseOperator(operator_high, parseExpressionLow)(lx)
+}
+
+func parseExpressionLow(lx *Lexer) (Expression, error) {
+	return parseOperator(operator_low, parseExpressionLiteral)(lx)
+}
+
+func parseExpressionLiteral(lx *Lexer) (Expression, error) {
 	cur := lx.Peek()
 	if cur == nil {
 		return nil, ErrExpectedStatement

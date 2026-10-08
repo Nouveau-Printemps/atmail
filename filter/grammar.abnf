@@ -1,6 +1,6 @@
 identifier = 1*ALPHA *( "_" / "-" / ALPHA / DIGIT )
 string = DQUOTE *OCTET DQUOTE
-number = 1*DIGIT / *DIGIT "." 1*DIGIT
+number = ["-"] ( 1*DIGIT / *DIGIT "." 1*DIGIT )
 literal = number / string
 
 crlf = *WSP [CR] LF *WSP
@@ -8,17 +8,19 @@ sep = WSP / crlf
 
 eval = identifier
 eval =/ eval *("." identifier)
-eval =/ eval *(":" identifier "(" *sep [expression (1*sep expression)] *sep ")")
+eval =/ eval *(":" identifier "(" *sep [expression *(1*sep expression)] *sep ")")
 
-expression = literal / eval
+operator_low = "=" / "!=" / ">" / "<" / ">=" / "<="
+expression_low = ( literal / eval ) *(*WSP operator_low *sep expression)
 
-operator = "=" / "!=" / ">" / "<" / ">=" / "<="
-condition = expression [*sep operator *sep expression]
-condition =/ condition 1*sep "or" 1*sep condition
+operator_high = "or"
+expression_high = expression_low *(1*WSP operator_high *sep expression)
+expression = expression_high
+expression =/ "(" *sep expression_high *sep ")"
 
 block = "do" *(crlf statement) crlf "end"
-filter = "filter" [1*sep string] 1*WSP block
+filter = "filter" [1*WSP string] 1*WSP block
 
-action = identifier [1*WSP expression]
+action = identifier *(1*WSP expression)
 
-statement = filter / condition / action
+statement = filter / expression / action
