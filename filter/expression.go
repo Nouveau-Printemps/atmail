@@ -22,24 +22,7 @@ func (op *OperatorExpression) Eval() (Expression, error) {
 }
 
 func parseExpression(lx *Lexer) (Expression, error) {
-	next := lx.Peek()
-	switch next.Kind {
-	case identifier_param_beg:
-		lx.Next()
-		lx.SkipSep()
-		expr, err := parseExpression(lx)
-		if err != nil {
-			return nil, err
-		}
-		lx.SkipSep()
-		next, err := lx.NextOrErr()
-		if err != nil || next.Kind != identifier_param_end {
-			return nil, ErrInvalidExpression
-		}
-		return expr, nil
-	default:
-		return parseExpressionHigh(lx)
-	}
+	return parseExpressionHigh(lx)
 }
 
 type parseOperatorFunc = func(*Lexer) (Expression, error)
@@ -88,6 +71,19 @@ func parseExpressionLiteral(lx *Lexer) (Expression, error) {
 		return nil, ErrExpectedStatement
 	}
 	switch cur.Kind {
+	case identifier_param_beg:
+		lx.Next()
+		lx.SkipSep()
+		expr, err := parseExpression(lx)
+		if err != nil {
+			return nil, err
+		}
+		lx.SkipSep()
+		next, err := lx.NextOrErr()
+		if err != nil || next.Kind != identifier_param_end {
+			return nil, ErrInvalidExpression
+		}
+		return expr, nil
 	case identifier:
 		return parseEval(lx)
 	case number:
@@ -159,7 +155,8 @@ func parseEval(lx *Lexer) (Expression, error) {
 				return nil, ErrInvalidExpression
 			}
 			var params []Expression
-			for ; err == nil && cur.Kind != identifier_param_end; cur, err = lx.PeekOrErr() {
+			lx.SkipSep()
+			for cur, err = lx.PeekOrErr(); err == nil && cur.Kind != identifier_param_end; cur, err = lx.PeekOrErr() {
 				expr, err := parseExpression(lx)
 				if err != nil {
 					return nil, err
@@ -167,6 +164,9 @@ func parseEval(lx *Lexer) (Expression, error) {
 				next := lx.Peek()
 				if next == nil || (next.Kind != identifier_param_end && next.Kind != separator) {
 					return nil, ErrInvalidExpression
+				}
+				if next.Kind == separator {
+					lx.Next()
 				}
 				params = append(params, expr)
 			}

@@ -8,7 +8,7 @@ sep = WSP / crlf
 
 eval = identifier
 eval =/ eval *("." identifier)
-eval =/ eval *(":" identifier "(" *sep [expression *(1*sep expression)] *sep ")")
+eval =/ eval *(":" identifier "(" *sep [expression *("," expression)] *sep ")")
 
 operator_low = "=" / "!=" / ">" / "<" / ">=" / "<="
 expression_low = ( literal / eval ) *(*WSP operator_low *sep expression)

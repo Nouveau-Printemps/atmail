@@ -8,13 +8,11 @@ import (
 func parseString(lx *Lexer) (string, error) {
 	lx.Next()
 	var sb strings.Builder
-	for cur, err := lx.NextOrErr(); cur.Kind != string_del; cur, err = lx.NextOrErr() {
-		if err != nil {
-			return "", err
-		}
+	cur, err := lx.NextOrErr()
+	for ; err == nil && cur.Kind != string_del; cur, err = lx.NextOrErr() {
 		sb.WriteString(cur.Value)
 	}
-	return sb.String(), nil
+	return sb.String(), err
 }
 
 func parseNumber(lx *Lexer) (float64, error) {

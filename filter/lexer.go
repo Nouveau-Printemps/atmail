@@ -150,7 +150,9 @@ func kindOf(before *Kind, current rune, next *rune) Kind {
 	case ' ', '\n', '\r', '\t':
 		return separator
 	case '"':
-		return string_del
+		if before == nil {
+			return string_del
+		}
 	default:
 	}
 	if current >= '0' && current <= '9' && nilOr(before, number) {
