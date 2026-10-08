@@ -12,7 +12,7 @@ var (
 	ErrBlockNotEnded          = errors.New("block not ended")
 )
 
-func ParseFilter(lx *Lexer) (*Filter, error) {
+func parseFilter(lx *Lexer) (*Filter, error) {
 	lm, err := lx.NextOrErr()
 	if err != nil {
 		return nil, err

@@ -25,15 +25,15 @@ to = "me@example.com"
 filter "spam" do
     header.x-spam-score >= 5.3
 
-    spam
+    do spam()
 end
 
 filter "uwu" do
     body:contains("uwu")
 
-    mailbox "owo"
-    forward "here@example.com"
-    finish
+    do mailbox("owo")
+    do forward("here@example.com")
+    do finish()
 end`))
 	verifyLexem(t, lx.Next(), identifier, "from")
 	verifyLexem(t, lx.Next(), separator, " ")
@@ -73,7 +73,11 @@ end`))
 	verifyLexem(t, lx.Next(), separator, " ")
 	verifyLexem(t, lx.Next(), number, "5.3")
 	verifyLexem(t, lx.Next(), separator, "\n\n    ")
+	verifyLexem(t, lx.Next(), block_beg, "do")
+	verifyLexem(t, lx.Next(), separator, " ")
 	verifyLexem(t, lx.Next(), identifier, "spam")
+	verifyLexem(t, lx.Next(), identifier_param_beg, "(")
+	verifyLexem(t, lx.Next(), identifier_param_end, ")")
 	verifyLexem(t, lx.Next(), separator, "\n")
 	verifyLexem(t, lx.Next(), block_end, "end")
 	verifyLexem(t, lx.Next(), separator, "\n\n")
@@ -94,22 +98,32 @@ end`))
 	verifyLexem(t, lx.Next(), string_del, "\"")
 	verifyLexem(t, lx.Next(), identifier_param_end, ")")
 	verifyLexem(t, lx.Next(), separator, "\n\n    ")
-	verifyLexem(t, lx.Next(), identifier, "mailbox")
+	verifyLexem(t, lx.Next(), block_beg, "do")
 	verifyLexem(t, lx.Next(), separator, " ")
+	verifyLexem(t, lx.Next(), identifier, "mailbox")
+	verifyLexem(t, lx.Next(), identifier_param_beg, "(")
 	verifyLexem(t, lx.Next(), string_del, "\"")
 	verifyLexem(t, lx.Next(), identifier, "owo")
 	verifyLexem(t, lx.Next(), string_del, "\"")
+	verifyLexem(t, lx.Next(), identifier_param_end, ")")
 	verifyLexem(t, lx.Next(), separator, "\n    ")
-	verifyLexem(t, lx.Next(), identifier, "forward")
+	verifyLexem(t, lx.Next(), block_beg, "do")
 	verifyLexem(t, lx.Next(), separator, " ")
+	verifyLexem(t, lx.Next(), identifier, "forward")
+	verifyLexem(t, lx.Next(), identifier_param_beg, "(")
 	verifyLexem(t, lx.Next(), string_del, "\"")
 	verifyLexem(t, lx.Next(), identifier, "here")
 	verifyLexem(t, lx.Next(), generic, "@example")
 	verifyLexem(t, lx.Next(), identifier_compose, ".")
 	verifyLexem(t, lx.Next(), identifier, "com")
 	verifyLexem(t, lx.Next(), string_del, "\"")
+	verifyLexem(t, lx.Next(), identifier_param_end, ")")
 	verifyLexem(t, lx.Next(), separator, "\n    ")
+	verifyLexem(t, lx.Next(), block_beg, "do")
+	verifyLexem(t, lx.Next(), separator, " ")
 	verifyLexem(t, lx.Next(), identifier, "finish")
+	verifyLexem(t, lx.Next(), identifier_param_beg, "(")
+	verifyLexem(t, lx.Next(), identifier_param_end, ")")
 	verifyLexem(t, lx.Next(), separator, "\n")
 	verifyLexem(t, lx.Next(), block_end, "end")
 	if lx.Next() != nil {

@@ -102,7 +102,7 @@ func (l *Lexer) Next() *Lexem {
 		case "or":
 			*kind = operator_high
 		}
-	case operator_high:
+	case operator_low:
 		if !slices.Contains(validOps[:], sb.String()) {
 			*kind = generic
 		}

@@ -57,9 +57,10 @@ func TestAST_Expression(t *testing.T) {
 		testOperator(t, "0"+op+"1", op, op0, op1)
 	}
 
+	testOperator(t, "0 = 1 or 1 = 0", "or", testExpression(t, "0 = 1"), testExpression(t, "1 = 0"))
+
 	testLiteral(t, "(0)", float64(0))
-	op2 := testExpression(t, "2 >= 1")
-	testOperator(t, "(2 >= 1) = (2 >= 1)", "=", op2, op2)
+	testOperator(t, "(2 or 1) = (2 >= 1)", "=", testExpression(t, "2 or 1"), testExpression(t, "2 >= 1"))
 
 	expr := testExpression(t, "var")
 	v, ok := expr.(*Variable)

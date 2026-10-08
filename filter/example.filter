@@ -4,13 +4,13 @@ to = "me@example.com"
 filter "spam" do
     header.object:contains("SPAM")
 
-    spam
+    do spam()
 end
 
 filter "uwu" do
     body:contains("uwu")
 
-    mailbox "owo"
-    forward "here@example.com"
-    finish
+    do mailbox("owo")
+    do forward("here@example.com")
+    do finish()
 end

@@ -34,9 +34,12 @@ func ParseStatements(lx *Lexer) ([]Statement, error) {
 		switch lm.Kind {
 		case filter:
 			lx.Next()
-			stmt, err = ParseFilter(lx)
+			stmt, err = parseFilter(lx)
 		case identifier, number, string_del:
 			stmt, err = parseExprStatement(lx)
+		case block_beg:
+			lx.Next()
+			stmt, err = parseActionStatement(lx)
 		case block_end:
 			lx.Next()
 			return stmts, ErrBlockEnded
@@ -77,4 +80,36 @@ func parseExprStatement(lx *Lexer) (Statement, error) {
 		return nil, ErrInvalidExpression
 	}
 	return ExpressionStatement{Expr: expr}, nil
+}
+
+type ActionStatement struct {
+	Name   string
+	Params []Expression
+}
+
+func (a *ActionStatement) Eval() bool {
+	return true
+}
+
+func parseActionStatement(lx *Lexer) (Statement, error) {
+	lx.SkipSep()
+	name, err := lx.NextOrErr()
+	if err != nil {
+		return nil, err
+	}
+	if name.Kind != identifier {
+		return nil, ErrInvalidExpression
+	}
+	next, err := lx.NextOrErr()
+	if err != nil {
+		return nil, err
+	}
+	if next.Kind != identifier_param_beg {
+		return nil, ErrInvalidExpression
+	}
+	params, err := parseParams(lx)
+	if err != nil {
+		return nil, err
+	}
+	return &ActionStatement{Name: name.Value, Params: params}, nil
 }
