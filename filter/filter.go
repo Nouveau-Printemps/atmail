@@ -21,9 +21,12 @@ func parseFilter(lx *Lexer) (*Filter, error) {
 	switch lm.Kind {
 	case block_beg:
 	case string_del:
-		//TODO: parse string
+		name, err = parseString(lx)
 	default:
 		return nil, ErrInvalidFilterStatement
+	}
+	if err != nil {
+		return nil, err
 	}
 	stmts, err := ParseStatements(lx)
 	if err == nil {

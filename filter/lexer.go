@@ -182,10 +182,12 @@ func kindOf(before *Kind, current rune, next *rune) Kind {
 	return generic
 }
 
+var ErrExpectingToken = errors.New("expecting token")
+
 func (l *Lexer) NextOrErr() (Lexem, error) {
 	lm := l.Next()
 	if lm == nil {
-		return Lexem{}, ErrInvalidExpression
+		return Lexem{}, ErrExpectingToken
 	}
 	return *lm, nil
 }

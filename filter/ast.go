@@ -17,6 +17,7 @@ type Tree struct {
 var (
 	ErrExpectedStatement = errors.New("expected statement")
 	ErrInvalidExpression = errors.New("invalid expression")
+	ErrInvalidStatement  = errors.New("invalid statement")
 	ErrBlockEnded        = errors.New("block ended")
 )
 
@@ -98,14 +99,14 @@ func parseActionStatement(lx *Lexer) (Statement, error) {
 		return nil, err
 	}
 	if name.Kind != identifier {
-		return nil, ErrInvalidExpression
+		return nil, ErrInvalidStatement
 	}
 	next, err := lx.NextOrErr()
 	if err != nil {
 		return nil, err
 	}
 	if next.Kind != identifier_param_beg {
-		return nil, ErrInvalidExpression
+		return nil, ErrInvalidStatement
 	}
 	params, err := parseParams(lx)
 	if err != nil {
