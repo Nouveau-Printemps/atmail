@@ -14,11 +14,16 @@ func testStatements(t *testing.T, input string) []Statement {
 	return expr.Statements
 }
 
-func testExpressionStatement(t *testing.T, stmt Statement, input Expression) {
-	expr, ok := stmt.(ExpressionStatement)
+func testStatement[T Statement](t *testing.T, stmt Statement) T {
+	v, ok := stmt.(T)
 	if !ok {
-		t.Fatalf("invalid statement: %T wanted ExpressionStatement", stmt)
+		t.Fatalf("invalid statement: %T wanted %T", stmt, v)
 	}
+	return v
+}
+
+func testExpressionStatement(t *testing.T, stmt Statement, input Expression) {
+	expr := testStatement[ExpressionStatement](t, stmt)
 	if !reflect.DeepEqual(expr.Expr, input) {
 		t.Errorf("invalid value: %#v wanted %#v", expr.Expr, input)
 	}
@@ -48,14 +53,26 @@ func TestAST_ActionStatement(t *testing.T) {
 	if len(stmts) != 1 {
 		t.Errorf("invalid statements: %#v wanted only one value", stmts)
 	}
-	action, ok := stmts[0].(*ActionStatement)
-	if !ok {
-		t.Fatalf("invalid statement: %T wanted *ActionStatement", stmts[0])
-	}
+	action := testStatement[*ActionStatement](t, stmts[0])
 	if action.Name != "hello" {
 		t.Error("invalid action name:", action.Name, "wanted hello")
 	}
 	if len(action.Params) != 0 {
 		t.Error("invalid action params:", action.Params, "wanted nothing")
+	}
+}
+
+func TestAST_LetStatement(t *testing.T) {
+	stmts := testStatements(t, "let foo = bar = baz")
+	if len(stmts) != 1 {
+		t.Errorf("invalid statements: %#v wanted only one value", stmts)
+	}
+	let := testStatement[*LetStatement](t, stmts[0])
+	res := testExpression(t, "bar = baz")
+	if let.Name != "foo" {
+		t.Error("invalid let name:", let.Name, "wanted foo")
+	}
+	if !reflect.DeepEqual(let.Value, res) {
+		t.Errorf("invalid let value: %#v wanted %#v", let.Value, res)
 	}
 }

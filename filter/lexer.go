@@ -26,6 +26,7 @@ const (
 	block_end
 	filter
 	separator
+	let
 	generic
 )
 
@@ -101,6 +102,8 @@ func (l *Lexer) Next() *Lexem {
 			*kind = filter
 		case "or":
 			*kind = operator_high
+		case "let":
+			*kind = let
 		}
 	case operator_low:
 		if !slices.Contains(validOps[:], sb.String()) {

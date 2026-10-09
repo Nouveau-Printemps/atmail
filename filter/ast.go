@@ -33,14 +33,17 @@ func ParseStatements(lx *Lexer) ([]Statement, error) {
 		var stmt Statement
 		var err error
 		switch lm.Kind {
+		case identifier, number, string_del:
+			stmt, err = parseExprStatement(lx)
 		case filter:
 			lx.Next()
 			stmt, err = parseFilter(lx)
-		case identifier, number, string_del:
-			stmt, err = parseExprStatement(lx)
 		case block_beg:
 			lx.Next()
 			stmt, err = parseActionStatement(lx)
+		case let:
+			lx.Next()
+			stmt, err = parseLetStatement(lx)
 		case block_end:
 			lx.Next()
 			return stmts, ErrBlockEnded
@@ -113,4 +116,38 @@ func parseActionStatement(lx *Lexer) (Statement, error) {
 		return nil, err
 	}
 	return &ActionStatement{Name: name.Value, Params: params}, nil
+}
+
+type LetStatement struct {
+	Name  string
+	Value Expression
+}
+
+func (l *LetStatement) Eval() bool {
+	return true
+}
+
+func parseLetStatement(lx *Lexer) (Statement, error) {
+	lx.SkipSep()
+	name, err := lx.NextOrErr()
+	if err != nil {
+		return nil, err
+	}
+	if name.Kind != identifier {
+		return nil, ErrInvalidStatement
+	}
+	lx.SkipSep()
+	next, err := lx.NextOrErr()
+	if err != nil {
+		return nil, err
+	}
+	if next.Kind != operator_low || next.Value != "=" {
+		return nil, ErrInvalidStatement
+	}
+	lx.SkipSep()
+	expr, err := parseExpression(lx)
+	if err != nil {
+		return nil, err
+	}
+	return &LetStatement{Name: name.Value, Value: expr}, nil
 }

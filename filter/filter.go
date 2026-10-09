@@ -8,8 +8,7 @@ type Filter struct {
 }
 
 var (
-	ErrInvalidFilterStatement = errors.New("invalid filter statement")
-	ErrBlockNotEnded          = errors.New("block not ended")
+	ErrBlockNotEnded = errors.New("block not ended")
 )
 
 func parseFilter(lx *Lexer) (*Filter, error) {
@@ -23,7 +22,7 @@ func parseFilter(lx *Lexer) (*Filter, error) {
 	case string_del:
 		name, err = parseString(lx)
 	default:
-		return nil, ErrInvalidFilterStatement
+		return nil, ErrInvalidStatement
 	}
 	if err != nil {
 		return nil, err
