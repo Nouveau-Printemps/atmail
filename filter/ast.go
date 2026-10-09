@@ -7,7 +7,7 @@ import (
 
 type Statement interface {
 	// Eval returns true if the evaluation can continue
-	Eval() bool
+	Eval(*EvaluationContext) bool
 }
 
 type Tree struct {
@@ -62,16 +62,15 @@ type ExpressionStatement struct {
 	Expr Expression
 }
 
-func (expr ExpressionStatement) Eval() bool {
-	res, err := expr.Expr.Eval()
+func (expr ExpressionStatement) Eval(ctx *EvaluationContext) bool {
+	res, err := expr.Expr.Eval(ctx)
 	if err != nil {
 		return false
 	}
-	cv, ok := res.(Literal[bool])
-	if !ok {
+	if res.Type != VariableBool {
 		return false
 	}
-	return cv.Value
+	return res.Value.(bool)
 }
 
 func parseExprStatement(lx *Lexer) (Statement, error) {
@@ -91,8 +90,28 @@ type ActionStatement struct {
 	Params []Expression
 }
 
-func (a *ActionStatement) Eval() bool {
-	return true
+func (a *ActionStatement) Eval(ctx *EvaluationContext) bool {
+	action, ok := ctx.Actions[a.Name]
+	if !ok {
+		return false
+	}
+	acc := make([]*EvaluationVariable, 0, len(a.Params))
+	for _, p := range a.Params {
+		pa, err := p.Eval(ctx)
+		if err != nil {
+			println(err.Error())
+			return false
+		}
+		acc = append(acc, pa)
+	}
+	res, err := action.Eval(ctx, acc)
+	if err != nil {
+		return false
+	}
+	if res.Type != VariableBool {
+		return false
+	}
+	return res.Value.(bool)
 }
 
 func parseActionStatement(lx *Lexer) (Statement, error) {
@@ -123,7 +142,12 @@ type LetStatement struct {
 	Value Expression
 }
 
-func (l *LetStatement) Eval() bool {
+func (l *LetStatement) Eval(ctx *EvaluationContext) bool {
+	cv, err := l.Value.Eval(ctx)
+	if err != nil {
+		return false
+	}
+	ctx.Variables[l.Name] = cv
 	return true
 }
 

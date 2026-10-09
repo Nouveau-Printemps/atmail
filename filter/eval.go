@@ -1,0 +1,81 @@
+package filter
+
+import (
+	"errors"
+	"maps"
+
+	"github.com/emersion/go-message"
+)
+
+type EvaluationContext struct {
+	Variables map[string]*EvaluationVariable
+	Actions   map[string]*EvaluationMethod
+}
+
+type EvaluationVariable struct {
+	Type    EvaluationVariableType
+	Value   any
+	Methods map[string]*EvaluationMethod
+	Fields  map[string]*EvaluationVariable
+}
+
+type EvaluationMethod struct {
+	Name       string
+	ParamsType []EvaluationVariableType
+	ReturnType EvaluationVariableType
+	Action     func(*EvaluationContext, []*EvaluationVariable) (*EvaluationVariable, error)
+}
+
+type EvaluationVariableType uint8
+
+const (
+	VariableString EvaluationVariableType = iota
+	VariableNumber
+	VariableBool
+)
+
+func (ctx *EvaluationContext) Clone() *EvaluationContext {
+	return &EvaluationContext{
+		Variables: maps.Clone(ctx.Variables),
+		Actions:   maps.Clone(ctx.Actions),
+	}
+}
+
+func (m *EvaluationMethod) Eval(ctx *EvaluationContext, params []*EvaluationVariable) (*EvaluationVariable, error) {
+	if len(m.ParamsType) != len(params) {
+		return nil, errors.New("missing parameters")
+	}
+	for i, v := range params {
+		if m.ParamsType[i] != v.Type {
+			return nil, errors.New("invalid parameters type")
+		}
+	}
+	return m.Action(ctx, params)
+}
+
+type Rcpt struct {
+	User    string
+	Domain  string
+	Folder  string
+	Address string
+}
+
+func (rcpt Rcpt) Variable() *EvaluationVariable {
+	return &EvaluationVariable{
+		Type:  VariableString,
+		Value: rcpt.Address,
+		Fields: map[string]*EvaluationVariable{
+			"user":   {Type: VariableString, Value: rcpt.User},
+			"domain": {Type: VariableString, Value: rcpt.Domain},
+		},
+	}
+}
+
+func InitEvalulationContext(from, to Rcpt, msg *message.Entity) *EvaluationContext {
+	return &EvaluationContext{
+		Variables: map[string]*EvaluationVariable{
+			"from": from.Variable(),
+			"to":   to.Variable(),
+		},
+	}
+}

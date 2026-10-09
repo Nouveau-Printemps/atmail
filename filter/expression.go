@@ -1,15 +1,29 @@
 package filter
 
+import "errors"
+
 type Expression interface {
-	Eval() (Expression, error)
+	Eval(*EvaluationContext) (*EvaluationVariable, error)
 }
 
 type Literal[T comparable] struct {
 	Value T
 }
 
-func (l Literal[T]) Eval() (Expression, error) {
-	return l, nil
+func (l Literal[T]) Eval(ctx *EvaluationContext) (*EvaluationVariable, error) {
+	var tpe EvaluationVariableType
+	var v any = l.Value
+	switch v.(type) {
+	case bool:
+		tpe = VariableBool
+	case float64:
+		tpe = VariableNumber
+	case string:
+		tpe = VariableString
+	default:
+		panic("internal error")
+	}
+	return &EvaluationVariable{Type: tpe, Value: l.Value}, nil
 }
 
 type OperatorExpression struct {
@@ -17,8 +31,8 @@ type OperatorExpression struct {
 	A, B     Expression
 }
 
-func (op *OperatorExpression) Eval() (Expression, error) {
-	return op, nil
+func (op *OperatorExpression) Eval(*EvaluationContext) (*EvaluationVariable, error) {
+	return nil, nil
 }
 
 func parseExpression(lx *Lexer) (Expression, error) {
@@ -101,8 +115,12 @@ type Variable struct {
 	Name string
 }
 
-func (v *Variable) Eval() (Expression, error) {
-	return nil, nil
+func (v *Variable) Eval(ctx *EvaluationContext) (*EvaluationVariable, error) {
+	val, ok := ctx.Variables[v.Name]
+	if !ok {
+		return nil, errors.New("variable not found")
+	}
+	return val, nil
 }
 
 type Field struct {
@@ -110,8 +128,16 @@ type Field struct {
 	Variable Expression
 }
 
-func (f *Field) Eval() (Expression, error) {
-	return f.Variable, nil
+func (f *Field) Eval(ctx *EvaluationContext) (*EvaluationVariable, error) {
+	val, err := f.Variable.Eval(ctx)
+	if err != nil {
+		return nil, err
+	}
+	fl, ok := val.Fields[f.Name]
+	if !ok {
+		return nil, errors.New("field not found")
+	}
+	return fl, nil
 }
 
 type Method struct {
@@ -120,8 +146,24 @@ type Method struct {
 	Params   []Expression
 }
 
-func (m *Method) Eval() (Expression, error) {
-	return m.Variable, nil
+func (m *Method) Eval(ctx *EvaluationContext) (*EvaluationVariable, error) {
+	val, err := m.Variable.Eval(ctx)
+	if err != nil {
+		return nil, err
+	}
+	cv, ok := val.Methods[m.Name]
+	if !ok {
+		return nil, errors.New("method not found")
+	}
+	acc := make([]*EvaluationVariable, 0, len(m.Params))
+	for _, p := range m.Params {
+		pa, err := p.Eval(ctx)
+		if err != nil {
+			return nil, err
+		}
+		acc = append(acc, pa)
+	}
+	return cv.Eval(ctx, acc)
 }
 
 func parseEval(lx *Lexer) (Expression, error) {
