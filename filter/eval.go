@@ -10,6 +10,7 @@ import (
 type EvaluationContext struct {
 	Variables map[string]*EvaluationVariable
 	Actions   map[string]*EvaluationMethod
+	Verbose   bool
 }
 
 type EvaluationVariable struct {
@@ -71,11 +72,15 @@ func (rcpt Rcpt) Variable() *EvaluationVariable {
 	}
 }
 
-func InitEvalulationContext(from, to Rcpt, msg *message.Entity) *EvaluationContext {
+func InitEvalulationContext(from, to Rcpt, header message.Header, body string) *EvaluationContext {
 	return &EvaluationContext{
 		Variables: map[string]*EvaluationVariable{
 			"from": from.Variable(),
 			"to":   to.Variable(),
+			"body": &EvaluationVariable{
+				Type:  VariableString,
+				Value: body,
+			},
 		},
 	}
 }

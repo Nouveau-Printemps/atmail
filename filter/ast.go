@@ -65,9 +65,15 @@ type ExpressionStatement struct {
 func (expr ExpressionStatement) Eval(ctx *EvaluationContext) bool {
 	res, err := expr.Expr.Eval(ctx)
 	if err != nil {
+		if ctx.Verbose {
+			println("evaluation of expression failed:", err)
+		}
 		return false
 	}
 	if res.Type != VariableBool {
+		if ctx.Verbose {
+			println("expression doesn't return a bool")
+		}
 		return false
 	}
 	return res.Value.(bool)
@@ -93,25 +99,30 @@ type ActionStatement struct {
 func (a *ActionStatement) Eval(ctx *EvaluationContext) bool {
 	action, ok := ctx.Actions[a.Name]
 	if !ok {
+		if ctx.Verbose {
+			println("action", a.Name, "not found")
+		}
 		return false
 	}
 	acc := make([]*EvaluationVariable, 0, len(a.Params))
 	for _, p := range a.Params {
 		pa, err := p.Eval(ctx)
 		if err != nil {
-			println(err.Error())
+			if ctx.Verbose {
+				println("evaluation of expression failed:", err)
+			}
 			return false
 		}
 		acc = append(acc, pa)
 	}
-	res, err := action.Eval(ctx, acc)
+	_, err := action.Eval(ctx, acc)
 	if err != nil {
+		if ctx.Verbose {
+			println("evaluation of action failed:", err)
+		}
 		return false
 	}
-	if res.Type != VariableBool {
-		return false
-	}
-	return res.Value.(bool)
+	return true
 }
 
 func parseActionStatement(lx *Lexer) (Statement, error) {
@@ -145,6 +156,9 @@ type LetStatement struct {
 func (l *LetStatement) Eval(ctx *EvaluationContext) bool {
 	cv, err := l.Value.Eval(ctx)
 	if err != nil {
+		if ctx.Verbose {
+			println("evaluation of expression failed:", err)
+		}
 		return false
 	}
 	ctx.Variables[l.Name] = cv
