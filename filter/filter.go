@@ -38,6 +38,7 @@ func parseFilter(lx *Lexer) (*Filter, error) {
 }
 
 func (f *Filter) Eval(ctx *EvaluationContext) bool {
+	ctx = ctx.Clone()
 	before := true
 	for i := 0; before && i < len(f.Content); i++ {
 		before = f.Content[i].Eval(ctx)

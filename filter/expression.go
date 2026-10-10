@@ -1,6 +1,8 @@
 package filter
 
-import "errors"
+import (
+	"errors"
+)
 
 type Expression interface {
 	Eval(*EvaluationContext) (*EvaluationVariable, error)
@@ -11,18 +13,17 @@ type Literal[T comparable] struct {
 }
 
 func (l Literal[T]) Eval(ctx *EvaluationContext) (*EvaluationVariable, error) {
-	val := EvaluationVariable{Value: l.Value}
-	switch val.Value.(type) {
+	var val any = l.Value
+	switch cv := val.(type) {
 	case bool:
-		val.Type = TypeBool
+		return newBool(cv), nil
 	case float64:
-		val.Type = TypeNumber
+		return newNumber(cv), nil
 	case string:
-		val.Type = TypeString
+		return newString(cv), nil
 	default:
-		panic("internal error")
+		panic("internal error: unsupported type")
 	}
-	return &val, nil
 }
 
 type OperatorExpression struct {
@@ -30,8 +31,68 @@ type OperatorExpression struct {
 	A, B     Expression
 }
 
-func (op *OperatorExpression) Eval(*EvaluationContext) (*EvaluationVariable, error) {
-	return nil, nil
+var (
+	ErrNotNumber = errors.New("not a number")
+	ErrNotBool   = errors.New("not a bool")
+)
+
+func (op *OperatorExpression) Eval(ctx *EvaluationContext) (*EvaluationVariable, error) {
+	a, err := op.A.Eval(ctx)
+	if err != nil {
+		return nil, err
+	}
+	b, err := op.B.Eval(ctx)
+	if err != nil {
+		return nil, err
+	}
+	switch op.Operator {
+	case "=":
+		return newBool(a.Value == b.Value), nil
+	case "!=":
+		return newBool(a.Value != b.Value), nil
+	case ">=":
+		if a.Type != TypeNumber {
+			return nil, ErrNotNumber
+		}
+		if b.Type != TypeNumber {
+			return nil, ErrNotNumber
+		}
+		return newBool(a.Value.(float64) >= b.Value.(float64)), nil
+	case "<=":
+		if a.Type != TypeNumber {
+			return nil, ErrNotNumber
+		}
+		if b.Type != TypeNumber {
+			return nil, ErrNotNumber
+		}
+		return newBool(a.Value.(float64) <= b.Value.(float64)), nil
+	case ">":
+		if a.Type != TypeNumber {
+			return nil, ErrNotNumber
+		}
+		if b.Type != TypeNumber {
+			return nil, ErrNotNumber
+		}
+		return newBool(a.Value.(float64) > b.Value.(float64)), nil
+	case "<":
+		if a.Type != TypeNumber {
+			return nil, ErrNotNumber
+		}
+		if b.Type != TypeNumber {
+			return nil, ErrNotNumber
+		}
+		return newBool(a.Value.(float64) < b.Value.(float64)), nil
+	case "or":
+		if a.Type != TypeBool {
+			return nil, ErrNotNumber
+		}
+		if b.Type != TypeBool {
+			return nil, ErrNotNumber
+		}
+		return newBool(a.Value.(bool) || b.Value.(bool)), nil
+	default:
+		panic("internal error: unsupported operator")
+	}
 }
 
 func parseExpression(lx *Lexer) (Expression, error) {
@@ -162,7 +223,7 @@ func (m *Method) Eval(ctx *EvaluationContext) (*EvaluationVariable, error) {
 		}
 		acc = append(acc, pa)
 	}
-	return cv.Eval(ctx, acc)
+	return cv.Eval(ctx, val, acc)
 }
 
 func parseEval(lx *Lexer) (Expression, error) {

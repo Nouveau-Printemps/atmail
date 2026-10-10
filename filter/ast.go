@@ -15,6 +15,15 @@ type Tree struct {
 	Statements []Statement
 }
 
+func (t *Tree) Eval(ctx *EvaluationContext) bool {
+	for _, stmt := range t.Statements {
+		if !stmt.Eval(ctx) {
+			return false
+		}
+	}
+	return true
+}
+
 var (
 	ErrExpectedStatement = errors.New("expected statement")
 	ErrInvalidExpression = errors.New("invalid expression")
@@ -80,7 +89,7 @@ func (expr ExpressionStatement) Eval(ctx *EvaluationContext) bool {
 	res, err := expr.Expr.Eval(ctx)
 	if err != nil {
 		if ctx.Verbose {
-			println("evaluation of expression failed:", err)
+			println("evaluation of expression failed:", err.Error())
 		}
 		return false
 	}
@@ -129,16 +138,16 @@ func (a *ActionStatement) Eval(ctx *EvaluationContext) bool {
 		pa, err := p.Eval(ctx)
 		if err != nil {
 			if ctx.Verbose {
-				println("evaluation of expression failed:", err)
+				println("evaluation of expression failed:", err.Error())
 			}
 			return false
 		}
 		acc = append(acc, pa)
 	}
-	_, err := action.Eval(ctx, acc)
+	_, err := action.Eval(ctx, nil, acc)
 	if err != nil {
 		if ctx.Verbose {
-			println("evaluation of action failed:", err)
+			println("evaluation of action failed:", err.Error())
 		}
 		return false
 	}
@@ -184,7 +193,7 @@ func (l *LetStatement) Eval(ctx *EvaluationContext) bool {
 	cv, err := l.Value.Eval(ctx)
 	if err != nil {
 		if ctx.Verbose {
-			println("evaluation of expression failed:", err)
+			println("evaluation of expression failed:", err.Error())
 		}
 		return false
 	}

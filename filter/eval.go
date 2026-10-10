@@ -21,10 +21,9 @@ type EvaluationVariable struct {
 }
 
 type EvaluationMethod struct {
-	Name       string
 	ParamsType []EvaluationVariableType
 	ReturnType EvaluationVariableType
-	Action     func(*EvaluationContext, []*EvaluationVariable) (*EvaluationVariable, error)
+	Action     func(*EvaluationContext, *EvaluationVariable, []*EvaluationVariable) (*EvaluationVariable, error)
 }
 
 type EvaluationVariableType uint8
@@ -33,6 +32,7 @@ const (
 	TypeString EvaluationVariableType = iota
 	TypeNumber
 	TypeBool
+	TypeCollection
 )
 
 func (ctx *EvaluationContext) Clone() *EvaluationContext {
@@ -42,7 +42,7 @@ func (ctx *EvaluationContext) Clone() *EvaluationContext {
 	}
 }
 
-func (m *EvaluationMethod) Eval(ctx *EvaluationContext, params []*EvaluationVariable) (*EvaluationVariable, error) {
+func (m *EvaluationMethod) Eval(ctx *EvaluationContext, parent *EvaluationVariable, params []*EvaluationVariable) (*EvaluationVariable, error) {
 	if len(m.ParamsType) != len(params) {
 		return nil, errors.New("missing parameters")
 	}
@@ -51,7 +51,7 @@ func (m *EvaluationMethod) Eval(ctx *EvaluationContext, params []*EvaluationVari
 			return nil, errors.New("invalid parameters type")
 		}
 	}
-	return m.Action(ctx, params)
+	return m.Action(ctx, parent, params)
 }
 
 type Rcpt = struct {
@@ -62,14 +62,12 @@ type Rcpt = struct {
 }
 
 func rcptVariable(rcpt Rcpt) *EvaluationVariable {
-	return &EvaluationVariable{
-		Type:  TypeString,
-		Value: rcpt.Address,
-		Fields: map[string]*EvaluationVariable{
-			"user":   {Type: TypeString, Value: rcpt.User},
-			"domain": {Type: TypeString, Value: rcpt.Domain},
-		},
+	val := newString(rcpt.Address)
+	val.Fields = map[string]*EvaluationVariable{
+		"user":   newString(rcpt.User),
+		"domain": newString(rcpt.Domain),
 	}
+	return val
 }
 
 func InitEvalulationContext(from, to Rcpt, header message.Header, body string) *EvaluationContext {

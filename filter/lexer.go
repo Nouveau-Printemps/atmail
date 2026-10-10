@@ -86,6 +86,9 @@ func (l *Lexer) Next() *Lexem {
 		if kind != nil && *kind != ckind {
 			break
 		}
+		if ckind == string_del && sb.Len() > 0 {
+			break
+		}
 		if current == '\n' {
 			l.line++
 			l.char = 0
@@ -167,9 +170,7 @@ func (l *Lexer) kindOf(before *Kind, current rune, next *rune) Kind {
 			return identifier_param_sep
 		}
 	case '"':
-		if before == nil {
-			return string_del
-		}
+		return string_del
 	default:
 	}
 	if current >= '0' && current <= '9' && nilOr(before, number) {
