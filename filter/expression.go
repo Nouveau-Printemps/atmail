@@ -11,19 +11,18 @@ type Literal[T comparable] struct {
 }
 
 func (l Literal[T]) Eval(ctx *EvaluationContext) (*EvaluationVariable, error) {
-	var tpe EvaluationVariableType
-	var v any = l.Value
-	switch v.(type) {
+	val := EvaluationVariable{Value: l.Value}
+	switch val.Value.(type) {
 	case bool:
-		tpe = VariableBool
+		val.Type = TypeBool
 	case float64:
-		tpe = VariableNumber
+		val.Type = TypeNumber
 	case string:
-		tpe = VariableString
+		val.Type = TypeString
 	default:
 		panic("internal error")
 	}
-	return &EvaluationVariable{Type: tpe, Value: l.Value}, nil
+	return &val, nil
 }
 
 type OperatorExpression struct {

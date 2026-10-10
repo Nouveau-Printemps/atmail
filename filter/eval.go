@@ -30,9 +30,9 @@ type EvaluationMethod struct {
 type EvaluationVariableType uint8
 
 const (
-	VariableString EvaluationVariableType = iota
-	VariableNumber
-	VariableBool
+	TypeString EvaluationVariableType = iota
+	TypeNumber
+	TypeBool
 )
 
 func (ctx *EvaluationContext) Clone() *EvaluationContext {
@@ -54,20 +54,20 @@ func (m *EvaluationMethod) Eval(ctx *EvaluationContext, params []*EvaluationVari
 	return m.Action(ctx, params)
 }
 
-type Rcpt struct {
+type Rcpt = struct {
 	User    string
 	Domain  string
 	Folder  string
 	Address string
 }
 
-func (rcpt Rcpt) Variable() *EvaluationVariable {
+func rcptVariable(rcpt Rcpt) *EvaluationVariable {
 	return &EvaluationVariable{
-		Type:  VariableString,
+		Type:  TypeString,
 		Value: rcpt.Address,
 		Fields: map[string]*EvaluationVariable{
-			"user":   {Type: VariableString, Value: rcpt.User},
-			"domain": {Type: VariableString, Value: rcpt.Domain},
+			"user":   {Type: TypeString, Value: rcpt.User},
+			"domain": {Type: TypeString, Value: rcpt.Domain},
 		},
 	}
 }
@@ -75,10 +75,10 @@ func (rcpt Rcpt) Variable() *EvaluationVariable {
 func InitEvalulationContext(from, to Rcpt, header message.Header, body string) *EvaluationContext {
 	return &EvaluationContext{
 		Variables: map[string]*EvaluationVariable{
-			"from": from.Variable(),
-			"to":   to.Variable(),
+			"from": rcptVariable(from),
+			"to":   rcptVariable(to),
 			"body": &EvaluationVariable{
-				Type:  VariableString,
+				Type:  TypeString,
 				Value: body,
 			},
 		},

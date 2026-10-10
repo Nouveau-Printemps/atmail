@@ -3,6 +3,7 @@ package filter
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
 	"slices"
 	"strings"
@@ -33,17 +34,20 @@ const (
 type Lexer struct {
 	content *bufio.Reader
 	current *Lexem
+	line    uint
+	char    uint
 }
 
 var validOps = [6]string{"=", "!=", ">=", "<=", ">", "<"}
 
 func NewLexer(r io.Reader) *Lexer {
-	return &Lexer{content: bufio.NewReader(r)}
+	return &Lexer{content: bufio.NewReader(r), line: 1, char: 0}
 }
 
 type Lexem struct {
 	Kind  Kind
 	Value string
+	Line  uint
 }
 
 func (lm *Lexem) IsHardSep() bool {
@@ -56,6 +60,7 @@ func (l *Lexer) Next() *Lexem {
 		l.current = nil
 		return lm
 	}
+	begLine := l.line
 	var sb strings.Builder
 	var kind *Kind
 	for {
@@ -77,9 +82,15 @@ func (l *Lexer) Next() *Lexem {
 			next = new(rune(n[1]))
 		}
 		current = rune(n[0])
-		ckind := kindOf(kind, current, next)
+		ckind := l.kindOf(kind, current, next)
 		if kind != nil && *kind != ckind {
 			break
+		}
+		if current == '\n' {
+			l.line++
+			l.char = 0
+		} else {
+			l.char++
 		}
 		_, _ = l.content.ReadByte()
 		sb.WriteRune(current)
@@ -110,7 +121,7 @@ func (l *Lexer) Next() *Lexem {
 			*kind = generic
 		}
 	}
-	return &Lexem{Kind: *kind, Value: sb.String()}
+	return &Lexem{Kind: *kind, Value: sb.String(), Line: begLine}
 }
 
 func (l *Lexer) Peek() *Lexem {
@@ -118,14 +129,6 @@ func (l *Lexer) Peek() *Lexem {
 		l.current = l.Next()
 	}
 	return l.current
-}
-
-func (l *Lexer) PeekOrErr() (Lexem, error) {
-	next := l.Peek()
-	if next == nil {
-		return Lexem{}, ErrInvalidExpression
-	}
-	return *next, nil
 }
 
 func (l *Lexer) SkipSep() bool {
@@ -141,7 +144,7 @@ func nilOr[T comparable](val *T, or T) bool {
 	return val == nil || *val == or
 }
 
-func kindOf(before *Kind, current rune, next *rune) Kind {
+func (l *Lexer) kindOf(before *Kind, current rune, next *rune) Kind {
 	switch current {
 	case '=', '!', '>', '<':
 		return operator_low
@@ -185,12 +188,26 @@ func kindOf(before *Kind, current rune, next *rune) Kind {
 	return generic
 }
 
-var ErrExpectingToken = errors.New("expecting token")
+type ExpectingTokenError struct {
+	Char uint
+}
+
+func (e ExpectingTokenError) Error() string {
+	return fmt.Sprintf("expecting token at character %d", e.Char)
+}
 
 func (l *Lexer) NextOrErr() (Lexem, error) {
 	lm := l.Next()
 	if lm == nil {
-		return Lexem{}, ErrExpectingToken
+		return Lexem{}, ExpectingTokenError{l.char}
 	}
 	return *lm, nil
+}
+
+func (l *Lexer) PeekOrErr() (Lexem, error) {
+	next := l.Peek()
+	if next == nil {
+		return Lexem{}, ExpectingTokenError{l.char}
+	}
+	return *next, nil
 }

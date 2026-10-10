@@ -2,6 +2,7 @@ package filter
 
 import (
 	"bytes"
+	"errors"
 	"reflect"
 	"testing"
 )
@@ -74,5 +75,22 @@ func TestAST_LetStatement(t *testing.T) {
 	}
 	if !reflect.DeepEqual(let.Value, res) {
 		t.Errorf("invalid let value: %#v wanted %#v", let.Value, res)
+	}
+}
+
+func TestAST_Error(t *testing.T) {
+	_, err := Parse(bytes.NewBufferString("hello ="))
+	if err == nil {
+		t.Fatal("expecting error")
+	}
+	e, ok := errors.AsType[ParsingError](err)
+	if !ok {
+		t.Fatalf("invalid error: %T wanted ParsingError", err)
+	}
+	if e.Line != 1 {
+		t.Error("invalid error line:", e.Line, "wanted 1")
+	}
+	if !errors.Is(err, ExpectingTokenError{Char: 7}) {
+		t.Errorf("invalid error: %#v wanted ExpectingTokenError", e)
 	}
 }
