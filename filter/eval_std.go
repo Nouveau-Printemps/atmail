@@ -23,7 +23,7 @@ func stringMethods() map[string]*EvaluationMethod {
 			ParamsType: []EvaluationVariableType{TypeString},
 			Action: func(ec *EvaluationContext, parent *EvaluationVariable, params []*EvaluationVariable) (*EvaluationVariable, error) {
 				res := strings.Split(parent.Value.(string), params[0].Value.(string))
-				return newCollection[uint, string](sliceToMap(res, newString)), nil
+				return newCollection[float64, string](sliceToMap(res, newString)), nil
 			},
 		},
 		"get": {
@@ -52,7 +52,7 @@ func stringMethods() map[string]*EvaluationMethod {
 				if k1 > len(s) {
 					return newString(""), nil
 				}
-				k2 = max(k2, len(s))
+				k2 = min(k2, len(s))
 				return newString(s[k1:k2]), nil
 			},
 		},
@@ -143,10 +143,10 @@ func newCollection[K comparable, V any](val map[K]*EvaluationVariable) *Evaluati
 	}
 }
 
-func sliceToMap[T any](sl []T, conv func(T) *EvaluationVariable) map[uint]*EvaluationVariable {
-	res := make(map[uint]*EvaluationVariable, len(sl))
+func sliceToMap[T any](sl []T, conv func(T) *EvaluationVariable) map[float64]*EvaluationVariable {
+	res := make(map[float64]*EvaluationVariable, len(sl))
 	for i, v := range sl {
-		res[uint(i)] = conv(v)
+		res[float64(i)] = conv(v)
 	}
 	return res
 }

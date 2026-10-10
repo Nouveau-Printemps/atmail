@@ -65,11 +65,11 @@ func (v *EvaluationVariable) Clone() *EvaluationVariable {
 	switch reflect.TypeOf(v.Value).Kind() {
 	case reflect.Map:
 		val := reflect.ValueOf(v.Value)
-		n := reflect.New(val.Type())
+		n := reflect.MakeMap(val.Type())
 		for k, v := range val.Seq2() {
 			n.SetMapIndex(k, v)
 		}
-		res.Value = n.Elem().Interface()
+		res.Value = n.Interface()
 	default:
 		res.Value = v.Value
 	}

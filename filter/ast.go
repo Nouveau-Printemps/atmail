@@ -77,6 +77,7 @@ func ParseStatements(lx *Lexer) ([]Statement, error) {
 			return nil, err
 		}
 		stmts = append(stmts, stmt)
+		lx.SkipSep()
 	}
 	return stmts, nil
 }
