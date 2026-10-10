@@ -43,7 +43,7 @@ func stringMethods() map[string]*EvaluationMethod {
 				s := parent.Value.(string)
 				k1 := int(params[0].Value.(float64))
 				k2 := int(params[1].Value.(float64))
-				if k1 < 0 || k2 < 0 {
+				if k1 < 0 {
 					return nil, fmt.Errorf("invalid range: must be positive or null")
 				}
 				if k1 > k2 {
