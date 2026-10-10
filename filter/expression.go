@@ -2,6 +2,7 @@ package filter
 
 import (
 	"errors"
+	"fmt"
 )
 
 type Expression interface {
@@ -178,7 +179,7 @@ type Variable struct {
 func (v *Variable) Eval(ctx *EvaluationContext) (*EvaluationVariable, error) {
 	val, ok := ctx.Variables[v.Name]
 	if !ok {
-		return nil, errors.New("variable not found")
+		return nil, fmt.Errorf("variable %s not found", v.Name)
 	}
 	return val, nil
 }
@@ -195,7 +196,7 @@ func (f *Field) Eval(ctx *EvaluationContext) (*EvaluationVariable, error) {
 	}
 	fl, ok := val.Fields[f.Name]
 	if !ok {
-		return nil, errors.New("field not found")
+		return nil, fmt.Errorf("field %s not found", f.Name)
 	}
 	return fl, nil
 }
@@ -213,7 +214,7 @@ func (m *Method) Eval(ctx *EvaluationContext) (*EvaluationVariable, error) {
 	}
 	cv, ok := val.Methods[m.Name]
 	if !ok {
-		return nil, errors.New("method not found")
+		return nil, fmt.Errorf("method %s not found", m.Name)
 	}
 	acc := make([]*EvaluationVariable, 0, len(m.Params))
 	for _, p := range m.Params {
