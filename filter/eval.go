@@ -3,6 +3,7 @@ package filter
 import (
 	"errors"
 	"maps"
+	"reflect"
 
 	"github.com/emersion/go-message"
 )
@@ -22,7 +23,6 @@ type EvaluationVariable struct {
 
 type EvaluationMethod struct {
 	ParamsType []EvaluationVariableType
-	ReturnType EvaluationVariableType
 	Action     func(*EvaluationContext, *EvaluationVariable, []*EvaluationVariable) (*EvaluationVariable, error)
 }
 
@@ -52,6 +52,28 @@ func (m *EvaluationMethod) Eval(ctx *EvaluationContext, parent *EvaluationVariab
 		}
 	}
 	return m.Action(ctx, parent, params)
+}
+
+func (v *EvaluationVariable) Clone() *EvaluationVariable {
+	var res EvaluationVariable
+	if v.Fields != nil {
+		res.Fields = maps.Clone(v.Fields)
+	}
+	if v.Methods != nil {
+		res.Methods = maps.Clone(v.Methods)
+	}
+	switch reflect.TypeOf(v.Value).Kind() {
+	case reflect.Map:
+		val := reflect.ValueOf(v.Value)
+		n := reflect.New(val.Type())
+		for k, v := range val.Seq2() {
+			n.SetMapIndex(k, v)
+		}
+		res.Value = n.Elem().Interface()
+	default:
+		res.Value = v.Value
+	}
+	return &res
 }
 
 type Rcpt = struct {
