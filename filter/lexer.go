@@ -82,11 +82,11 @@ func (l *Lexer) Next() *Lexem {
 			next = new(rune(n[1]))
 		}
 		current = rune(n[0])
-		ckind := l.kindOf(kind, current, next)
+		ckind, unique := l.kindOf(kind, current, next)
 		if kind != nil && *kind != ckind {
 			break
 		}
-		if ckind == string_del && sb.Len() > 0 {
+		if unique && sb.Len() > 0 {
 			break
 		}
 		if current == '\n' {
@@ -147,46 +147,46 @@ func nilOr[T comparable](val *T, or T) bool {
 	return val == nil || *val == or
 }
 
-func (l *Lexer) kindOf(before *Kind, current rune, next *rune) Kind {
+func (l *Lexer) kindOf(before *Kind, current rune, next *rune) (Kind, bool) {
 	switch current {
 	case '=', '!', '>', '<':
-		return operator_low
+		return operator_low, false
 	case ' ', '\n', '\r', '\t':
-		return separator
+		return separator, false
 	case ':':
-		if before == nil {
-			return identifier_execute
-		}
+		return identifier_execute, true
 	case '(':
-		if before == nil {
-			return identifier_param_beg
-		}
+		return identifier_param_beg, true
 	case ')':
-		if before == nil {
-			return identifier_param_end
-		}
+		return identifier_param_end, true
 	case ',':
-		if before == nil {
-			return identifier_param_sep
-		}
+		return identifier_param_sep, true
 	case '"':
-		return string_del
+		return string_del, true
+	case '-':
+		if before == nil && next != nil && isDigit(*next) {
+			return number, false
+		}
 	default:
 	}
-	if current >= '0' && current <= '9' && nilOr(before, number) {
-		return number
+	if isDigit(current) && nilOr(before, number) {
+		return number, false
 	}
 	if current == '.' && next != nil {
-		if *next >= '0' && *next <= '9' {
-			return number
+		if isDigit(*next) {
+			return number, false
 		}
-		return identifier_compose
+		return identifier_compose, false
 	}
 	if (nilOr(before, identifier) && (current >= 'A' && current <= 'z')) ||
-		(before != nil && (current == '_' || current == '-' || (current >= '0' && current <= '9'))) {
-		return identifier
+		(before != nil && (current == '_' || current == '-' || isDigit(current))) {
+		return identifier, false
 	}
-	return generic
+	return generic, false
+}
+
+func isDigit(r rune) bool {
+	return r >= '0' && r <= '9'
 }
 
 type ExpectingTokenError struct {

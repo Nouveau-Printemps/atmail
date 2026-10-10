@@ -46,6 +46,9 @@ func (op *OperatorExpression) Eval(ctx *EvaluationContext) (*EvaluationVariable,
 	if err != nil {
 		return nil, err
 	}
+	if a.Type != b.Type {
+		return nil, errors.New("incompatible type")
+	}
 	switch op.Operator {
 	case "=":
 		return newBool(a.Value == b.Value), nil
@@ -55,15 +58,9 @@ func (op *OperatorExpression) Eval(ctx *EvaluationContext) (*EvaluationVariable,
 		if a.Type != TypeNumber {
 			return nil, ErrNotNumber
 		}
-		if b.Type != TypeNumber {
-			return nil, ErrNotNumber
-		}
 		return newBool(a.Value.(float64) >= b.Value.(float64)), nil
 	case "<=":
 		if a.Type != TypeNumber {
-			return nil, ErrNotNumber
-		}
-		if b.Type != TypeNumber {
 			return nil, ErrNotNumber
 		}
 		return newBool(a.Value.(float64) <= b.Value.(float64)), nil
@@ -71,24 +68,15 @@ func (op *OperatorExpression) Eval(ctx *EvaluationContext) (*EvaluationVariable,
 		if a.Type != TypeNumber {
 			return nil, ErrNotNumber
 		}
-		if b.Type != TypeNumber {
-			return nil, ErrNotNumber
-		}
 		return newBool(a.Value.(float64) > b.Value.(float64)), nil
 	case "<":
 		if a.Type != TypeNumber {
 			return nil, ErrNotNumber
 		}
-		if b.Type != TypeNumber {
-			return nil, ErrNotNumber
-		}
 		return newBool(a.Value.(float64) < b.Value.(float64)), nil
 	case "or":
 		if a.Type != TypeBool {
-			return nil, ErrNotNumber
-		}
-		if b.Type != TypeBool {
-			return nil, ErrNotNumber
+			return nil, ErrNotBool
 		}
 		return newBool(a.Value.(bool) || b.Value.(bool)), nil
 	default:

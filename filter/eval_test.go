@@ -33,14 +33,18 @@ to.domain:contains(".")`))
 		t.Error("expected valid eval")
 	}
 
-	tree, err = Parse(bytes.NewBufferString(`from = "no@example.org" or
+	testEvalError(t, `from = "no@example.org" or
 to = "world@example.org"
 
-from.user = "here"`))
+from.user = "here"`)
+}
+
+func testEvalError(t *testing.T, input string) {
+	tree, err := Parse(bytes.NewBufferString(input))
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx = InitEvalulationContext(Rcpt{
+	ctx := InitEvalulationContext(Rcpt{
 		User:    "hello",
 		Domain:  "example.org",
 		Address: "hello@example.org",
@@ -51,6 +55,13 @@ from.user = "here"`))
 	}, message.Header{}, "")
 	ctx.Verbose = true
 	if tree.Eval(ctx) {
-		t.Error("expected invalid eval")
+		t.Error("expected invalid eval for", input)
 	}
+}
+
+func TestAST_EvalRuntimeError(t *testing.T) {
+	testEvalError(t, `nothing = "hello@example.org"`)
+	testEvalError(t, `from.nothing = "hello@example.org"`)
+	testEvalError(t, `from:nothing()`)
+	testEvalError(t, `from = 5`)
 }
