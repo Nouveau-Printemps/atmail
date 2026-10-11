@@ -14,7 +14,8 @@ var (
 )
 
 func parseFilter(lx *Lexer) (*Filter, error) {
-	lm, err := lx.NextOrErr()
+	lx.SkipSep()
+	lm, err := lx.PeekOrErr()
 	if err != nil {
 		return nil, err
 	}
@@ -23,12 +24,24 @@ func parseFilter(lx *Lexer) (*Filter, error) {
 	case block_beg:
 	case string_del:
 		name, err = parseString(lx)
+		if err != nil {
+			return nil, ParsingError{lm.Line, err}
+		}
+		lx.SkipSep()
 	default:
-		return nil, ErrInvalidStatement
+		err = ParsingError{lm.Line, ErrInvalidStatement}
 	}
 	if err != nil {
 		return nil, err
 	}
+	lm, err = lx.NextOrErr()
+	if err != nil {
+		return nil, ParsingError{lm.Line, err}
+	}
+	if lm.Kind != block_beg {
+		return nil, ParsingError{lm.Line, ErrInvalidStatement}
+	}
+	lx.SkipSep()
 	stmts, err := ParseStatements(lx)
 	if err == nil {
 		return nil, ErrBlockNotEnded
@@ -36,6 +49,7 @@ func parseFilter(lx *Lexer) (*Filter, error) {
 	if !errors.Is(err, ErrBlockEnded) {
 		return nil, err
 	}
+	lx.SkipSep()
 	return &Filter{Name: name, Content: stmts}, nil
 }
 

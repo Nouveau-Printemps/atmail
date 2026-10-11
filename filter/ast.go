@@ -103,7 +103,11 @@ func (expr ExpressionStatement) Eval(ctx *EvaluationContext) bool {
 		}
 		return false
 	}
-	return res.Value.(bool)
+	val := res.Value.(bool)
+	if ctx.Verbose && !val {
+		ctx.Logger().Info("expression returned false")
+	}
+	return val
 }
 
 func parseExprStatement(lx *Lexer) (stmt Statement, err error) {
