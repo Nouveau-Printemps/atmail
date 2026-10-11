@@ -31,6 +31,11 @@ var actions = map[string]EvaluationAction{
 		ctx.Result.ModifyHeader[params[0].Value.(string)] = params[1].Value.(string)
 		return nil
 	},
+	"spam": func(ctx *EvaluationContext, params []*EvaluationVariable) error {
+		ctx.Result.Mailbox = new("Junk")
+		ctx.Result.Action = ActionQuarantine
+		return nil
+	},
 }
 
 func setResultAction(a ResultAction) EvaluationAction {

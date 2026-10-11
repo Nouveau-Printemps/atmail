@@ -127,3 +127,16 @@ do set_header("foo", "uwu")`)
 		t.Errorf("invalid header baz: %#v wanted aaa", h)
 	}
 }
+
+func TestResult_Spam(t *testing.T) {
+	res := testResult(t, `do spam()`)
+	if res.Mailbox == nil {
+		t.Fatal("expected mailbox")
+	}
+	if *res.Mailbox != "Junk" {
+		t.Errorf("invalid mailbox: %#v expected Junk", res.Mailbox)
+	}
+	if res.Action != ActionQuarantine {
+		t.Error("invalid action:", res.Action, "wanted", ActionQuarantine)
+	}
+}
