@@ -14,7 +14,8 @@ func testStd(t *testing.T, input string) bool {
 	}
 	ctx := InitEvalulationContext(Rcpt{}, Rcpt{}, message.Header{}, "")
 	ctx.Verbose = true
-	return tree.Eval(ctx)
+	_, ok := tree.Eval(ctx)
+	return ok
 }
 
 func testValidStd(t *testing.T, input string) {

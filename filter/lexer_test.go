@@ -27,7 +27,7 @@ func TestLexer_Next(t *testing.T) {
 to = "me@example.com"
 
 filter "spam" do
-    header.x-spam-score >= 5.3
+    header:get("X-Spam-Score") >= 5.3
 
     do spam()
 end
@@ -37,7 +37,7 @@ filter "uwu" do
 
     do mailbox("owo")
     do forward("here@example.com")
-    do finish()
+    do accept()
 end`))
 	verifyLexem(t, lx.Next(), identifier, "from", 1)
 	verifyLexem(t, lx.Next(), separator, " ", 1)
@@ -70,8 +70,13 @@ end`))
 	verifyLexem(t, lx.Next(), block_beg, "do", 4)
 	verifyLexem(t, lx.Next(), separator, "\n    ", 4)
 	verifyLexem(t, lx.Next(), identifier, "header", 5)
-	verifyLexem(t, lx.Next(), identifier_compose, ".", 5)
-	verifyLexem(t, lx.Next(), identifier, "x-spam-score", 5)
+	verifyLexem(t, lx.Next(), identifier_execute, ":", 5)
+	verifyLexem(t, lx.Next(), identifier, "get", 5)
+	verifyLexem(t, lx.Next(), identifier_param_beg, "(", 5)
+	verifyLexem(t, lx.Next(), string_del, "\"", 5)
+	verifyLexem(t, lx.Next(), identifier, "X-Spam-Score", 5)
+	verifyLexem(t, lx.Next(), string_del, "\"", 5)
+	verifyLexem(t, lx.Next(), identifier_param_end, ")", 5)
 	verifyLexem(t, lx.Next(), separator, " ", 5)
 	verifyLexem(t, lx.Next(), operator_low, ">=", 5)
 	verifyLexem(t, lx.Next(), separator, " ", 5)
@@ -125,7 +130,7 @@ end`))
 	verifyLexem(t, lx.Next(), separator, "\n    ", 14)
 	verifyLexem(t, lx.Next(), block_beg, "do", 15)
 	verifyLexem(t, lx.Next(), separator, " ", 15)
-	verifyLexem(t, lx.Next(), identifier, "finish", 15)
+	verifyLexem(t, lx.Next(), identifier, "accept", 15)
 	verifyLexem(t, lx.Next(), identifier_param_beg, "(", 15)
 	verifyLexem(t, lx.Next(), identifier_param_end, ")", 15)
 	verifyLexem(t, lx.Next(), separator, "\n", 15)

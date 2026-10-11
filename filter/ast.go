@@ -15,13 +15,16 @@ type Tree struct {
 	Statements []Statement
 }
 
-func (t *Tree) Eval(ctx *EvaluationContext) bool {
+func (t *Tree) Eval(ctx *EvaluationContext) (*Result, bool) {
 	for _, stmt := range t.Statements {
 		if !stmt.Eval(ctx) {
-			return false
+			return nil, false
+		}
+		if ctx.Result.Action != ActionContinue {
+			break
 		}
 	}
-	return true
+	return &ctx.Result, true
 }
 
 var (
@@ -145,7 +148,7 @@ func (a *ActionStatement) Eval(ctx *EvaluationContext) bool {
 		}
 		acc = append(acc, pa)
 	}
-	_, err := action.Eval(ctx, nil, acc)
+	err := action(ctx, acc)
 	if err != nil {
 		if ctx.Verbose {
 			println("evaluation of action failed:", err.Error())

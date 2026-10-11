@@ -37,11 +37,14 @@ func parseFilter(lx *Lexer) (*Filter, error) {
 	return &Filter{Name: name, Content: stmts}, nil
 }
 
-func (f *Filter) Eval(ctx *EvaluationContext) bool {
-	ctx = ctx.Clone()
+func (f *Filter) Eval(parent *EvaluationContext) bool {
+	ctx := parent.Clone()
 	before := true
 	for i := 0; before && i < len(f.Content); i++ {
 		before = f.Content[i].Eval(ctx)
+	}
+	if before {
+		parent.Result = ctx.Result
 	}
 	return true
 }

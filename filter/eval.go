@@ -10,9 +10,12 @@ import (
 
 type EvaluationContext struct {
 	Variables map[string]*EvaluationVariable
-	Actions   map[string]*EvaluationMethod
+	Actions   map[string]EvaluationAction
+	Result    Result
 	Verbose   bool
 }
+
+type EvaluationAction = func(*EvaluationContext, []*EvaluationVariable) error
 
 type EvaluationVariable struct {
 	Type    EvaluationVariableType
@@ -40,6 +43,8 @@ func (ctx *EvaluationContext) Clone() *EvaluationContext {
 	return &EvaluationContext{
 		Variables: maps.Clone(ctx.Variables),
 		Actions:   maps.Clone(ctx.Actions),
+		Result:    ctx.Result,
+		Verbose:   ctx.Verbose,
 	}
 }
 
@@ -107,6 +112,7 @@ func headerVariable(header message.Header) *EvaluationVariable {
 
 func InitEvalulationContext(from, to Rcpt, header message.Header, body string) *EvaluationContext {
 	return &EvaluationContext{
+		Result: Result{ModifyHeader: make(map[string]string)},
 		Variables: map[string]*EvaluationVariable{
 			"true":   newBool(true),
 			"false":  newBool(false),
@@ -118,5 +124,29 @@ func InitEvalulationContext(from, to Rcpt, header message.Header, body string) *
 				Value: body,
 			},
 		},
+		Actions: actions,
 	}
+}
+
+type ResultAction uint8
+
+// Default actions in the milter protocol
+const (
+	ActionContinue ResultAction = iota
+	ActionAccept
+	ActionReject
+	ActionTempFail
+	ActionDiscard
+	ActionConnectionFail
+	ActionQuarantine
+)
+
+type Result struct {
+	Action          ResultAction
+	AddRecipient    []string
+	RemoveRecipient []string
+	SenderAddress   *Rcpt
+	Mailbox         *string
+	Body            *string
+	ModifyHeader    map[string]string
 }

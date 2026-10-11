@@ -12,5 +12,5 @@ filter "uwu" do
 
     do mailbox("owo")
     do forward("here@example.com")
-    do finish()
+    do accept()
 end

@@ -37,7 +37,8 @@ sl:get(1) = "2"`))
 		"Slice":  []string{"1", "2"},
 	}), "")
 	ctx.Verbose = true
-	if !tree.Eval(ctx) {
+	_, ok := tree.Eval(ctx)
+	if !ok {
 		t.Error("expected valid eval")
 	}
 
@@ -62,7 +63,8 @@ func testEvalError(t *testing.T, input string) {
 		Address: "world@example.org",
 	}, message.Header{}, "")
 	ctx.Verbose = true
-	if tree.Eval(ctx) {
+	_, ok := tree.Eval(ctx)
+	if ok {
 		t.Error("expected invalid eval for", input)
 	}
 }
