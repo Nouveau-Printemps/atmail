@@ -36,7 +36,12 @@ hello:len() = 5
 hello:contains("llo")
 hello:get(0) = "h"
 hello:sub(0, 3) = "hel"
-hello:sub(hello:len(), 10) = ""`)
+hello:sub(hello:len(), 10) = ""
+
+let nbr = "-1.2"
+nbr:number() = -1.2
+let nbr = "0"
+nbr:number() = 0`)
 
 	testInvalidStd(t, `let hello = "hello"
 hello:get(hello:len()) = ""`)
@@ -44,6 +49,8 @@ hello:get(hello:len()) = ""`)
 hello:sub(-1, 1)`)
 	testInvalidStd(t, `let hello = "hello"
 hello:sub(2, 1)`)
+	testInvalidStd(t, `let hello = "hello"
+hello:number()`)
 }
 
 func TestStd_Collection(t *testing.T) {

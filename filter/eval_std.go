@@ -3,32 +3,33 @@ package filter
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
 func stringMethods() map[string]*EvaluationMethod {
 	return map[string]*EvaluationMethod{
 		"len": {
-			Action: func(ec *EvaluationContext, parent *EvaluationVariable, _ []*EvaluationVariable) (*EvaluationVariable, error) {
+			Action: func(_ *EvaluationContext, parent *EvaluationVariable, _ []*EvaluationVariable) (*EvaluationVariable, error) {
 				return newNumber(float64(len(parent.Value.(string)))), nil
 			},
 		},
 		"contains": {
 			ParamsType: []EvaluationVariableType{TypeString},
-			Action: func(ec *EvaluationContext, parent *EvaluationVariable, params []*EvaluationVariable) (*EvaluationVariable, error) {
+			Action: func(_ *EvaluationContext, parent *EvaluationVariable, params []*EvaluationVariable) (*EvaluationVariable, error) {
 				return newBool(strings.Contains(parent.Value.(string), params[0].Value.(string))), nil
 			},
 		},
 		"split": {
 			ParamsType: []EvaluationVariableType{TypeString},
-			Action: func(ec *EvaluationContext, parent *EvaluationVariable, params []*EvaluationVariable) (*EvaluationVariable, error) {
+			Action: func(_ *EvaluationContext, parent *EvaluationVariable, params []*EvaluationVariable) (*EvaluationVariable, error) {
 				res := strings.Split(parent.Value.(string), params[0].Value.(string))
 				return newCollection[float64, string](sliceToMap(res, newString)), nil
 			},
 		},
 		"get": {
 			ParamsType: []EvaluationVariableType{TypeNumber},
-			Action: func(ec *EvaluationContext, parent *EvaluationVariable, params []*EvaluationVariable) (*EvaluationVariable, error) {
+			Action: func(_ *EvaluationContext, parent *EvaluationVariable, params []*EvaluationVariable) (*EvaluationVariable, error) {
 				s := parent.Value.(string)
 				k := int(params[0].Value.(float64))
 				if k >= len(s) {
@@ -39,7 +40,7 @@ func stringMethods() map[string]*EvaluationMethod {
 		},
 		"sub": {
 			ParamsType: []EvaluationVariableType{TypeNumber, TypeNumber},
-			Action: func(ec *EvaluationContext, parent *EvaluationVariable, params []*EvaluationVariable) (*EvaluationVariable, error) {
+			Action: func(_ *EvaluationContext, parent *EvaluationVariable, params []*EvaluationVariable) (*EvaluationVariable, error) {
 				s := parent.Value.(string)
 				k1 := int(params[0].Value.(float64))
 				k2 := int(params[1].Value.(float64))
@@ -54,6 +55,15 @@ func stringMethods() map[string]*EvaluationMethod {
 				}
 				k2 = min(k2, len(s))
 				return newString(s[k1:k2]), nil
+			},
+		},
+		"number": {
+			Action: func(_ *EvaluationContext, parent *EvaluationVariable, _ []*EvaluationVariable) (*EvaluationVariable, error) {
+				res, err := strconv.ParseFloat(parent.Value.(string), 64)
+				if err != nil {
+					return nil, fmt.Errorf("%v is not a number", parent.Value)
+				}
+				return newNumber(res), nil
 			},
 		},
 	}
@@ -80,7 +90,7 @@ func newBool(val bool) *EvaluationVariable {
 		Value: val,
 		Methods: map[string]*EvaluationMethod{
 			"not": {
-				Action: func(ec *EvaluationContext, parent *EvaluationVariable, _ []*EvaluationVariable) (*EvaluationVariable, error) {
+				Action: func(_ *EvaluationContext, parent *EvaluationVariable, _ []*EvaluationVariable) (*EvaluationVariable, error) {
 					return newBool(!parent.Value.(bool)), nil
 				},
 			},
@@ -92,7 +102,7 @@ func collectionMethods[K comparable, V any]() map[string]*EvaluationMethod {
 	return map[string]*EvaluationMethod{
 		"get": {
 			ParamsType: []EvaluationVariableType{typeOf[K]()},
-			Action: func(ec *EvaluationContext, parent *EvaluationVariable, params []*EvaluationVariable) (*EvaluationVariable, error) {
+			Action: func(_ *EvaluationContext, parent *EvaluationVariable, params []*EvaluationVariable) (*EvaluationVariable, error) {
 				k := params[0].Value.(K)
 				val, ok := parent.Value.(map[K]*EvaluationVariable)[k]
 				if !ok {
@@ -102,13 +112,13 @@ func collectionMethods[K comparable, V any]() map[string]*EvaluationMethod {
 			},
 		},
 		"len": {
-			Action: func(ec *EvaluationContext, parent *EvaluationVariable, _ []*EvaluationVariable) (*EvaluationVariable, error) {
+			Action: func(_ *EvaluationContext, parent *EvaluationVariable, _ []*EvaluationVariable) (*EvaluationVariable, error) {
 				return newNumber(float64(len(parent.Value.(map[K]*EvaluationVariable)))), nil
 			},
 		},
 		"set": {
 			ParamsType: []EvaluationVariableType{typeOf[K](), typeOf[V]()},
-			Action: func(ec *EvaluationContext, parent *EvaluationVariable, params []*EvaluationVariable) (*EvaluationVariable, error) {
+			Action: func(_ *EvaluationContext, parent *EvaluationVariable, params []*EvaluationVariable) (*EvaluationVariable, error) {
 				parent = parent.Clone()
 				parent.Value.(map[K]*EvaluationVariable)[params[0].Value.(K)] = params[1]
 				return parent, nil
@@ -116,7 +126,7 @@ func collectionMethods[K comparable, V any]() map[string]*EvaluationMethod {
 		},
 		"has_value": {
 			ParamsType: []EvaluationVariableType{typeOf[V]()},
-			Action: func(ec *EvaluationContext, parent *EvaluationVariable, params []*EvaluationVariable) (*EvaluationVariable, error) {
+			Action: func(_ *EvaluationContext, parent *EvaluationVariable, params []*EvaluationVariable) (*EvaluationVariable, error) {
 				for _, v := range parent.Value.(map[K]*EvaluationVariable) {
 					if reflect.DeepEqual(v.Value, params[0].Value) {
 						return newBool(true), nil
@@ -127,7 +137,7 @@ func collectionMethods[K comparable, V any]() map[string]*EvaluationMethod {
 		},
 		"has_key": {
 			ParamsType: []EvaluationVariableType{typeOf[K]()},
-			Action: func(ec *EvaluationContext, parent *EvaluationVariable, params []*EvaluationVariable) (*EvaluationVariable, error) {
+			Action: func(_ *EvaluationContext, parent *EvaluationVariable, params []*EvaluationVariable) (*EvaluationVariable, error) {
 				_, ok := parent.Value.(map[K]*EvaluationVariable)[params[0].Value.(K)]
 				return newBool(ok), nil
 			},
