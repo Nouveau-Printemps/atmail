@@ -28,7 +28,7 @@ to = "me@example.com"
 
 filter "spam" do
     header:get("X-Spam-Score") >= 5.3
-
+    # amazing comment
     do spam()
 end
 
@@ -81,7 +81,7 @@ end`))
 	verifyLexem(t, lx.Next(), operator_low, ">=", 5)
 	verifyLexem(t, lx.Next(), separator, " ", 5)
 	verifyLexem(t, lx.Next(), number, "5.3", 5)
-	verifyLexem(t, lx.Next(), separator, "\n\n    ", 5)
+	verifyLexem(t, lx.Next(), separator, "\n        ", 5)
 	verifyLexem(t, lx.Next(), block_beg, "do", 7)
 	verifyLexem(t, lx.Next(), separator, " ", 7)
 	verifyLexem(t, lx.Next(), identifier, "spam", 7)

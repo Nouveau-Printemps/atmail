@@ -28,6 +28,7 @@ const (
 	filter
 	separator
 	let
+	comment
 	generic
 )
 
@@ -66,23 +67,21 @@ func (l *Lexer) Next() *Lexem {
 	for {
 		var current rune
 		var next *rune
-		n, err := l.content.Peek(2)
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				// nothing was read
-				if len(n) == 0 {
-					break
-				}
-				// only current was read
-			} else {
-				panic(err)
-			}
-		} else {
-			// everything was read
-			next = new(rune(n[1]))
+		current, next, ok := peekNext(l.content)
+		if !ok {
+			break
 		}
-		current = rune(n[0])
 		ckind, unique := l.kindOf(kind, current, next)
+		for ckind == comment {
+			_, _ = l.content.ReadBytes('\n')
+			current, next, ok = peekNext(l.content)
+			if !ok {
+				break
+			}
+			l.line++
+			l.char = 0
+			ckind, unique = l.kindOf(kind, current, next)
+		}
 		if kind != nil && *kind != ckind {
 			break
 		}
@@ -149,6 +148,8 @@ func nilOr[T comparable](val *T, or T) bool {
 
 func (l *Lexer) kindOf(before *Kind, current rune, next *rune) (Kind, bool) {
 	switch current {
+	case '#':
+		return comment, false
 	case '=', '!', '>', '<':
 		return operator_low, false
 	case ' ', '\n', '\r', '\t':
@@ -211,4 +212,24 @@ func (l *Lexer) PeekOrErr() (Lexem, error) {
 		return Lexem{}, ExpectingTokenError{l.char}
 	}
 	return *next, nil
+}
+
+func peekNext(content *bufio.Reader) (rune, *rune, bool) {
+	var next *rune
+	n, err := content.Peek(2)
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			// nothing was read
+			if len(n) == 0 {
+				return 0, nil, false
+			}
+			// only current was read
+		} else {
+			panic(err)
+		}
+	} else {
+		// everything was read
+		next = new(rune(n[1]))
+	}
+	return rune(n[0]), next, true
 }

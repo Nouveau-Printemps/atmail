@@ -1,3 +1,4 @@
+comment = "#" (%d00-%d9 / %d10-%d255)* "\n"
 identifier = 1*ALPHA *( "_" / "-" / ALPHA / DIGIT )
 string = DQUOTE *OCTET DQUOTE
 number = ["-"] ( 1*DIGIT / *DIGIT "." 1*DIGIT )
