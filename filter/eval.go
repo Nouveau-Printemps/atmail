@@ -33,6 +33,7 @@ const (
 	TypeNumber
 	TypeBool
 	TypeCollection
+	TypeAny
 )
 
 func (ctx *EvaluationContext) Clone() *EvaluationContext {
@@ -47,7 +48,7 @@ func (m *EvaluationMethod) Eval(ctx *EvaluationContext, parent *EvaluationVariab
 		return nil, errors.New("missing parameters")
 	}
 	for i, v := range params {
-		if m.ParamsType[i] != v.Type {
+		if m.ParamsType[i] != TypeAny && m.ParamsType[i] != v.Type {
 			return nil, errors.New("invalid parameters type")
 		}
 	}
@@ -92,11 +93,26 @@ func rcptVariable(rcpt Rcpt) *EvaluationVariable {
 	return val
 }
 
+func headerVariable(header message.Header) *EvaluationVariable {
+	res := make(map[string]*EvaluationVariable, header.Len())
+	for k, v := range header.Map() {
+		if len(v) == 1 {
+			res[k] = newString(v[0])
+		} else {
+			res[k] = newCollection[float64, string](sliceToMap(v, newString))
+		}
+	}
+	return newCollection[string, any](res)
+}
+
 func InitEvalulationContext(from, to Rcpt, header message.Header, body string) *EvaluationContext {
 	return &EvaluationContext{
 		Variables: map[string]*EvaluationVariable{
-			"from": rcptVariable(from),
-			"to":   rcptVariable(to),
+			"true":   newBool(true),
+			"false":  newBool(false),
+			"from":   rcptVariable(from),
+			"to":     rcptVariable(to),
+			"header": headerVariable(header),
 			"body": &EvaluationVariable{
 				Type:  TypeString,
 				Value: body,

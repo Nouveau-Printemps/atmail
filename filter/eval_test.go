@@ -15,7 +15,12 @@ from.user != "world"
 to.user != "hello"
 
 from:contains("@")
-to.domain:contains(".")`))
+to.domain:contains(".")
+
+header:get("Object") = "Hey!"
+let sl = header:get("Slice")
+sl:get(0) = "1"
+sl:get(1) = "2"`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +32,10 @@ to.domain:contains(".")`))
 		User:    "world",
 		Domain:  "example.org",
 		Address: "world@example.org",
-	}, message.Header{}, "")
+	}, message.HeaderFromMap(map[string][]string{
+		"Object": []string{"Hey!"},
+		"Slice":  []string{"1", "2"},
+	}), "")
 	ctx.Verbose = true
 	if !tree.Eval(ctx) {
 		t.Error("expected valid eval")

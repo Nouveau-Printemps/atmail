@@ -154,6 +154,9 @@ func sliceToMap[T any](sl []T, conv func(T) *EvaluationVariable) map[float64]*Ev
 func typeOf[V any]() EvaluationVariableType {
 	var v V
 	tpe := reflect.TypeOf(v)
+	if tpe == nil {
+		return TypeAny
+	}
 	switch tpe.Kind() {
 	case reflect.Bool:
 		return TypeBool
@@ -163,6 +166,8 @@ func typeOf[V any]() EvaluationVariableType {
 		return TypeString
 	case reflect.Slice, reflect.Map:
 		return TypeCollection
+	case reflect.Interface:
+		return TypeAny
 	default:
 		panic("internal error: unsupported kind")
 	}

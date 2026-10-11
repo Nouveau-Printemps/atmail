@@ -72,15 +72,12 @@ sp:has_value("uwu")
 sp:has_value("nothing"):not()`)
 
 	testInvalidStd(t, `let val = "a/b"
-let sp = val:split("/")
-sp:get(2)`)
+val:split("/"):get(-1.5)`)
 }
 
 func TestStd_Bool(t *testing.T) {
-	testValidStd(t, `let true = 0 = 0
-true
+	testValidStd(t, `true
 true:not():not()`)
 
-	testValidStd(t, `let false = 0 != 0
-false:not()`)
+	testValidStd(t, `false:not()`)
 }
