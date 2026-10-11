@@ -93,13 +93,13 @@ func (expr ExpressionStatement) Eval(ctx *EvaluationContext) bool {
 	res, err := expr.Expr.Eval(ctx)
 	if err != nil {
 		if ctx.Verbose {
-			println("evaluation of expression failed:", err.Error())
+			ctx.Logger().Info("evaluation of expression failed", "error", err.Error())
 		}
 		return false
 	}
 	if res.Type != TypeBool {
 		if ctx.Verbose {
-			println("expression doesn't return a bool")
+			ctx.Logger().Warn("expression doesn't return a bool")
 		}
 		return false
 	}
@@ -133,7 +133,7 @@ func (a *ActionStatement) Eval(ctx *EvaluationContext) bool {
 	action, ok := ctx.Actions[a.Name]
 	if !ok {
 		if ctx.Verbose {
-			println("action", a.Name, "not found")
+			ctx.Logger().Warn("action not found", "name", a.Name)
 		}
 		return false
 	}
@@ -142,7 +142,7 @@ func (a *ActionStatement) Eval(ctx *EvaluationContext) bool {
 		pa, err := p.Eval(ctx)
 		if err != nil {
 			if ctx.Verbose {
-				println("evaluation of expression failed:", err.Error())
+				ctx.Logger().Info("evaluation of expression failed", "error", err.Error())
 			}
 			return false
 		}
@@ -151,7 +151,7 @@ func (a *ActionStatement) Eval(ctx *EvaluationContext) bool {
 	err := action(ctx, acc)
 	if err != nil {
 		if ctx.Verbose {
-			println("evaluation of action failed:", err.Error())
+			ctx.Logger().Info("evaluation of action failed", "error", err.Error())
 		}
 		return false
 	}
@@ -197,7 +197,7 @@ func (l *LetStatement) Eval(ctx *EvaluationContext) bool {
 	cv, err := l.Value.Eval(ctx)
 	if err != nil {
 		if ctx.Verbose {
-			println("evaluation of expression failed:", err.Error())
+			ctx.Logger().Info("evaluation of expression failed", "error", err.Error())
 		}
 		return false
 	}

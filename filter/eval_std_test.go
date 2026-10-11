@@ -12,7 +12,7 @@ func testStd(t *testing.T, input string) bool {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx := InitEvalulationContext(Rcpt{}, Rcpt{}, message.Header{}, "")
+	ctx := InitEvalulationContext("std", Rcpt{}, Rcpt{}, message.Header{}, "")
 	ctx.Verbose = true
 	_, ok := tree.Eval(ctx)
 	return ok

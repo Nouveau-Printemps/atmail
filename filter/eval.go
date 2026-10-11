@@ -2,6 +2,7 @@ package filter
 
 import (
 	"errors"
+	"log/slog"
 	"maps"
 	"reflect"
 
@@ -13,6 +14,11 @@ type EvaluationContext struct {
 	Actions   map[string]EvaluationAction
 	Result    Result
 	Verbose   bool
+	LoggerKey string
+}
+
+func (ctx *EvaluationContext) Logger() *slog.Logger {
+	return slog.Default().With("filter", ctx.LoggerKey)
 }
 
 type EvaluationAction = func(*EvaluationContext, []*EvaluationVariable) error
@@ -110,7 +116,7 @@ func headerVariable(header message.Header) *EvaluationVariable {
 	return newCollection[string, any](res)
 }
 
-func InitEvalulationContext(from, to Rcpt, header message.Header, body string) *EvaluationContext {
+func InitEvalulationContext(name string, from, to Rcpt, header message.Header, body string) *EvaluationContext {
 	return &EvaluationContext{
 		Result: Result{ModifyHeader: make(map[string]string)},
 		Variables: map[string]*EvaluationVariable{
@@ -124,7 +130,8 @@ func InitEvalulationContext(from, to Rcpt, header message.Header, body string) *
 				Value: body,
 			},
 		},
-		Actions: actions,
+		Actions:   actions,
+		LoggerKey: name,
 	}
 }
 

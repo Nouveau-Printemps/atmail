@@ -12,7 +12,7 @@ func testResult(t *testing.T, input string) *Result {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx := InitEvalulationContext(Rcpt{}, Rcpt{}, message.Header{}, "")
+	ctx := InitEvalulationContext("result", Rcpt{}, Rcpt{}, message.Header{}, "")
 	ctx.Verbose = true
 	res, ok := tree.Eval(ctx)
 	if !ok {

@@ -1,6 +1,8 @@
 package filter
 
-import "errors"
+import (
+	"errors"
+)
 
 type Filter struct {
 	Name    string
@@ -39,6 +41,7 @@ func parseFilter(lx *Lexer) (*Filter, error) {
 
 func (f *Filter) Eval(parent *EvaluationContext) bool {
 	ctx := parent.Clone()
+	ctx.LoggerKey = parent.LoggerKey + " > " + f.Name
 	before := true
 	for i := 0; before && i < len(f.Content); i++ {
 		before = f.Content[i].Eval(ctx)

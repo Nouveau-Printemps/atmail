@@ -24,7 +24,7 @@ sl:get(1) = "2"`))
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx := InitEvalulationContext(Rcpt{
+	ctx := InitEvalulationContext("AST Eval", Rcpt{
 		User:    "hello",
 		Domain:  "example.org",
 		Address: "hello@example.org",
@@ -53,7 +53,7 @@ func testEvalError(t *testing.T, input string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx := InitEvalulationContext(Rcpt{
+	ctx := InitEvalulationContext("Eval error", Rcpt{
 		User:    "hello",
 		Domain:  "example.org",
 		Address: "hello@example.org",
