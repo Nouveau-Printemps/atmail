@@ -143,6 +143,11 @@ func main() {
 			boxes.Add(mailbox.NewView(uint32(id), box, 1))
 		}
 	}
+	bck.Filters, err = cfg.ParseFilters()
+	if err != nil {
+		slog.Error("parsing filters", "error", err)
+		os.Exit(4)
+	}
 
 	go func() {
 		sig := make(chan os.Signal, 1)
@@ -157,6 +162,11 @@ func main() {
 			}
 			bck.Domains = cfg.Domains
 			d.Domains = cfg.Domains
+			bck.Filters, err = cfg.ParseFilters()
+			if err != nil {
+				slog.Error("parsing filters", "error", err)
+				continue
+			}
 			slog.Info("config reloaded")
 		}
 	}()

@@ -160,6 +160,17 @@ func (s *Session) Data(r io.Reader) error {
 		}
 		score = &sc
 	}
+	//TODO: better handle of multiple to
+	for _, to := range s.To {
+		ctx, err := s.backend.NewContext(s.From, to, msg)
+		if err != nil {
+			return err
+		}
+		err = applyResult(s, msg, &wait, checkFilters(ctx, s.backend.Filters))
+		if err != nil {
+			return err
+		}
+	}
 	go func(ctx context.Context, to []Rcpt) {
 		if wait != 0 {
 			time.Sleep(wait)

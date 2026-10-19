@@ -4,6 +4,7 @@ db = "/var/lib/atmail/data.db"
 directory = "/var/lib/atmail/data"
 # folder containing domains' config file
 domains_folder = "/etc/atmail/domains.d/"
+filters_folder = "/etc/atmail/filters.d/"
 
 # domain broadcasted
 main_domain = "mail.example.org"
@@ -12,12 +13,12 @@ main_domain = "mail.example.org"
 # address to listen to (tcp or unix socket)
 listen = ":2525"
 # group of unix socket (can be a name or a gid)
-#socket_group = "mail"
+# socket_group = "mail"
 # permission of the socket
-#socket_permission = 0o660
+# socket_permission = 0o660
 # use PROXY V2 Protocol by HAProxy
 use_proxy_v2 = false
-#allow_insecure_auth = false
+# allow_insecure_auth = false
 # max email size in KiB
 max_email_size = 16416
 # number of concurrent thread to relay email outside
@@ -27,9 +28,9 @@ concurrent_sender = 3
 listen = ":2993"
 use_proxy_v2 = false
 
-#[rspamd]
+# [rspamd]
 # Address of the rspamd server
-#address = "localhost:11332"
+# address = "localhost:11332"
 
 [domains."example.org"]
 # if you wanna enable support of plus addressing like 'foo+bar@example.org'
@@ -41,48 +42,47 @@ create_folder_subaddressing = false
 # admin account (used to redirect postmaster@example.org and other security-related mailboxes to the right user)
 user = "admin"
 # sets the IMAP folder for this account (empty for INBOX)
-#folder = "security"
+# folder = "security"
 # if you wanna encrypt with PGP
-#pgp_pub_key = ""
-#pgp_pub_key_file = ""
-
+# pgp_pub_key = ""
+# pgp_pub_key_file = ""
 
 # If you wanna use ATProto for the auth
-#[domains."example.org".atproto]
-#pds = "pds.example.org"
-#client_id = "mail.example.org"
-#client_secret = "my-secret"
+# [domains."example.org".atproto]
+# pds = "pds.example.org"
+# client_id = "mail.example.org"
+# client_secret = "my-secret"
 
 # If you wanna allow only specific users, maps them to their password (hashed with bcrypt)
-#[domains."example.org".static.users]
-#foo.password = "$2y$10$wWJy64n5j4pU2CscdWRq.er5Z2.V31U5Ntz5uTopLy1fMX87GQEDG"
-#bar.password = "$2y$10$fZ1tRpz2mfdRfaaTbx723.Gch7tY.f7LIBuZz1of/cLwBGvU39ivG"
+# [domains."example.org".static.users]
+# foo.password = "$2y$10$wWJy64n5j4pU2CscdWRq.er5Z2.V31U5Ntz5uTopLy1fMX87GQEDG"
+# bar.password = "$2y$10$fZ1tRpz2mfdRfaaTbx723.Gch7tY.f7LIBuZz1of/cLwBGvU39ivG"
 # You can specify their PGP public key to encrypt their message
-#foo.pgp_pub_key = ""
-#bar.pgp_pub_key_file = ""
+# foo.pgp_pub_key = ""
+# bar.pgp_pub_key_file = ""
 # If you want to only permit local connection regardless of the password
-#baz.local_only = true
+# baz.local_only = true
 
 # If you wanna create system users
-#[domains."example.org".static.system_users]
+# [domains."example.org".static.system_users]
 # address to listen to (tcp or unix socket)
-#noreply.listen = ":2525"
+# noreply.listen = ":2525"
 # group of unix socket (can be a name or a gid)
-#noreply.socket_group = "mail"
+# noreply.socket_group = "mail"
 # permission of the socket
-#noreply.socket_permission = 0o660
-#noreply.use_proxy_v2 = false
+# noreply.socket_permission = 0o660
+# noreply.use_proxy_v2 = false
 
 # If you wanna create groups
-#[domains."example.org".static.groups]
+# [domains."example.org".static.groups]
 # users in the group
-#somegroupname.members = ["foo@example.org", "bar@example.org"]
+# somegroupname.members = ["foo@example.org", "bar@example.org"]
 # users that can email the group (if unspecified, everyone can)
-#somegroupname.authorized_senders = ["foo@example.org"]
+# somegroupname.authorized_senders = ["foo@example.org"]
 
 # Catch every email into one address
 [domains."example.org".catch_all]
 user = "me"
 password = "bcrypt here"
-#pgp_pub_key = ""
-#pgp_pub_key_file = ""
+# pgp_pub_key = ""
+# pgp_pub_key_file = ""

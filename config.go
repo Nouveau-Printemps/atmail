@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	_ "embed"
 	"log/slog"
 	"os"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"nouveauprintemps.org/atmail/auth"
+	"nouveauprintemps.org/atmail/filter"
 	"nouveauprintemps.org/atmail/utils"
 )
 
@@ -19,6 +21,7 @@ type Config struct {
 	MainDomain    string                 `toml:"main_domain"`
 	AdminEmail    string                 `toml:"admin_email"`
 	DomainsFolder *string                `toml:"domains_folder"`
+	FiltersFolder string                 `toml:"filters_folder"`
 	Rspamd        *RspamdConfig          `toml:"rspamd"`
 	Smtp          SmtpConfig             `toml:"smtp"`
 	Imap          ImapConfig             `toml:"imap"`
@@ -133,12 +136,38 @@ func ParseConfig(p string) (Config, error) {
 		}
 	}
 	cfg.Smtp.MaxEmailSize *= 1024
+	base, err := os.Getwd()
+	if err != nil {
+		return cfg, err
+	}
 	if !strings.HasPrefix(cfg.Directory, "/") {
-		base, err := os.Getwd()
-		if err != nil {
-			return cfg, err
-		}
 		cfg.Directory = path.Join(base, cfg.Directory)
 	}
+	if cfg.FiltersFolder != "" && !strings.HasPrefix(cfg.FiltersFolder, "/") {
+		cfg.FiltersFolder = path.Join(base, cfg.FiltersFolder)
+	}
 	return cfg, nil
+}
+
+func (cfg *Config) ParseFilters() ([]*filter.Tree, error) {
+	entries, err := os.ReadDir(cfg.FiltersFolder)
+	if err != nil {
+		return nil, err
+	}
+	acc := make([]*filter.Tree, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		b, err := os.ReadFile(path.Join(cfg.FiltersFolder, entry.Name()))
+		if err != nil {
+			return nil, err
+		}
+		tree, err := filter.Parse(bytes.NewBuffer(b))
+		if err != nil {
+			return nil, err
+		}
+		acc = append(acc, tree)
+	}
+	return acc, nil
 }
