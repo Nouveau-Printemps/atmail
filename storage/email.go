@@ -135,7 +135,7 @@ func StoreEmailInbox(
 		uid = id
 		boxID := InboxMailbox
 		if folder != "" {
-			box, err := in.GetOrCreateMailbox(ctx, "INBOX"+string(MailboxSeparator)+folder)
+			box, err := in.GetOrCreateMailbox(ctx, folder)
 			if err != nil {
 				return err
 			}

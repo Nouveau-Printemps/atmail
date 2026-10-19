@@ -13,6 +13,7 @@ import (
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
 	"nouveauprintemps.org/atmail/auth"
+	"nouveauprintemps.org/atmail/storage"
 	"nouveauprintemps.org/atmail/utils"
 )
 
@@ -105,14 +106,14 @@ func (s *Session) rcpt(to string, _ *smtp.RcptOptions) (Rcpt, error) {
 	switch {
 	case slices.Contains(auth.AdminEmails, data.Username):
 		rcpt.User = cfg.Admin.User
-		rcpt.Folder = cfg.Admin.Folder
+		rcpt.Folder = "INBOX" + string(storage.MailboxSeparator) + cfg.Admin.Folder
 		rcpt.Key = cfg.Admin.Crypto.GetKey()
 		rcpt.Address = cfg.Admin.User + "@" + rcpt.Domain
 	case data.Group != nil:
 		rcpt.Group = data.Group
 	default:
 		rcpt.User = data.Username
-		rcpt.Folder = data.Folder
+		rcpt.Folder = "INBOX" + string(storage.MailboxSeparator) + data.Folder
 		rcpt.Key = data.Key
 		rcpt.Address = data.Username + "@" + rcpt.Domain
 	}

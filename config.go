@@ -169,5 +169,6 @@ func (cfg *Config) ParseFilters() ([]*filter.Tree, error) {
 		}
 		acc = append(acc, tree)
 	}
+	slog.Debug("filters parsed")
 	return acc, nil
 }
