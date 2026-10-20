@@ -34,6 +34,7 @@ var actions = map[string]EvaluationAction{
 	"spam": func(ctx *EvaluationContext, params []*EvaluationVariable) error {
 		ctx.Result.Mailbox = new("Junk")
 		ctx.Result.Action = ActionQuarantine
+		ctx.Result.Spam = true
 		return nil
 	},
 }

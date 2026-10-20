@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"mime"
@@ -12,6 +13,7 @@ import (
 	"net"
 	"net/http"
 	"net/textproto"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -77,7 +79,12 @@ type RspamdResponse struct {
 	DkimSignature *string           `json:"dkim-signature,omitzero"`
 }
 
-func (spam *RspamdClient) Verify(ctx context.Context, metadata *RspamdMetadata, email *message.Entity) (*RspamdResponse, error) {
+func (spam *RspamdClient) do(
+	ctx context.Context,
+	metadata *RspamdMetadata,
+	email *message.Entity,
+	uri string,
+) (*multipart.Reader, error) {
 	var buf bytes.Buffer
 	w := multipart.NewWriter(&buf)
 	if metadata != nil {
@@ -123,7 +130,7 @@ func (spam *RspamdClient) Verify(ctx context.Context, metadata *RspamdMetadata, 
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodPost,
-		spam.URL+"/checkv3",
+		path.Join(spam.URL, uri),
 		&buf,
 	)
 	if err != nil {
@@ -135,16 +142,24 @@ func (spam *RspamdClient) Verify(ctx context.Context, metadata *RspamdMetadata, 
 	if err != nil {
 		return nil, err
 	}
+	if rawResp.StatusCode > 299 {
+		return nil, fmt.Errorf("invalid status code: %d", rawResp.StatusCode)
+	}
 	_, params, err := mime.ParseMediaType(rawResp.Header.Get("Content-Type"))
 	if err != nil {
 		log.Fatal(err)
 	}
-	r := multipart.NewReader(rawResp.Body, params["boundary"])
+	email.Body = bytes.NewBuffer(body)
+	return multipart.NewReader(rawResp.Body, params["boundary"]), nil
+}
+
+func (spam *RspamdClient) Verify(ctx context.Context, metadata *RspamdMetadata, email *message.Entity) (*RspamdResponse, error) {
+	r, err := spam.do(ctx, metadata, email, "checkv3")
+	if err != nil {
+		return nil, err
+	}
 	p, err := r.NextPart()
 	if err != nil {
-		if errors.Is(err, io.EOF) {
-			return nil, errors.New("no content")
-		}
 		return nil, err
 	}
 	var resp RspamdResponse
@@ -159,9 +174,6 @@ func (spam *RspamdClient) Verify(ctx context.Context, metadata *RspamdMetadata, 
 		if err == nil {
 			return nil, errors.New("invalid response")
 		}
-	} else {
-		// restore email's body (see comments above)
-		email.Body = bytes.NewBuffer(body)
 	}
 	if !errors.Is(err, io.EOF) {
 		return nil, err
@@ -234,4 +246,54 @@ func (spam *RspamdClient) Analyze(s *Session, email *message.Entity) (float64, t
 		panic("not implemented")
 	}
 	return resp.Score, wait, nil
+}
+
+func (spam *RspamdClient) LearnSpam(s *Session, email *message.Entity) error {
+	body, err := io.ReadAll(email.Body)
+	if err != nil {
+		return err
+	}
+	email.Body = bytes.NewBuffer(body)
+	req, err := http.NewRequestWithContext(
+		s.context,
+		http.MethodPost,
+		spam.URL+"/learnspam",
+		bytes.NewBuffer(body),
+	)
+	if err != nil {
+		return err
+	}
+	resp, err := spam.Client.Do(req)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode > 299 {
+		return fmt.Errorf("invalid status code: %d", resp.StatusCode)
+	}
+	return nil
+}
+
+func (spam *RspamdClient) LearnHam(s *Session, email *message.Entity) error {
+	body, err := io.ReadAll(email.Body)
+	if err != nil {
+		return err
+	}
+	email.Body = bytes.NewBuffer(body)
+	req, err := http.NewRequestWithContext(
+		s.context,
+		http.MethodPost,
+		spam.URL+"/learnham",
+		bytes.NewBuffer(body),
+	)
+	if err != nil {
+		return err
+	}
+	resp, err := spam.Client.Do(req)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode > 299 {
+		return fmt.Errorf("invalid status code: %d", resp.StatusCode)
+	}
+	return nil
 }

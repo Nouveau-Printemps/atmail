@@ -22,7 +22,12 @@ func checkFilters(ctx *filter.EvaluationContext, filters []*filter.Tree) *filter
 
 func applyResult(s *Session, msg *message.Entity, wait *time.Duration, res *filter.Result) error {
 	switch res.Action {
-	case filter.ActionContinue, filter.ActionAccept:
+	case filter.ActionAccept:
+		err := s.backend.Rspamd.LearnHam(s, msg)
+		if err != nil {
+			return err
+		}
+	case filter.ActionContinue:
 	case filter.ActionDiscard:
 		return nil
 	case filter.ActionQuarantine:
@@ -41,6 +46,12 @@ func applyResult(s *Session, msg *message.Entity, wait *time.Duration, res *filt
 		}
 	default:
 		panic("action not implemented")
+	}
+	if res.Spam {
+		err := s.backend.Rspamd.LearnSpam(s, msg)
+		if err != nil {
+			return err
+		}
 	}
 	s.To = slices.DeleteFunc(s.To, func(to Rcpt) bool {
 		return slices.Contains(res.RemoveRecipient, to.Address)

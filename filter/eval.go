@@ -156,4 +156,5 @@ type Result struct {
 	Mailbox         *string
 	Body            *string
 	ModifyHeader    map[string]string
+	Spam            bool
 }
