@@ -38,6 +38,8 @@ db = "/var/lib/atmail/data.db"
 directory = "/var/lib/atmail/data"
 # folder containing domains' config file
 domains_folder = "/etc/atmail/domains.d/"
+# folder containing filters
+filters_folder = "/etc/atmail/filters.d/"
 
 # domain broadcasted in SMTP HELO/EHLO
 main_domain = "mail.example.org"
@@ -195,6 +197,10 @@ user = "noreply"
 noreply.password = "$2y$10$wWJy64n5j4pU2CscdWRq.er5Z2.V31U5Ntz5uTopLy1fMX87GQEDG"
 foo.password = "$2y$10$wWJy64n5j4pU2CscdWRq.er5Z2.V31U5Ntz5uTopLy1fMX87GQEDG"
 ```
+
+### Custom filters
+
+See [filter/README.md](./filter/README.md).
 
 ## Roadmap
 
