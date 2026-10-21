@@ -21,14 +21,6 @@ func MapFilter[T, V any](in []T, fn func(T) *V) []V {
 	return out
 }
 
-func ReduceMapToSlice[A comparable, B, V any](in map[A]B, fn func(A, B) V) []V {
-	out := make([]V, 0, len(in))
-	for a, b := range in {
-		out = append(out, fn(a, b))
-	}
-	return out
-}
-
 func Zip[A, B any](as iter.Seq[A], bs iter.Seq[B]) iter.Seq2[A, B] {
 	return func(yield func(A, B) bool) {
 		for a := range as {

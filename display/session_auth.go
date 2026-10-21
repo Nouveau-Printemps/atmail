@@ -29,13 +29,13 @@ func (s *Session) Select(mailbox string, options *imap.SelectOptions) (*imap.Sel
 	if !ok {
 		return nil, errNotFound
 	}
-	s.selected = m
-	s.readOnly = options.ReadOnly
 	res, err := storage.DescribeMailbox(s.context, s.username, mailbox)
 	if err != nil {
 		utils.Logger(s.context).Error("describing mailbox", "error", err)
 		return nil, errInternal
 	}
+	s.selected = m
+	s.readOnly = options.ReadOnly
 	s.selected.Count.Store(res.NumMessages)
 	return res, nil
 }
@@ -119,12 +119,13 @@ func (s *Session) List(w *imapserver.ListWriter, ref string, patterns []string, 
 		boxes = slices.Collect(maps.Keys(s.subscribed))
 	} else {
 		s.mailboxes.mu.RLock()
-		boxes = utils.ReduceMapToSlice(s.mailboxes.mp, func(k string, _ *mailbox.View) string {
-			return k
-		})
+		boxes = slices.Collect(maps.Keys(s.mailboxes.mp))
 		s.mailboxes.mu.RUnlock()
 	}
-	for p, box := range utils.Zip(slices.Values(patterns), slices.Values(boxes)) {
+	for p, box := range utils.Zip(
+		slices.Values(patterns),
+		slices.Values(boxes),
+	) {
 		if !imapserver.MatchList(box, storage.MailboxSeparator, ref, p) {
 			continue
 		}

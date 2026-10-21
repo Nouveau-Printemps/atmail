@@ -126,7 +126,7 @@ func (b *Backend) relayOutside(ctx context.Context, from string, to []string, do
 		if err == nil {
 			l := l.With("host", host)
 			// wrapping to use defer
-			{
+			err = func() error {
 				var client *smtp.Client
 				l.Debug("dialing...")
 				var err error
@@ -148,8 +148,8 @@ func (b *Backend) relayOutside(ctx context.Context, from string, to []string, do
 					return err
 				}
 				l.Debug("trying to send email")
-				err = client.SendMail(from, to, &buf)
-			}
+				return client.SendMail(from, to, &buf)
+			}()
 			if err == nil {
 				l.Debug("email sent")
 				return nil
