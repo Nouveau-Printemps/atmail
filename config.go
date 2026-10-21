@@ -1,4 +1,4 @@
-package main
+package atmail
 
 import (
 	"bytes"
@@ -14,6 +14,8 @@ import (
 	"nouveauprintemps.org/atmail/filter"
 	"nouveauprintemps.org/atmail/utils"
 )
+
+//go:generate go tool sqlc generate
 
 type Config struct {
 	DB            string                 `toml:"db"`

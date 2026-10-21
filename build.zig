@@ -57,9 +57,9 @@ fn buildGo(b: *std.Build, install_lib: *std.Build.Step.InstallArtifact, cmd: []c
     ) catch unreachable;
 
     const build_go = b.addSystemCommand(&[_][]const u8{
-        "go",       cmd,
-        "-ldflags", "-s -w -linkmode external",
-        ".",
+        "go",             cmd,
+        "-ldflags",       "-s -w -linkmode external",
+        "./cmd/atmaild/",
     });
     build_go.setEnvironmentVariable("CGO_ENABLED", "1");
     build_go.setEnvironmentVariable("CGO_LDFLAGS", cc_ldflags);

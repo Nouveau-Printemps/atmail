@@ -18,6 +18,7 @@ import (
 	"github.com/emersion/go-smtp"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/nyttikord/logos"
+	"nouveauprintemps.org/atmail"
 	"nouveauprintemps.org/atmail/auth"
 	"nouveauprintemps.org/atmail/display"
 	"nouveauprintemps.org/atmail/mailbox"
@@ -26,10 +27,8 @@ import (
 	"nouveauprintemps.org/atmail/utils"
 )
 
-//go:generate go tool sqlc generate
-
 var (
-	configPath = DefaultConfigPath
+	configPath = atmail.DefaultConfigPath
 	verbose    = false
 	toSyslog   = false
 	dev        = false
@@ -60,7 +59,7 @@ func main() {
 	}
 	slog.SetDefault(slog.New(lg))
 	slog.Info("starting...")
-	cfg, err := ParseConfig(configPath)
+	cfg, err := atmail.ParseConfig(configPath)
 	if err != nil {
 		slog.Error("parsing config", "error", err)
 		os.Exit(2)
@@ -155,7 +154,7 @@ func main() {
 		for {
 			<-sig
 			slog.Info("reloading config")
-			cfg, err := ParseConfig(configPath)
+			cfg, err := atmail.ParseConfig(configPath)
 			if err != nil {
 				slog.Error("reloading config failed", "error", err)
 				continue
