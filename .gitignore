@@ -41,5 +41,6 @@ build/
 build-*/
 docgen_tmp/
 zig-pkg
-atmail
+/atmail
+/atmaild
 cfg

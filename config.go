@@ -12,6 +12,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"nouveauprintemps.org/atmail/auth"
 	"nouveauprintemps.org/atmail/filter"
+	"nouveauprintemps.org/atmail/storage"
 	"nouveauprintemps.org/atmail/utils"
 )
 
@@ -148,6 +149,7 @@ func ParseConfig(p string) (Config, error) {
 	if cfg.FiltersFolder != "" && !strings.HasPrefix(cfg.FiltersFolder, "/") {
 		cfg.FiltersFolder = path.Join(base, cfg.FiltersFolder)
 	}
+	storage.Cache.Path = cfg.Directory
 	return cfg, nil
 }
 
@@ -173,4 +175,16 @@ func (cfg *Config) ParseFilters() ([]*filter.Tree, error) {
 	}
 	slog.Debug("filters parsed")
 	return acc, nil
+}
+
+func LoadConfig(p string) (*Config, []*filter.Tree, error) {
+	cfg, err := ParseConfig(p)
+	if err != nil {
+		return nil, nil, err
+	}
+	filters, err := cfg.ParseFilters()
+	if err != nil {
+		return nil, nil, err
+	}
+	return &cfg, filters, nil
 }

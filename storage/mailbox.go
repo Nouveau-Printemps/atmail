@@ -169,12 +169,15 @@ func ListMailboxEmails(
 	set imap.NumSet,
 ) ([]store.Email, error) {
 	return get(ctx, user, func(in *DB) ([]store.Email, error) {
-		if !set.Dynamic() {
+		if set != nil && !set.Dynamic() {
 			return in.GetMailboxEmails(ctx, mailbox, GetIds(ctx, user, mailbox, set))
 		}
 		emails, err := in.ListMailboxEmails(ctx, mailbox)
 		if err != nil {
 			return nil, err
+		}
+		if set == nil {
+			return emails, nil
 		}
 		res := make([]store.Email, 0, 10)
 		switch v := set.(type) {

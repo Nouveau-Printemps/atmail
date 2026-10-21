@@ -59,7 +59,7 @@ func main() {
 	}
 	slog.SetDefault(slog.New(lg))
 	slog.Info("starting...")
-	cfg, err := atmail.ParseConfig(configPath)
+	cfg, filters, err := atmail.LoadConfig(configPath)
 	if err != nil {
 		slog.Error("parsing config", "error", err)
 		os.Exit(2)
@@ -105,6 +105,7 @@ func main() {
 		LocalName:   cfg.MainDomain,
 		Context:     utils.WithLogger(ctx, slog.With("module", "smtp")),
 		RateLimiter: rl,
+		Filters:     filters,
 	}
 	if cfg.Rspamd != nil {
 		bck.Rspamd = &relay.RspamdClient{
@@ -142,11 +143,6 @@ func main() {
 			boxes.Add(mailbox.NewView(uint32(id), box, 1))
 		}
 	}
-	bck.Filters, err = cfg.ParseFilters()
-	if err != nil {
-		slog.Error("parsing filters", "error", err)
-		os.Exit(4)
-	}
 
 	go func() {
 		sig := make(chan os.Signal, 1)
@@ -154,23 +150,17 @@ func main() {
 		for {
 			<-sig
 			slog.Info("reloading config")
-			cfg, err := atmail.ParseConfig(configPath)
+			confg, filters, err := atmail.LoadConfig(configPath)
 			if err != nil {
 				slog.Error("reloading config failed", "error", err)
 				continue
 			}
-			bck.Domains = cfg.Domains
-			d.Domains = cfg.Domains
-			bck.Filters, err = cfg.ParseFilters()
-			if err != nil {
-				slog.Error("parsing filters", "error", err)
-				continue
-			}
+			bck.Filters = filters
+			cfg = confg
 			slog.Info("config reloaded")
 		}
 	}()
 
-	storage.Cache.Path = cfg.Directory
 	defer func() {
 		err = storage.Cache.Close(context.TODO())
 		if err != nil {
