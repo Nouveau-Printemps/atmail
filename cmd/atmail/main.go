@@ -48,6 +48,7 @@ func main() {
 	}
 	switch args[0] {
 	case "read":
+		read(accountRef, args[2:])
 	case "list", "ls":
 		list(accountRef, args[2:])
 	default:
