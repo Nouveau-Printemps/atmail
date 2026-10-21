@@ -1,15 +1,15 @@
 dev:
     go generate
-    zig build run -- -config dev.toml -dev
+    go run ./cmd/atmaild/ -config dev.toml -dev
 
 build:
     go mod tidy
     go generate
-    zig build --summary all -Doptimize=ReleaseFast
+    go build -ldflags "-s -w" ./cmd/atmaild/
 
 clean:
     rm -fr data/*
     rm debug.db
 
 test:
-    zig run test --summary all
+    go test ./...
