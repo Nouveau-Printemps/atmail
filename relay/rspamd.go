@@ -13,7 +13,6 @@ import (
 	"net"
 	"net/http"
 	"net/textproto"
-	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -127,10 +126,12 @@ func (spam *RspamdClient) do(
 	if err != nil {
 		return nil, err
 	}
+	url := strings.TrimSuffix(spam.URL, "/")
+	url += "/" + strings.TrimPrefix(uri, "/")
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodPost,
-		path.Join(spam.URL, uri),
+		url,
 		&buf,
 	)
 	if err != nil {
