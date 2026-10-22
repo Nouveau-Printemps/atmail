@@ -85,6 +85,8 @@ func (s *Session) Delete(mailbox string) error {
 		l.Error("deleting mailbox", "error", err)
 		return errInternal
 	}
+	boxes, _ := s.backend.GetUserBoxes(s.username)
+	boxes.Delete(mailbox)
 	return nil
 }
 

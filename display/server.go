@@ -92,3 +92,9 @@ func (boxes *Boxes) Add(box *mailbox.View) {
 	defer boxes.mu.Unlock()
 	boxes.mp[box.Name] = box
 }
+
+func (boxes *Boxes) Delete(name string) {
+	boxes.mu.Lock()
+	defer boxes.mu.Unlock()
+	delete(boxes.mp, name)
+}
