@@ -74,8 +74,12 @@ func CreateMailbox(ctx context.Context, user, name string) (int64, error) {
 }
 
 func DeleteMailbox(ctx context.Context, user string, id int64) error {
-	return exec(ctx, user, func(in *DB) error {
-		return in.DeleteMailbox(ctx, id)
+	return execTx(ctx, user, func(in *DB) error {
+		err := in.DeleteMailbox(ctx, id)
+		if err != nil {
+			return err
+		}
+		return in.CleanEmails(ctx)
 	})
 }
 

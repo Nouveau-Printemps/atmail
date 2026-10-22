@@ -78,9 +78,11 @@ func (s *Session) Delete(mailbox string) error {
 	if !ok {
 		return errNotFound
 	}
+	l := utils.Logger(s.context).With("name", mailbox, "id", box.ID)
+	l.Debug("deleting mailbox")
 	err := storage.DeleteMailbox(s.context, s.username, int64(box.ID))
 	if err != nil {
-		utils.Logger(s.context).Error("deleting mailbox", "error", err)
+		l.Error("deleting mailbox", "error", err)
 		return errInternal
 	}
 	return nil

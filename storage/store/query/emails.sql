@@ -31,3 +31,9 @@ VALUES (?, ?, ?)
 ON CONFLICT DO UPDATE SET
 	last_file = excluded.last_file,
 	offset = excluded.offset;
+
+-- name: CleanEmails :exec
+DELETE FROM emails
+WHERE NOT EXISTS (
+	SELECT * FROM mailbox_emails WHERE email_id = id
+);
