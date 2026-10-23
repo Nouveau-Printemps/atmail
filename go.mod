@@ -1,6 +1,6 @@
 module nouveauprintemps.org/atmail
 
-go 1.26.0
+go 1.26.9
 
 require (
 	github.com/BurntSushi/toml v1.6.0
@@ -11,8 +11,8 @@ require (
 	github.com/emersion/go-smtp v0.25.0
 	github.com/mattn/go-sqlite3 v1.14.52
 	github.com/nyttikord/logos v0.2.1
-	github.com/pires/go-proxyproto v0.15.0
-	golang.org/x/crypto v0.57.0
+	github.com/pires/go-proxyproto v0.16.0
+	golang.org/x/crypto v0.58.0
 )
 
 require (
@@ -52,10 +52,10 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
-	golang.org/x/net v0.58.0 // indirect
-	golang.org/x/sync v0.23.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
-	golang.org/x/text v0.42.0 // indirect
+	golang.org/x/net v0.61.0 // indirect
+	golang.org/x/sync v0.24.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260120221211-b8f7ae30c516 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260120221211-b8f7ae30c516 // indirect
 	google.golang.org/grpc v1.80.0 // indirect
