@@ -129,7 +129,7 @@ func (s *Session) Fetch(wr *imapserver.FetchWriter, set imap.NumSet, options *im
 		if options.InternalDate {
 			w.WriteInternalDate(time.Unix(email.InternalDate, 0))
 		}
-		b, err := storage.ReadEmail(s.context, s.username, email)
+		rc, err := storage.ReadEmail(s.context, s.username, email)
 		if err != nil {
 			l.Error("reading email", "error", err)
 			if !errors.Is(err, io.ErrUnexpectedEOF) {
@@ -137,13 +137,30 @@ func (s *Session) Fetch(wr *imapserver.FetchWriter, set imap.NumSet, options *im
 			}
 			continue
 		}
+		var r io.Reader = rc
+		defer rc.Close()
+		var b []byte
+		if options.RFC822Size ||
+			options.BodyStructure != nil ||
+			options.BodySection != nil ||
+			options.BinarySection != nil ||
+			options.BinarySectionSize != nil {
+			b, err = io.ReadAll(rc)
+			if err != nil {
+				l.Error("reading email content", "error", err)
+				return errInternal
+			}
+			r = bytes.NewReader(b)
+		}
+		if options.Envelope {
+			h, _ := textproto.ReadHeader(bufio.NewReader(r))
+			w.WriteEnvelope(imapserver.ExtractEnvelope(h))
+		}
+
 		if options.RFC822Size {
 			w.WriteRFC822Size(int64(len(b)))
 		}
-		if options.Envelope {
-			h, _ := textproto.ReadHeader(bufio.NewReader(bytes.NewBuffer(b)))
-			w.WriteEnvelope(imapserver.ExtractEnvelope(h))
-		}
+
 		if options.BodyStructure != nil {
 			w.WriteBodyStructure(imapserver.ExtractBodyStructure(bytes.NewReader(b)))
 		}

@@ -146,7 +146,7 @@ func StoreEmailInbox(
 	return
 }
 
-func Read(ctx context.Context, user string, id int64) ([]byte, error) {
+func Read(ctx context.Context, user string, id int64) (io.ReadCloser, error) {
 	cache, err := Cache.DB(ctx, user)
 	if err != nil {
 		return nil, err
@@ -158,7 +158,7 @@ func Read(ctx context.Context, user string, id int64) ([]byte, error) {
 	return email.Read(cache.path)
 }
 
-func ReadEmail(ctx context.Context, user string, email store.Email) ([]byte, error) {
+func ReadEmail(ctx context.Context, user string, email store.Email) (io.ReadCloser, error) {
 	cache, err := Cache.DB(ctx, user)
 	if err != nil {
 		return nil, err

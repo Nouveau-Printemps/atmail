@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"io"
 	"os"
 	"strconv"
 
@@ -21,7 +22,13 @@ func read(account string, args []string) {
 		println("read <mail>")
 		os.Exit(2)
 	}
-	b, err := storage.Read(context.Background(), account, int64(id))
+	rc, err := storage.Read(context.Background(), account, int64(id))
+	if err != nil {
+		println(err.Error())
+		os.Exit(3)
+	}
+	defer rc.Close()
+	b, err := io.ReadAll(rc)
 	if err != nil {
 		println(err.Error())
 		os.Exit(3)

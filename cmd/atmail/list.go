@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -40,12 +39,13 @@ func list(account string, args []string) {
 			os.Exit(3)
 		}
 		for _, email := range emails {
-			b, err := storage.ReadEmail(context.Background(), account, email)
+			rc, err := storage.ReadEmail(context.Background(), account, email)
 			if err != nil {
 				println(err.Error())
 				os.Exit(3)
 			}
-			msg, err := message.Read(bytes.NewBuffer(b))
+			defer rc.Close()
+			msg, err := message.Read(rc)
 			if err != nil {
 				println(err.Error())
 				os.Exit(3)

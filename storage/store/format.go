@@ -1,6 +1,7 @@
 package store
 
 import (
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"encoding/binary"
@@ -10,11 +11,45 @@ import (
 	"os"
 )
 
-// readEmailAt returns the email stored at in the file with the given offset.
+type readCloser struct {
+	r io.Reader
+	c io.Closer
+}
+
+func (rc *readCloser) Read(b []byte) (int, error) {
+	return rc.r.Read(b)
+}
+
+func (rc *readCloser) Close() error {
+	return rc.c.Close()
+}
+
+type readMultiCloser struct {
+	rc io.ReadCloser
+	c  io.Closer
+}
+
+func (rc *readMultiCloser) Read(b []byte) (int, error) {
+	return rc.rc.Read(b)
+}
+
+func (rc *readMultiCloser) Close() error {
+	err := rc.rc.Close()
+	if err != nil {
+		return err
+	}
+	return rc.c.Close()
+}
+
+// Reader returns an [EmailReader] for the given email.
 // Returns nil if the email was deleted.
-func readEmailAt(f *os.File, offset uint32) ([]byte, error) {
+func Reader(f *os.File, offset uint32) (io.ReadCloser, error) {
+	_, err := f.Seek(int64(offset), 0)
+	if err != nil {
+		return nil, err
+	}
 	var header [5]byte
-	_, err := f.ReadAt(header[:], int64(offset))
+	_, err = io.ReadFull(f, header[:])
 	if err != nil {
 		return nil, err
 	}
@@ -22,26 +57,18 @@ func readEmailAt(f *os.File, offset uint32) ([]byte, error) {
 		return nil, nil
 	}
 	ln := binary.BigEndian.Uint32(header[1:])
-	b := make([]byte, ln)
-	_, err = f.ReadAt(b, int64(offset)+int64(len(header)))
-	if errors.Is(err, io.EOF) {
-		return nil, io.ErrUnexpectedEOF
-	}
-	if err != nil {
-		return nil, err
+	var rc io.ReadCloser = &readCloser{
+		r: io.LimitReader(f, int64(ln)),
+		c: f,
 	}
 	if header[0]&EmailCompressed != 0 {
-		r, err := gzip.NewReader(bytes.NewBuffer(b))
+		r, err := gzip.NewReader(bufio.NewReader(rc))
 		if err != nil {
 			return nil, err
 		}
-		b, err = io.ReadAll(r)
-		if err != nil {
-			return nil, err
-		}
-		r.Close()
+		rc = &readMultiCloser{rc: r, c: f}
 	}
-	return b, nil
+	return rc, nil
 }
 
 const (
