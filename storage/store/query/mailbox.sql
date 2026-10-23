@@ -5,9 +5,11 @@ ON CONFLICT DO UPDATE SET name = name
 RETURNING *;
 
 -- name: ListMailbox :many
-SELECT m.*, (
-	SELECT COUNT(*) FROM mailbox_emails e WHERE e.mailbox_id = m.id
-) FROM mailbox m;
+SELECT m.*, COUNT(e), CAST(MAX(e.modseq) AS INTEGER)
+FROM mailbox m
+LEFT JOIN emails e ON EXISTS (
+	SELECT * FROM mailbox_emails me WHERE me.mailbox_id = m.id AND me.email_id = e.id
+);
 
 -- name: NewMailbox :one
 INSERT INTO mailbox (name)
@@ -68,6 +70,11 @@ WHERE mailbox_id = ? and email_id = ?;
 
 -- name: CountMailboxEmails :one
 SELECT COUNT(*) FROM mailbox_emails
+WHERE mailbox_id = ?;
+
+-- name: GetMailboxHighestModSeq :one
+SELECT CAST(MAX(e.modseq) AS INTEGER) FROM mailbox_emails
+JOIN emails ON email_id = id
 WHERE mailbox_id = ?;
 
 -- name: GetLatestMailboxEmails :many

@@ -26,12 +26,6 @@ func DeleteEmailsWithFlag(ctx context.Context, user string, flag int64) ([]store
 		if err != nil {
 			return nil, err
 		}
-		for _, email := range emails {
-			err = DeleteEmail(user, email)
-			if err != nil {
-				return nil, err
-			}
-		}
 		return emails, in.RemoveEmailsWithFlag(ctx, flag)
 	})
 }
@@ -43,14 +37,22 @@ func ListEmailFlags(ctx context.Context, user string, email int64) ([]store.Flag
 }
 
 func AddEmailFlag(ctx context.Context, user string, email, flag int64) error {
-	return exec(ctx, user, func(in *DB) error {
-		return in.AddEmailFlag(ctx, email, flag)
+	return execTx(ctx, user, func(in *DB) error {
+		err := in.AddEmailFlag(ctx, email, flag)
+		if err != nil {
+			return err
+		}
+		return in.IncrementEmailsModseq(ctx, email)
 	})
 }
 
 func RemoveEmailAllFlags(ctx context.Context, user string, email int64) error {
-	return exec(ctx, user, func(in *DB) error {
-		return in.RemoveEmailFlags(ctx, email)
+	return execTx(ctx, user, func(in *DB) error {
+		err := in.RemoveEmailFlags(ctx, email)
+		if err != nil {
+			return err
+		}
+		return in.IncrementEmailsModseq(ctx, email)
 	})
 }
 
@@ -62,7 +64,7 @@ func AddEmailFlags(ctx context.Context, user string, email int64, flags []imap.F
 				return err
 			}
 		}
-		return nil
+		return in.IncrementEmailsModseq(ctx, email)
 	})
 }
 
@@ -74,6 +76,6 @@ func RemoveEmailFlags(ctx context.Context, user string, email int64, flags []ima
 				return err
 			}
 		}
-		return nil
+		return in.IncrementEmailsModseq(ctx, email)
 	})
 }

@@ -50,6 +50,8 @@ func (bck *Backend) Options(insecureAuth bool) *imapserver.Options {
 		Caps: imap.CapSet{
 			imap.CapIMAP4rev1: {},
 			imap.CapIMAP4rev2: {},
+			imap.CapCondStore: {},
+			//imap.CapQResync:   {},
 		},
 		Logger:       &logger{utils.Logger(bck.Context)},
 		InsecureAuth: insecureAuth,

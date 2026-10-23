@@ -34,6 +34,10 @@ func DescribeMailbox(ctx context.Context, user string, mailbox string) (*imap.Se
 		if err != nil {
 			return nil, err
 		}
+		highestModSeq, err := in.GetMailboxHighestModSeq(ctx, box.ID)
+		if err != nil {
+			return nil, err
+		}
 		mailboxFlags, err := in.ListMailboxFlags(ctx, box.ID)
 		if err != nil {
 			return nil, err
@@ -63,6 +67,7 @@ func DescribeMailbox(ctx context.Context, user string, mailbox string) (*imap.Se
 			NumMessages:    uint32(n),
 			UIDNext:        imap.UID(next),
 			UIDValidity:    uint32(box.ID),
+			HighestModSeq:  uint64(highestModSeq),
 		}, nil
 	})
 }
@@ -141,6 +146,13 @@ func StatusMailbox(ctx context.Context, user, mailbox string, opt *imap.StatusOp
 				status.UIDNext = 1
 			}
 		}
+		if opt.HighestModSeq {
+			n, err := in.GetMailboxHighestModSeq(ctx, box.ID)
+			if err != nil {
+				return nil, err
+			}
+			status.HighestModSeq = uint64(n)
+		}
 		return &status, nil
 	})
 }
@@ -213,6 +225,10 @@ func AddMailboxEmails(ctx context.Context, user string, mailbox int64, emails []
 			if err != nil {
 				return err
 			}
+			err = in.ResetEmailModseq(ctx, id)
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	})
@@ -236,17 +252,7 @@ func RemoveMailboxEmails(ctx context.Context, user string, mailbox int64, emails
 		return err
 	}
 	return exec(ctx, user, func(in *DB) error {
-		td, err := in.ListEmailsNoMailbox(ctx)
-		if err != nil {
-			return err
-		}
-		for _, email := range td {
-			err = DeleteEmail(user, email)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
+		return in.CleanEmails(ctx)
 	})
 }
 

@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS emails (
 	filename TEXT NOT NULL,
 	offset INTEGER NOT NULL,
 	internal_date INTEGER NOT NULL,
+	modseq INTEGER CHECK (modseq >= 0) DEFAULT 0 NOT NULL,
 	FOREIGN KEY(parent) REFERENCES emails(id) ON DELETE SET NULL
 ) strict;
 

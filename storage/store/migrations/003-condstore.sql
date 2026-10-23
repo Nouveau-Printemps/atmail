@@ -1,0 +1,1 @@
+ALTER TABLE emails ADD COLUMN modseq INTEGER CHECK (modseq >= 0) DEFAULT 0 NOT NULL;

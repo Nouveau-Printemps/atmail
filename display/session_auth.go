@@ -178,7 +178,7 @@ func (s *Session) Status(mailbox string, options *imap.StatusOptions) (*imap.Sta
 		options,
 	)
 	if err != nil {
-		utils.Logger(s.context).Error("fetchin status", "error", err)
+		utils.Logger(s.context).Error("fetching status", "error", err)
 		return nil, errInternal
 	}
 	return st, nil
@@ -226,7 +226,11 @@ func (s *Session) Append(mailbox string, r imap.LiteralReader, options *imap.App
 		false,
 		func(ctx context.Context, in *storage.DB, id int64) error {
 			uid = imap.UID(id)
-			return in.AddMailboxEmail(ctx, int64(box.ID), id)
+			err := in.AddMailboxEmail(ctx, int64(box.ID), id)
+			if err != nil {
+				return err
+			}
+			return in.ResetEmailModseq(ctx, id)
 		})
 	if err != nil {
 		utils.Logger(s.context).Error("storing email", "error", err)
@@ -234,7 +238,7 @@ func (s *Session) Append(mailbox string, r imap.LiteralReader, options *imap.App
 	}
 	box.WriteNewMessages(1)
 	return &imap.AppendData{
-		UID:         imap.UID(uid),
+		UID:         uid,
 		UIDValidity: box.ID,
 	}, nil
 }

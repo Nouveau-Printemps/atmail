@@ -10,9 +10,16 @@ SELECT * FROM emails
 WHERE id = ?;
 
 -- name: NewEmail :one
-INSERT INTO emails (mail_from, rcpt_to, spam_score, parent, filename, offset, internal_date)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO emails (mail_from, rcpt_to, spam_score, parent, filename, offset, internal_date, modseq)
+VALUES (?, ?, ?, ?, ?, ?, ?, (
+		SELECT MAX(modseq) + 1 FROM emails
+))
 RETURNING id;
+
+-- name: ResetEmailModseq :exec
+UPDATE emails SET
+	modseq = (SELECT MAX(modseq) + 1 FROM emails)
+WHERE emails.id = ?;
 
 -- name: DeleteEmail :exec
 DELETE FROM emails
@@ -37,3 +44,8 @@ DELETE FROM emails
 WHERE NOT EXISTS (
 	SELECT * FROM mailbox_emails WHERE email_id = id
 );
+
+-- name: IncrementEmailModseq :exec
+UPDATE emails SET
+	modseq = modseq + 1
+WHERE id = ?;
