@@ -121,6 +121,12 @@ somegroupname.members = ["foo@example.org", "bar@example.org"]
 # users that can email the group (if unspecified, everyone can)
 somegroupname.authorized_senders = ["foo@example.org"]
 ```
+The `atmail` binary can hash password:
+```shell
+# read the password from stdin
+$ atmail passwd
+$2a$12$rStGgdVMDn9vT/uTXTOThevG9c0TkjM/6CydBDdYqZK3J6Z1vGlC.
+```
 
 **Catch All** redirects every emails to one address:
 ```toml

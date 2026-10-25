@@ -23,11 +23,12 @@ func init() {
 func main() {
 	flag.Parse()
 	args := flag.Args()
-	if len(args) < 2 {
-		println("atmail", Version)
-		println("Commands:")
-		println("- read <account> <mail>")
-		println("- list <account> [mailbox]")
+	if len(args) < 1 {
+		usage()
+		return
+	}
+	if args[0] == "passwd" {
+		passwd(args[1:])
 		return
 	}
 	cfg, err := atmail.ParseConfig(configPath)
@@ -56,6 +57,15 @@ func main() {
 		list(accountRef, args[2:])
 	default:
 		println("Unknown command.")
+		usage()
 		os.Exit(1)
 	}
+}
+
+func usage() {
+	println("atmail", Version)
+	println("Commands:")
+	println("- read <account> <mail>")
+	println("- list <account> [mailbox]")
+	println("- passwd [-cost <cost>]")
 }
