@@ -23,7 +23,7 @@ func checkFilters(ctx *filter.EvaluationContext, filters []*filter.Tree) *filter
 func applyResult(s *Session, msg *message.Entity, wait *time.Duration, res *filter.Result) error {
 	switch res.Action {
 	case filter.ActionAccept:
-		err := s.backend.Rspamd.LearnHam(s, msg)
+		err := s.backend.rspamd.LearnHam(s, msg)
 		if err != nil {
 			return err
 		}
@@ -48,7 +48,7 @@ func applyResult(s *Session, msg *message.Entity, wait *time.Duration, res *filt
 		panic("action not implemented")
 	}
 	if res.Spam {
-		err := s.backend.Rspamd.LearnSpam(s, msg)
+		err := s.backend.rspamd.LearnSpam(s, msg)
 		if err != nil {
 			return err
 		}

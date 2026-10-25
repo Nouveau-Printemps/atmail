@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"log/syslog"
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"path"
@@ -101,21 +100,16 @@ func main() {
 
 	rl := auth.NewRateLimiter()
 
-	bck := relay.Backend{
-		Domains:     cfg.Domains,
-		Queue:       relay.NewQueue(cfg.Smtp.ConcurrentSender),
-		LocalName:   cfg.MainDomain,
-		Context:     utils.WithLogger(ctx, slog.With("module", "smtp")),
-		RateLimiter: rl,
-		Filters:     filters,
-	}
-	if cfg.Rspamd != nil {
-		bck.Rspamd = &relay.RspamdClient{
-			Client: http.DefaultClient,
-			URL:    cfg.Rspamd.Address,
-		}
-	}
-	smtpSrv := smtp.NewServer(&bck)
+	bck := relay.NewBackend(
+		utils.WithLogger(ctx, slog.With("module", "smtp")),
+		cfg.Domains,
+		cfg.RspamdAddress,
+		cfg.MainDomain,
+		rl,
+		filters,
+		cfg.Smtp.ConcurrentSender,
+	)
+	smtpSrv := smtp.NewServer(bck)
 	smtpSrv.AllowInsecureAuth = cfg.Smtp.AllowInsecureAuth || dev
 	smtpSrv.MaxMessageBytes = int64(cfg.Smtp.MaxEmailSize)
 	smtpSrv.Domain = cfg.MainDomain
@@ -199,7 +193,7 @@ func main() {
 			Logger:   slog.With("module", "rate-limiter"),
 		})
 	}()
-	go bck.Queue.Loop(utils.WithLogger(ctx, slog.With("module", "smtp-queue")), &bck)
+	go bck.Queue.Loop(utils.WithLogger(ctx, slog.With("module", "smtp-queue")), bck)
 
 	slog.Info("started")
 	select {

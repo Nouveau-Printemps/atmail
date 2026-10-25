@@ -25,7 +25,7 @@ type Config struct {
 	AdminEmail    string                 `toml:"admin_email"`
 	DomainsFolder *string                `toml:"domains_folder"`
 	FiltersFolder string                 `toml:"filters_folder"`
-	Rspamd        *RspamdConfig          `toml:"rspamd"`
+	RspamdAddress *string                `toml:"rspamd_address"`
 	Smtp          SmtpConfig             `toml:"smtp"`
 	Imap          ImapConfig             `toml:"imap"`
 	Domains       map[string]auth.Config `toml:"domains"`

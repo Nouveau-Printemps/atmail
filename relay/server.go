@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"net/http"
+	"sync"
 
 	"github.com/emersion/go-message"
 	"github.com/emersion/go-smtp"
@@ -14,22 +16,53 @@ import (
 
 type Backend struct {
 	Domains   map[string]auth.Config
-	Rspamd    *RspamdClient
+	rspamd    *RspamdClient
 	Queue     *Queue
 	LocalName string
 
-	Context context.Context
+	// because go-smtp doesn't use context in functions
+	context context.Context
 
 	OnReceive   func(user, mailbox string, id int64)
-	RateLimiter *auth.RateLimiter
+	rateLimiter *auth.RateLimiter
 
 	Filters []*filter.Tree
+
+	relayCache map[string]relay
+	muCache    sync.RWMutex
+}
+
+func NewBackend(
+	ctx context.Context,
+	domains map[string]auth.Config,
+	rspamd *string,
+	localName string,
+	rl *auth.RateLimiter,
+	filters []*filter.Tree,
+	concurrentSenders uint8,
+) *Backend {
+	bck := &Backend{
+		Domains:     domains,
+		Queue:       NewQueue(concurrentSenders),
+		LocalName:   localName,
+		context:     ctx,
+		rateLimiter: rl,
+		Filters:     filters,
+		relayCache:  make(map[string]relay),
+	}
+	if rspamd != nil {
+		bck.rspamd = &RspamdClient{
+			Client: http.DefaultClient,
+			URL:    *rspamd,
+		}
+	}
+	return bck
 }
 
 func (bck *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
-	l := utils.Logger(bck.Context).With("addr", c.Conn().RemoteAddr())
+	l := utils.Logger(bck.context).With("addr", c.Conn().RemoteAddr())
 	l.Debug("new session")
-	return &Session{backend: bck, conn: c, context: utils.WithLogger(bck.Context, l)}, nil
+	return &Session{backend: bck, conn: c, context: utils.WithLogger(bck.context, l)}, nil
 }
 
 func (bck *Backend) NewContext(from, to Rcpt, mail *message.Entity) (*filter.EvaluationContext, error) {

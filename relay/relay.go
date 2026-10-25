@@ -117,6 +117,20 @@ func (b *Backend) relayOutside(ctx context.Context, from string, to []string, do
 		return err
 	}
 	l := utils.Logger(ctx)
+	b.muCache.RLock()
+	host, ok := b.relayCache[domain]
+	b.muCache.RUnlock()
+	if ok {
+		l.Debug("using host in cache", "host", host)
+		err = sendMail(b, l, host, from, to, &buf)
+		if err == nil {
+			return nil
+		}
+		l.Warn("failed to use cached host, deleting", "host", host, "error", err)
+		b.muCache.Lock()
+		delete(b.relayCache, domain)
+		b.muCache.Unlock()
+	}
 	relays, err := relaysOf(domain)
 	if err != nil {
 		return err
@@ -124,37 +138,7 @@ func (b *Backend) relayOutside(ctx context.Context, from string, to []string, do
 	var accErr error
 	for host, err := range relays {
 		if err == nil {
-			l := l.With("host", host)
-			// wrapping to use defer
-			err = func() error {
-				var client *smtp.Client
-				l.Debug("dialing...")
-				var err error
-				if host.withTLS {
-					client, err = smtp.DialTLS(host.address, nil)
-				} else {
-					client, err = smtp.DialStartTLS(host.address, nil)
-					if err != nil {
-						l.Warn("fallback to unencrypted", "error", err)
-						client, err = smtp.Dial(host.address)
-					}
-				}
-				if err != nil {
-					return err
-				}
-				defer client.Close()
-				err = client.Hello(b.LocalName)
-				if err != nil {
-					return err
-				}
-				l.Debug("trying to send email")
-				return client.SendMail(from, to, &buf)
-			}()
-			if err == nil {
-				l.Debug("email sent")
-				return nil
-			}
-			l.Debug("email not sent", "error", err)
+			err = sendMail(b, l, host, from, to, &buf)
 		}
 		if accErr != nil {
 			accErr = errors.Join(accErr, err)
@@ -231,4 +215,36 @@ func relaysOf(domain string) (iter.Seq2[relay, error], error) {
 			}
 		}
 	}, nil
+}
+
+func sendMail(b *Backend, l *slog.Logger, host relay, from string, to []string, r io.Reader) error {
+	l = l.With("host", host)
+	var client *smtp.Client
+	l.Debug("dialing...")
+	var err error
+	if host.withTLS {
+		client, err = smtp.DialTLS(host.address, nil)
+	} else {
+		client, err = smtp.DialStartTLS(host.address, nil)
+		if err != nil {
+			l.Warn("fallback to unencrypted", "error", err)
+			client, err = smtp.Dial(host.address)
+		}
+	}
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	err = client.Hello(b.LocalName)
+	if err != nil {
+		return err
+	}
+	l.Debug("trying to send email")
+	err = client.SendMail(from, to, r)
+	if err != nil {
+		l.Debug("email not sent", "error", err)
+		return err
+	}
+	l.Debug("email sent")
+	return nil
 }

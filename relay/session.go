@@ -50,7 +50,7 @@ func (s *Session) Auth(mech string) (sasl.Server, error) {
 				"login failed",
 				"user", username,
 			)
-			if s.backend.RateLimiter.Limit(
+			if s.backend.rateLimiter.Limit(
 				utils.WithLogger(s.context, l.With("module", "rate-limiter")),
 				ip,
 			) {
@@ -59,7 +59,7 @@ func (s *Session) Auth(mech string) (sasl.Server, error) {
 			}
 			return smtp.ErrAuthFailed
 		}
-		s.backend.RateLimiter.Accept(s.context, ip)
+		s.backend.rateLimiter.Accept(s.context, ip)
 		l = l.With("user", username)
 		s.context = utils.WithLogger(s.context, l)
 		l.InfoContext(logos.NewSyslogContext(
@@ -160,9 +160,9 @@ func (s *Session) Data(r io.Reader) error {
 	}
 	var score *float64
 	var wait time.Duration
-	if s.backend.Rspamd != nil {
+	if s.backend.rspamd != nil {
 		var sc float64
-		sc, wait, err = s.backend.Rspamd.Analyze(s, msg)
+		sc, wait, err = s.backend.rspamd.Analyze(s, msg)
 		if err != nil {
 			if _, ok := errors.AsType[*smtp.SMTPError](err); ok {
 				return err

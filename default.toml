@@ -6,6 +6,9 @@ directory = "/var/lib/atmail/data"
 domains_folder = "/etc/atmail/domains.d/"
 filters_folder = "/etc/atmail/filters.d/"
 
+# Address of the rspamd server
+# rspamd_address = "localhost:11332"
+
 # domain broadcasted
 main_domain = "mail.example.org"
 
@@ -27,10 +30,6 @@ concurrent_sender = 3
 [imap]
 listen = ":2993"
 use_proxy_v2 = false
-
-# [rspamd]
-# Address of the rspamd server
-# address = "localhost:11332"
 
 [domains."example.org"]
 # if you wanna enable support of plus addressing like 'foo+bar@example.org'
