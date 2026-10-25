@@ -1,0 +1,31 @@
+#!/sbin/openrc-run
+name="atmail"
+description="A simple SMTP and IMAP4 server."
+
+CONF="${ATMAIL_CONFIG:-/etc/atmail/config.toml}"
+
+command=/usr/local/bin/atmaild
+command_args="-config $CONF -syslog -v"
+command_user=atmail:mail
+command_background="yes"
+pidfile="/run/${RC_SVCNAME}.pid"
+directory="/var/mail/atmail"
+extra_started_commands="reload"
+
+depend() {
+        need net localmount rspamd
+        after firewall
+    provide mta
+}
+
+start_pre() {
+        checkpath -m 600 -f -o "$command_user" "$config_file"
+        checkpath -m 4750 -d -o "$command_user" "$directory"
+        checkpath -d -o "$command_user" -m 755 "/run/atmail"
+}
+
+reload() {
+    ebegin "Reloading ${RC_SVCNAME}"
+    start-stop-daemon --signal HUP --pidfile "${pidfile}"
+    eend $?
+}

@@ -16,11 +16,14 @@ Use one sqlite3 database per user to avoid using one centralized database.
 
 ## Usage
 
-`atmail` reads the configuration at `/etc/atmail/config.toml`.
-You can override it with `-config <path>`.
-If the configuration is not found, it creates a new default configuration.
+`atmaild` is the daemon behind the server and `atmail` is a simple tool to inspect data.
 
-If you want to send logs to syslog MAIL facility, add `-syslog`.
+`atmail` and `atmaild` read the configuration at `/etc/atmail/config.toml`.
+You can override it with `-config <path>`.
+If the configuration is not found, it creates a new default one.
+
+If you want to send logs to mail facility, add `-syslog`.
+If enabled, login information is sent to the auth facility.
 
 If you want to increase the verbosity, add `-v`.
 
@@ -28,6 +31,8 @@ You can reload the domains' config with a `SIGHUP`:
 ```shell
 kill -s HUP <pid>
 ```
+
+An example OpenRC service file is in [`openrc-service`](./openrc-service).
 
 ### Common config
 
@@ -40,6 +45,9 @@ directory = "/var/lib/atmail/data"
 domains_folder = "/etc/atmail/domains.d/"
 # folder containing filters
 filters_folder = "/etc/atmail/filters.d/"
+
+# Address of the rspamd server
+#rspamd_address = "http://localhost:11332"
 
 # domain broadcasted in SMTP HELO/EHLO
 main_domain = "mail.example.org"
@@ -66,14 +74,6 @@ max_email_size = 16416
 [imap]
 listen = ":993"
 use_proxy_v2 = false
-```
-
-### rspamd
-
-```toml
-[rspamd]
-# Address of the rspamd server
-#address = "localhost:11332"
 ```
 
 ### Domains
