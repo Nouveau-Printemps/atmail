@@ -63,7 +63,10 @@ func (s *Session) Login(username, password string) error {
 	s.backend.RateLimiter.Accept(s.context, ip)
 	l = l.With("user", username)
 	s.context = utils.WithLogger(s.context, l)
-	l.Debug("client connected")
+	l.InfoContext(logos.NewSyslogContext(
+		s.context,
+		syslog.LOG_AUTH,
+	), "client connected")
 	boxes, ok := s.backend.GetUserBoxes(s.username)
 	if ok {
 		s.mailboxes = boxes

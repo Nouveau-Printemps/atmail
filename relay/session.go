@@ -62,7 +62,10 @@ func (s *Session) Auth(mech string) (sasl.Server, error) {
 		s.backend.RateLimiter.Accept(s.context, ip)
 		l = l.With("user", username)
 		s.context = utils.WithLogger(s.context, l)
-		l.Debug("client connected")
+		l.InfoContext(logos.NewSyslogContext(
+			s.context,
+			syslog.LOG_AUTH,
+		), "client connected")
 		return nil
 	}), nil
 }
