@@ -13,6 +13,8 @@ var (
 	verbose    = false
 )
 
+var Version = "dev"
+
 func init() {
 	flag.StringVar(&configPath, "config", configPath, "sets the config path")
 	flag.BoolVar(&verbose, "v", verbose, "increase verbosity")
@@ -22,9 +24,10 @@ func main() {
 	flag.Parse()
 	args := flag.Args()
 	if len(args) < 2 {
+		println("atmail", Version)
 		println("Commands:")
-		println("read <account> <mail>")
-		println("list <account> [mailbox]")
+		println("- read <account> <mail>")
+		println("- list <account> [mailbox]")
 		return
 	}
 	cfg, err := atmail.ParseConfig(configPath)

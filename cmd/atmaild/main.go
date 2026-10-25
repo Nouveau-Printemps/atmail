@@ -34,6 +34,8 @@ var (
 	dev        = false
 )
 
+var Version = "dev"
+
 func init() {
 	flag.StringVar(&configPath, "config", configPath, "sets the config path")
 	flag.BoolVar(&verbose, "v", verbose, "increase verbosity")
@@ -58,7 +60,7 @@ func main() {
 		lg = logos.NewColor(os.Stderr, &logos.Options{Level: lvl})
 	}
 	slog.SetDefault(slog.New(lg))
-	slog.Info("starting...")
+	slog.Info("starting...", "version", Version)
 	cfg, filters, err := atmail.LoadConfig(configPath)
 	if err != nil {
 		slog.Error("parsing config", "error", err)
