@@ -184,10 +184,18 @@ func main() {
 	errc := make(chan error, 2)
 	go func() {
 		l := utils.NewMultiListener(append(ls, smtpL))
-		errc <- smtpSrv.Serve(&auth.LimiterListener{Listener: l, Limiter: rl})
+		errc <- smtpSrv.Serve(&auth.LimiterListener{
+			Listener: l,
+			Limiter:  rl,
+			Logger:   slog.With("module", "rate-limiter"),
+		})
 	}()
 	go func() {
-		errc <- imapSrv.Serve(&auth.LimiterListener{Listener: imapL, Limiter: rl})
+		errc <- imapSrv.Serve(&auth.LimiterListener{
+			Listener: imapL,
+			Limiter:  rl,
+			Logger:   slog.With("module", "rate-limiter"),
+		})
 	}()
 	go bck.Queue.Loop(utils.WithLogger(ctx, slog.With("module", "smtp-queue")), &bck)
 

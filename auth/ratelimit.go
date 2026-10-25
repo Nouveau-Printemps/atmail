@@ -2,21 +2,50 @@ package auth
 
 import (
 	"context"
+	"log/slog"
+	"math/rand/v2"
 	"net"
 	"net/netip"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"nouveauprintemps.org/atmail/utils"
 )
 
 type Limited struct {
-	time   time.Time
-	cancel chan struct{}
+	limited bool
+	ip      netip.Addr
+	cancel  chan struct{}
+	acc     atomic.Uint32
+}
 
-	grace uint8
-
-	acc time.Duration
+func (l *Limited) increase(logger *slog.Logger, r *RateLimiter) {
+	acc := l.acc.Add(1)
+	if l.cancel != nil {
+		close(l.cancel)
+	}
+	l.cancel = make(chan struct{})
+	bon := rand.Uint32N(acc * 2)
+	select {
+	case <-l.cancel:
+		l.limited = true
+		logger.Debug("rate limiting", "acc", l.acc.Load())
+	case <-time.After(5*time.Minute + time.Duration(bon)*time.Minute):
+		l.limited = false
+		logger.Debug("disable ratelimiting")
+		// save it for a certain time (at least 1h) to catch slow scanners
+		select {
+		case <-l.cancel:
+			l.limited = true
+			logger.Debug("rate limiting", "acc", l.acc.Load())
+		case <-time.After(1*time.Hour + time.Duration(bon)*time.Minute*30):
+			r.mu.Lock()
+			defer r.mu.Unlock()
+			delete(r.limited, l.ip)
+			logger.Debug("fully cleaned")
+		}
+	}
 }
 
 type RateLimiter struct {
@@ -28,15 +57,15 @@ func NewRateLimiter() *RateLimiter {
 	return &RateLimiter{limited: make(map[netip.Addr]*Limited)}
 }
 
-func (r *RateLimiter) IsLimited(ip net.IP) bool {
+func (r *RateLimiter) IsLimited(ip net.IP) *Limited {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	addr := netip.MustParseAddr(ip.String())
 	v, ok := r.limited[addr]
-	if !ok {
-		return false
+	if !ok || !v.limited {
+		return nil
 	}
-	return v.time.After(time.Now())
+	return v
 }
 
 func (r *RateLimiter) Limit(ctx context.Context, ip net.IP) bool {
@@ -46,38 +75,17 @@ func (r *RateLimiter) Limit(ctx context.Context, ip net.IP) bool {
 	addr := netip.MustParseAddr(ip.String())
 	v, ok := r.limited[addr]
 	if !ok {
-		r.limited[addr] = &Limited{cancel: make(chan struct{})}
-		return false
+		v = &Limited{ip: addr}
+		r.limited[addr] = v
 	}
-	if v.grace < 3 {
-		v.grace++
-		return false
-	}
-	close(v.cancel)
-	prev := v.acc
-	v.acc = max(v.acc, 2)
-	v.acc = min(4*v.acc, 24*60*60)
-	if v.acc != prev {
-		l.Debug("rate limiting", "for", v.acc*time.Second)
-	}
-	v.time = time.Now().Add(v.acc)
-	v.cancel = make(chan struct{})
-	go func(addr netip.Addr, acc time.Duration) {
-		select {
-		case <-time.Tick(4 * acc * time.Second):
-			r.mu.Lock()
-			defer r.mu.Unlock()
-			delete(r.limited, addr)
-			l.Debug("full cleaned")
-		case <-v.cancel:
-		}
-	}(addr, v.acc)
-	return true
+	go v.increase(l, r)
+	return ok
 }
 
 type LimiterListener struct {
 	net.Listener
 	Limiter *RateLimiter
+	Logger  *slog.Logger
 }
 
 func (l *LimiterListener) Accept() (net.Conn, error) {
@@ -87,9 +95,11 @@ func (l *LimiterListener) Accept() (net.Conn, error) {
 			return nil, err
 		}
 		ip := conn.RemoteAddr().(*net.TCPAddr).IP
-		if !l.Limiter.IsLimited(ip) {
+		v := l.Limiter.IsLimited(ip)
+		if v == nil {
 			return conn, nil
 		}
+		go v.increase(l.Logger.With("addr", conn.RemoteAddr()), l.Limiter)
 		conn.Close()
 	}
 }
