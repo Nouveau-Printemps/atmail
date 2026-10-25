@@ -29,16 +29,12 @@ func (l *Limited) increase(logger *slog.Logger, r *RateLimiter) {
 	bon := rand.Uint32N(acc * 2)
 	select {
 	case <-l.cancel:
-		l.limited = true
-		logger.Debug("rate limiting", "acc", l.acc.Load())
 	case <-time.After(5*time.Minute + time.Duration(bon)*time.Minute):
 		l.limited = false
 		logger.Debug("disable ratelimiting")
 		// save it for a certain time (at least 1h) to catch slow scanners
 		select {
 		case <-l.cancel:
-			l.limited = true
-			logger.Debug("rate limiting", "acc", l.acc.Load())
 		case <-time.After(1*time.Hour + time.Duration(bon)*time.Minute*30):
 			r.mu.Lock()
 			defer r.mu.Unlock()
@@ -68,6 +64,19 @@ func (r *RateLimiter) IsLimited(ip net.IP) *Limited {
 	return v
 }
 
+func (r *RateLimiter) Accept(ctx context.Context, ip net.IP) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	addr := netip.MustParseAddr(ip.String())
+	v, ok := r.limited[addr]
+	if !ok {
+		return
+	}
+	utils.Logger(ctx).Debug("accept connection")
+	close(v.cancel)
+	delete(r.limited, addr)
+}
+
 func (r *RateLimiter) Limit(ctx context.Context, ip net.IP) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -77,7 +86,11 @@ func (r *RateLimiter) Limit(ctx context.Context, ip net.IP) bool {
 	if !ok {
 		v = &Limited{ip: addr}
 		r.limited[addr] = v
+		l.Debug("monitoring sus connection")
+	} else {
+		l.Debug("rate limiting", "acc", v.acc.Load())
 	}
+	v.limited = ok
 	go v.increase(l, r)
 	return ok
 }
@@ -99,7 +112,10 @@ func (l *LimiterListener) Accept() (net.Conn, error) {
 		if v == nil {
 			return conn, nil
 		}
-		go v.increase(l.Logger.With("addr", conn.RemoteAddr()), l.Limiter)
+		log := l.Logger.With("addr", conn.RemoteAddr())
+		v.limited = true
+		log.Debug("rate limiting", "acc", v.acc.Load())
+		go v.increase(log, l.Limiter)
 		conn.Close()
 	}
 }

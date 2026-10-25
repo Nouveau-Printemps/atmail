@@ -52,6 +52,7 @@ func (s *Session) Auth(mech string) (sasl.Server, error) {
 			}
 			return smtp.ErrAuthFailed
 		}
+		s.backend.RateLimiter.Accept(s.context, ip)
 		l = l.With("user", username)
 		s.context = utils.WithLogger(s.context, l)
 		l.Debug("client connected")

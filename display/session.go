@@ -54,6 +54,7 @@ func (s *Session) Login(username, password string) error {
 		l.Debug("auth failed", "user", username)
 		return imapserver.ErrAuthFailed
 	}
+	s.backend.RateLimiter.Accept(s.context, ip)
 	l = l.With("user", username)
 	s.context = utils.WithLogger(s.context, l)
 	l.Debug("client connected")
