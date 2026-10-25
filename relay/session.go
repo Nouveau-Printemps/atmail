@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/syslog"
 	"net"
 	"slices"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/emersion/go-message"
 	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
+	"github.com/nyttikord/logos"
 	"nouveauprintemps.org/atmail/auth"
 	"nouveauprintemps.org/atmail/storage"
 	"nouveauprintemps.org/atmail/utils"
@@ -43,6 +45,11 @@ func (s *Session) Auth(mech string) (sasl.Server, error) {
 		}
 		l := utils.Logger(s.context)
 		if len(s.username) == 0 {
+			l.InfoContext(
+				logos.NewSyslogContext(s.context, syslog.LOG_AUTH),
+				"login failed",
+				"user", username,
+			)
 			if s.backend.RateLimiter.Limit(
 				utils.WithLogger(s.context, l.With("module", "rate-limiter")),
 				ip,

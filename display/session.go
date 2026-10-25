@@ -2,10 +2,12 @@ package display
 
 import (
 	"context"
+	"log/syslog"
 	"net"
 
 	"github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapserver"
+	"github.com/nyttikord/logos"
 	"nouveauprintemps.org/atmail/mailbox"
 	"nouveauprintemps.org/atmail/storage"
 	"nouveauprintemps.org/atmail/utils"
@@ -36,14 +38,18 @@ type Session struct {
 func (s *Session) Login(username, password string) error {
 	ip := s.conn.NetConn().RemoteAddr().(*net.TCPAddr).IP
 	for d, cfg := range s.backend.Domains {
-		ok := cfg.VerifyUser(ip, d, username, password)
-		if ok {
+		if cfg.VerifyUser(ip, d, username, password) {
 			s.username = username
 			break
 		}
 	}
 	l := utils.Logger(s.context)
 	if len(s.username) == 0 {
+		l.InfoContext(
+			logos.NewSyslogContext(s.context, syslog.LOG_AUTH),
+			"login failed",
+			"user", username,
+		)
 		if s.backend.RateLimiter.Limit(
 			utils.WithLogger(s.context, l.With("module", "rate-limiter")),
 			ip,
