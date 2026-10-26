@@ -33,5 +33,5 @@ func read(account string, args []string) {
 		println(err.Error())
 		os.Exit(3)
 	}
-	os.Stderr.Write(b)
+	os.Stdout.Write(b)
 }
