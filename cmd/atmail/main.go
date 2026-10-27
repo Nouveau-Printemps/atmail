@@ -47,7 +47,7 @@ func main() {
 		usage()
 		os.Exit(1)
 	}
-	accountRef := args[1]
+	accountRef := args[0]
 	username, domain, ok := strings.Cut(accountRef, "@")
 	if !ok {
 		println("Invalid email.")
@@ -62,12 +62,12 @@ func main() {
 		println("Account not found.")
 		os.Exit(1)
 	}
-	switch args[0] {
+	switch args[1] {
 	case "read":
 		read(accountRef, args[2:])
 	case "list", "ls":
 		list(accountRef, args[2:])
-	case "delete", "remove", "rm":
+	case "delete", "del", "remove", "rm":
 		delete(accountRef, args[2:])
 	default:
 		println("Unknown command.")
@@ -79,8 +79,8 @@ func main() {
 func usage() {
 	println("atmail", Version)
 	println("Commands:")
-	println("- read <account> <mail>")
-	println("- delete <account> <mail>")
-	println("- list <account> [mailbox]")
+	println("- <account> read <mail>")
+	println("- <account> delete <mail>")
+	println("- [account] list [mailbox]")
 	println("- passwd [-cost <cost>]")
 }
