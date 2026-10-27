@@ -117,14 +117,14 @@ func (s *Session) rcpt(to string, _ *smtp.RcptOptions) (Rcpt, error) {
 	switch {
 	case slices.Contains(auth.AdminEmails, data.Username):
 		rcpt.User = cfg.Admin.User
-		rcpt.Folder = "INBOX" + string(storage.MailboxSeparator) + cfg.Admin.Folder
+		rcpt.Folder = cfg.Admin.Folder
 		rcpt.Key = cfg.Admin.Crypto.GetKey()
 		rcpt.Address = cfg.Admin.User + "@" + rcpt.Domain
 	case data.Group != nil:
 		rcpt.Group = data.Group
 	default:
 		rcpt.User = data.Username
-		rcpt.Folder = "INBOX" + string(storage.MailboxSeparator) + data.Folder
+		rcpt.Folder = data.Folder
 		rcpt.Key = data.Key
 		rcpt.Address = data.Username + "@" + rcpt.Domain
 	}
@@ -181,6 +181,11 @@ func (s *Session) Data(r io.Reader) error {
 		err = applyResult(s, msg, &wait, checkFilters(ctx, s.backend.Filters))
 		if err != nil {
 			return err
+		}
+		if to.Folder == "" {
+			to.Folder = "INBOX"
+		} else {
+			to.Folder = "INBOX" + string(storage.MailboxSeparator) + to.Folder
 		}
 	}
 	go func(ctx context.Context, to []Rcpt) {
