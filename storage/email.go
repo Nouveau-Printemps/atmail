@@ -165,3 +165,13 @@ func ReadEmail(ctx context.Context, user string, email store.Email) (io.ReadClos
 	}
 	return email.Read(cache.path)
 }
+
+func DeleteEmail(ctx context.Context, user string, id int64) error {
+	return exec(ctx, user, func(in *DB) error {
+		email, err := in.GetEmail(ctx, id)
+		if err != nil {
+			return err
+		}
+		return deleteEmail(ctx, in, user, email)
+	})
+}

@@ -35,6 +35,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	if len(args) < 2 {
+		usage()
+		os.Exit(1)
+	}
 	accountRef := args[1]
 	username, domain, ok := strings.Cut(accountRef, "@")
 	if !ok {
@@ -55,6 +59,8 @@ func main() {
 		read(accountRef, args[2:])
 	case "list", "ls":
 		list(accountRef, args[2:])
+	case "delete", "remove", "rm":
+		delete(accountRef, args[2:])
 	default:
 		println("Unknown command.")
 		usage()
@@ -66,6 +72,7 @@ func usage() {
 	println("atmail", Version)
 	println("Commands:")
 	println("- read <account> <mail>")
+	println("- delete <account> <mail>")
 	println("- list <account> [mailbox]")
 	println("- passwd [-cost <cost>]")
 }

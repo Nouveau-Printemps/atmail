@@ -218,7 +218,11 @@ func AddMailboxEmails(ctx context.Context, user string, mailbox int64, emails []
 	})
 }
 
-func DeleteEmail(user string, email store.Email) error {
+func deleteEmail(ctx context.Context, in *DB, user string, email store.Email) error {
+	err := in.DeleteEmail(ctx, email.ID)
+	if err != nil {
+		return err
+	}
 	return email.Delete(path.Join(Cache.Path, user))
 }
 
@@ -241,7 +245,7 @@ func RemoveMailboxEmails(ctx context.Context, user string, mailbox int64, emails
 			return err
 		}
 		for _, email := range td {
-			err = DeleteEmail(user, email)
+			err = deleteEmail(ctx, in, user, email)
 			if err != nil {
 				return err
 			}

@@ -27,7 +27,7 @@ func DeleteEmailsWithFlag(ctx context.Context, user string, flag int64) ([]store
 			return nil, err
 		}
 		for _, email := range emails {
-			err = DeleteEmail(user, email)
+			err = deleteEmail(ctx, in, user, email)
 			if err != nil {
 				return nil, err
 			}
