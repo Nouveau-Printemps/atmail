@@ -27,8 +27,16 @@ func main() {
 		usage()
 		return
 	}
-	if args[0] == "passwd" {
+	switch args[0] {
+	case "passwd":
 		passwd(args[1:])
+		return
+	case "list":
+		cfg, err := atmail.ParseConfig(configPath)
+		if err != nil {
+			panic(err)
+		}
+		listAccounts(&cfg, args[1:])
 		return
 	}
 	cfg, err := atmail.ParseConfig(configPath)
