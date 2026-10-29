@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 	"strings"
 
 	"nouveauprintemps.org/atmail"
+	"nouveauprintemps.org/atmail/storage"
 )
 
 var (
@@ -62,6 +64,13 @@ func main() {
 		println("Account not found.")
 		os.Exit(1)
 	}
+	defer func() {
+		err = storage.Cache.Close(context.TODO())
+		if err != nil {
+			println(err.Error())
+			os.Exit(3)
+		}
+	}()
 	switch args[1] {
 	case "read":
 		read(accountRef, args[2:])
@@ -69,6 +78,8 @@ func main() {
 		list(accountRef, args[2:])
 	case "delete", "del", "remove", "rm":
 		delete(accountRef, args[2:])
+	case "edit":
+		edit(accountRef, args[2:])
 	default:
 		println("Unknown command.")
 		usage()
@@ -81,6 +92,7 @@ func usage() {
 	println("Commands:")
 	println("- <account> read <mail>")
 	println("- <account> delete <mail>")
+	println("- <account> edit [-editor <editor>] <mailbox>")
 	println("- [account] list [mailbox]")
 	println("- passwd [-cost <cost>]")
 }

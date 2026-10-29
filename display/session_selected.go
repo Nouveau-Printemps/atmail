@@ -129,7 +129,7 @@ func (s *Session) Fetch(wr *imapserver.FetchWriter, set imap.NumSet, options *im
 		if options.InternalDate {
 			w.WriteInternalDate(time.Unix(email.InternalDate, 0))
 		}
-		rc, err := storage.ReadEmail(s.context, s.username, email)
+		rc, _, err := storage.ReadEmail(s.context, s.username, email)
 		if err != nil {
 			l.Error("reading email", "error", err)
 			if !errors.Is(err, io.ErrUnexpectedEOF) {

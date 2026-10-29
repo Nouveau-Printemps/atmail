@@ -3,21 +3,12 @@ package storage
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"io"
-	"os"
-	"path"
-	"strconv"
 	"strings"
 	"time"
 
 	"nouveauprintemps.org/atmail/storage/store"
-	"nouveauprintemps.org/atmail/utils"
 )
-
-func newFileName() string {
-	return strconv.Itoa(int(time.Now().Unix()))
-}
 
 func StoreEmail(
 	ctx context.Context,
@@ -33,44 +24,12 @@ func StoreEmail(
 		return err
 	}
 	lastFile := cache.LastFile()
-detect_file:
-	var offset int64
-	var p string
-	if lastFile == "" {
-		lastFile = newFileName()
-		p = lastFile
-	} else if len(b) < store.MaxEmailSizeInFile {
-		info, err := os.Stat(cache.path + lastFile)
-		if err != nil {
-			return err
-		}
-		if info.Size() >= store.MaxFileSize {
-			lastFile = newFileName()
-		}
-		p = lastFile
-		offset = int64(cache.Offset())
-	} else {
-		p = newFileName()
-	}
-	f, err := os.OpenFile(
-		path.Join(cache.path, p),
-		os.O_RDWR|os.O_CREATE,
-		0o660,
-	)
+	offset := int64(cache.Offset())
+	f, err := store.OpenFile(ctx, cache.path, &lastFile, &offset, b)
 	if err != nil {
 		return err
-	}
-	_, err = f.Seek(offset, io.SeekStart)
-	if errors.Is(err, io.EOF) {
-		f.Close()
-		utils.Logger(ctx).Error("invalid file", "error", io.ErrUnexpectedEOF)
-		lastFile = ""
-		goto detect_file
 	}
 	defer f.Close()
-	if err != nil {
-		return err
-	}
 	n, err := store.WriteEmail(f, encrypted, b)
 	if err != nil {
 		return err
@@ -146,22 +105,22 @@ func StoreEmailInbox(
 	return
 }
 
-func Read(ctx context.Context, user string, id int64) (io.ReadCloser, error) {
+func Read(ctx context.Context, user string, id int64) (io.ReadCloser, byte, error) {
 	cache, err := Cache.DB(ctx, user)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	email, err := store.New(cache.db).GetEmail(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	return email.Read(cache.path)
 }
 
-func ReadEmail(ctx context.Context, user string, email store.Email) (io.ReadCloser, error) {
+func ReadEmail(ctx context.Context, user string, email store.Email) (io.ReadCloser, byte, error) {
 	cache, err := Cache.DB(ctx, user)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	return email.Read(cache.path)
 }
@@ -174,4 +133,38 @@ func DeleteEmail(ctx context.Context, user string, id int64) error {
 		}
 		return deleteEmail(ctx, in, user, email)
 	})
+}
+
+func GetEmail(ctx context.Context, user string, id int64) (store.Email, error) {
+	return get(ctx, user, func(in *DB) (store.Email, error) {
+		return in.GetEmail(ctx, id)
+	})
+}
+
+func EditEmail(ctx context.Context, user string, email store.Email, encrypted bool, content []byte) error {
+	cache, err := Cache.DB(ctx, user)
+	if err != nil {
+		return err
+	}
+	lastFile := cache.LastFile()
+	offset := int64(cache.Offset())
+	f, err := store.OpenFile(ctx, cache.path, &lastFile, &offset, content)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	n, err := store.WriteEmail(f, encrypted, content)
+	if err != nil {
+		return err
+	}
+	err = store.DeleteEmailAt(f, uint32(email.Offset))
+	if err != nil {
+		return err
+	}
+	err = store.New(cache.db).UpdateOffset(ctx, offset, email.ID)
+	if err != nil {
+		return err
+	}
+	cache.Update(lastFile, uint32(offset)+n)
+	return nil
 }

@@ -20,9 +20,9 @@ func read(account string, args []string) {
 		println("Invalid read usage.")
 		println(err.Error())
 		println("read <mail>")
-		os.Exit(2)
+		os.Exit(1)
 	}
-	rc, err := storage.Read(context.Background(), account, int64(id))
+	rc, _, err := storage.Read(context.Background(), account, int64(id))
 	if err != nil {
 		println(err.Error())
 		os.Exit(3)

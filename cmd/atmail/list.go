@@ -42,7 +42,7 @@ func list(account string, args []string) {
 			os.Exit(3)
 		}
 		for _, email := range emails {
-			rc, err := storage.ReadEmail(context.Background(), account, email)
+			rc, _, err := storage.ReadEmail(context.Background(), account, email)
 			if err != nil {
 				println(err.Error())
 				os.Exit(3)
@@ -85,7 +85,7 @@ func listAccounts(cfg *atmail.Config, args []string) {
 		fmt.Fprint(w, d)
 		switch {
 		case v.Static != nil:
-			fmt.Fprintln(w, " is static")
+			fmt.Fprintln(w, "\tstatic auth")
 			for n := range v.Static.Users {
 				fmt.Fprintf(w, "- User\t%s@%s\n", n, d)
 			}
@@ -100,7 +100,7 @@ func listAccounts(cfg *atmail.Config, args []string) {
 				fmt.Fprintln(w)
 			}
 		case v.CatchAll != nil:
-			fmt.Fprintf(w, " is catch all\t%s@%s\n", v.CatchAll.User, d)
+			fmt.Fprintf(w, "\tcatch all\t%s@%s\n", v.CatchAll.User, d)
 		}
 	}
 	w.Flush()

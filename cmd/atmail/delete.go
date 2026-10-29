@@ -19,10 +19,11 @@ func delete(accountRef string, args []string) {
 		println("Invalid delete usage.")
 		println(err.Error())
 		println("delete <mail>")
-		os.Exit(2)
+		os.Exit(1)
 	}
 	err = storage.DeleteEmail(context.Background(), accountRef, int64(id))
 	if err != nil {
-		panic(err)
+		println(err.Error())
+		os.Exit(3)
 	}
 }

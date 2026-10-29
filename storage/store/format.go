@@ -43,18 +43,18 @@ func (rc *readMultiCloser) Close() error {
 
 // Reader returns an [EmailReader] for the given email.
 // Returns nil if the email was deleted.
-func Reader(f *os.File, offset uint32) (io.ReadCloser, error) {
+func Reader(f *os.File, offset uint32) (io.ReadCloser, byte, error) {
 	_, err := f.Seek(int64(offset), 0)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	var header [5]byte
 	_, err = io.ReadFull(f, header[:])
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	if header[0]&EmailDeleted != 0 {
-		return nil, nil
+		return nil, 0, nil
 	}
 	ln := binary.BigEndian.Uint32(header[1:])
 	var rc io.ReadCloser = &readCloser{
@@ -64,11 +64,11 @@ func Reader(f *os.File, offset uint32) (io.ReadCloser, error) {
 	if header[0]&EmailCompressed != 0 {
 		r, err := gzip.NewReader(bufio.NewReader(rc))
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		rc = &readMultiCloser{rc: r, c: f}
 	}
-	return rc, nil
+	return rc, header[0], nil
 }
 
 const (
@@ -123,7 +123,7 @@ func WriteEmail(f *os.File, encrypted bool, b []byte) (uint32, error) {
 	return uint32(n), err
 }
 
-func deleteEmailAt(f *os.File, offset uint32) error {
+func DeleteEmailAt(f *os.File, offset uint32) error {
 	var data [1]byte
 	_, err := f.ReadAt(data[:], int64(offset))
 	if err != nil {

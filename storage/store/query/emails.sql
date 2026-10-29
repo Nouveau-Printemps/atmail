@@ -37,3 +37,8 @@ DELETE FROM emails
 WHERE NOT EXISTS (
 	SELECT * FROM mailbox_emails WHERE email_id = id
 );
+
+-- name: UpdateOffset :exec
+UPDATE emails
+SET offset = ?
+WHERE id = ?;
