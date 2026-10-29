@@ -168,3 +168,9 @@ func EditEmail(ctx context.Context, user string, email store.Email, encrypted bo
 	cache.Update(lastFile, uint32(offset)+n)
 	return nil
 }
+
+func ListEmails(ctx context.Context, user string) ([]store.Email, error) {
+	return get(ctx, user, func(in *DB) ([]store.Email, error) {
+		return in.ListEmails(ctx)
+	})
+}

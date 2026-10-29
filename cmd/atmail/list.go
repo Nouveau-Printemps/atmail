@@ -29,14 +29,20 @@ func list(account string, args []string) {
 		println()
 	case 1:
 		w := tabwriter.NewWriter(os.Stdout, 0, 2, 2, ' ', 0)
-		i := slices.IndexFunc(boxes, func(a store.ListMailboxRow) bool {
-			return a.Name == args[0]
-		})
-		if i < 0 {
-			println("Mailbox not found")
-			os.Exit(2)
+		var emails []store.Email
+		var err error
+		if args[0] == "*" {
+			emails, err = storage.ListEmails(context.Background(), account)
+		} else {
+			i := slices.IndexFunc(boxes, func(a store.ListMailboxRow) bool {
+				return a.Name == args[0]
+			})
+			if i < 0 {
+				println("Mailbox not found")
+				os.Exit(2)
+			}
+			emails, err = storage.ListMailboxEmails(context.Background(), account, boxes[i].ID, nil)
 		}
-		emails, err := storage.ListMailboxEmails(context.Background(), account, boxes[i].ID, nil)
 		if err != nil {
 			println(err.Error())
 			os.Exit(3)

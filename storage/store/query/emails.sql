@@ -1,7 +1,3 @@
--- name: ListEmails :many
-SELECT * FROM emails
-WHERE rcpt_to = ?;
-
 -- name: ListEveryEmails :many
 SELECT * FROM emails;
 
@@ -17,6 +13,9 @@ RETURNING id;
 -- name: DeleteEmail :exec
 DELETE FROM emails
 WHERE id = ?;
+
+-- name: ListEmails :many
+SELECT * FROM emails;
 
 -- name: ListEmailsFrom :many
 SELECT * FROM emails
