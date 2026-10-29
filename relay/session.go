@@ -173,7 +173,11 @@ func (s *Session) Data(r io.Reader) error {
 		score = &sc
 	}
 	//TODO: better handle of multiple to
-	for _, to := range s.To {
+	for i, to := range s.To {
+		if to.Folder != "" {
+			to.Folder = "INBOX" + string(storage.MailboxSeparator) + to.Folder
+			s.To[i] = to
+		}
 		ctx, err := s.backend.NewContext(s.From, to, msg)
 		if err != nil {
 			return err
@@ -182,18 +186,13 @@ func (s *Session) Data(r io.Reader) error {
 		if err != nil {
 			return err
 		}
-		if to.Folder == "" {
-			to.Folder = "INBOX"
-		} else {
-			to.Folder = "INBOX" + string(storage.MailboxSeparator) + to.Folder
-		}
 	}
-	go func(ctx context.Context, to []Rcpt) {
+	go func(ctx context.Context, from string, to []Rcpt) {
 		if wait != 0 {
 			time.Sleep(wait)
 		}
-		s.send(ctx, s.From.Address, to, msg, score)
-	}(s.context, s.To)
+		s.send(ctx, from, to, msg, score)
+	}(s.context, s.From.Address, s.To)
 	return nil
 }
 
