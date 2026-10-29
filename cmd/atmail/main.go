@@ -14,12 +14,14 @@ import (
 var (
 	configPath = atmail.DefaultConfigPath
 	verbose    = false
+	onlyDomain string
 )
 
 var Version = "dev"
 
 func init() {
 	flag.StringVar(&configPath, "config", configPath, "sets the config path")
+	flag.StringVar(&onlyDomain, "domain", onlyDomain, "sets the domain to use")
 	flag.BoolVar(&verbose, "v", verbose, "increase verbosity")
 }
 
@@ -39,6 +41,9 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+		if onlyDomain != "" {
+			cfg.Domains = map[string]auth.Config{onlyDomain: cfg.Domains[onlyDomain]}
+		}
 		listAccounts(&cfg, args[1:])
 		return
 	}
@@ -52,6 +57,13 @@ func main() {
 	}
 	accountRef := args[0]
 	username, domain, ok := strings.Cut(accountRef, "@")
+	if onlyDomain != "" {
+		if domain != onlyDomain {
+			println("Incompatible account with domain.")
+			os.Exit(1)
+		}
+		domain = onlyDomain
+	}
 	var d auth.Config
 	if !ok {
 		d, ok = cfg.Domains[accountRef]
