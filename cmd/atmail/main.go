@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"nouveauprintemps.org/atmail"
+	"nouveauprintemps.org/atmail/auth"
 	"nouveauprintemps.org/atmail/storage"
 )
 
@@ -51,18 +52,26 @@ func main() {
 	}
 	accountRef := args[0]
 	username, domain, ok := strings.Cut(accountRef, "@")
+	var d auth.Config
 	if !ok {
-		println("Invalid email.")
-		os.Exit(1)
-	}
-	d, ok := cfg.Domains[domain]
-	if !ok {
-		println("Domain not found.")
-		os.Exit(1)
-	}
-	if d.Exists("", username) == nil {
-		println("Account not found.")
-		os.Exit(1)
+		d, ok = cfg.Domains[accountRef]
+		if !ok || d.CatchAll == nil {
+			println("Invalid email.")
+			os.Exit(1)
+		}
+		domain = accountRef
+		username = d.CatchAll.User
+		accountRef = d.CatchAll.User + "@" + accountRef
+	} else {
+		d, ok = cfg.Domains[domain]
+		if !ok {
+			println("Domain not found.")
+			os.Exit(1)
+		}
+		if d.Exists("", username) == nil {
+			println("Account not found.")
+			os.Exit(1)
+		}
 	}
 	defer func() {
 		err = storage.Cache.Close(context.TODO())
