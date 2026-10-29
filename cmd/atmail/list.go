@@ -4,8 +4,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"mime"
 	"os"
 	"slices"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/emersion/go-message"
@@ -59,7 +61,16 @@ func list(account string, args []string) {
 				println(err.Error())
 				os.Exit(3)
 			}
-			fmt.Fprintf(w, "%d\t%s\n", email.ID, msg.Header.Get("Subject"))
+			s := msg.Header.Get("Subject")
+			if msg.Header.Get("Content-Transfer-Encoding") == "quoted-printable" ||
+				(strings.HasPrefix(s, `=?`) && strings.HasSuffix(s, `?=`)) {
+				s, err = new(mime.WordDecoder).DecodeHeader(s)
+				if err != nil {
+					println(err.Error())
+					os.Exit(3)
+				}
+			}
+			fmt.Fprintf(w, "%d\t%s\n", email.ID, s)
 		}
 		w.Flush()
 	default:
