@@ -2,32 +2,15 @@ package display
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
-	"strings"
 	"sync"
 
 	"github.com/emersion/go-imap/v2"
 	"github.com/emersion/go-imap/v2/imapserver"
-	"github.com/nyttikord/logos"
 	"nouveauprintemps.org/atmail/auth"
 	"nouveauprintemps.org/atmail/mailbox"
 	"nouveauprintemps.org/atmail/utils"
 )
-
-type logger struct {
-	*slog.Logger
-}
-
-func (l *logger) Printf(format string, args ...any) {
-	content := fmt.Sprintf(format, args...)
-	if strings.Contains(content, "i/o timeout") {
-		return
-	}
-	ctx := logos.NewContext(context.Background(), 1, false, false)
-	log, _, _ := strings.Cut(content, "\n")
-	l.Logger.ErrorContext(ctx, log)
-}
 
 type Boxes struct {
 	mp map[string]*mailbox.View
@@ -51,7 +34,7 @@ func (bck *Backend) Options(insecureAuth bool) *imapserver.Options {
 			imap.CapIMAP4rev1: {},
 			imap.CapIMAP4rev2: {},
 		},
-		Logger:       &logger{utils.Logger(bck.Context)},
+		Logger:       slog.NewLogLogger(utils.Logger(bck.Context).Handler(), slog.LevelError),
 		InsecureAuth: insecureAuth,
 	}
 }
