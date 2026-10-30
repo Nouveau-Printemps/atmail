@@ -6,9 +6,11 @@ import (
 	"errors"
 	"path"
 	"sync"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 	"nouveauprintemps.org/atmail/storage/store"
+	"nouveauprintemps.org/atmail/utils"
 )
 
 type DB = store.Queries
@@ -65,6 +67,21 @@ func (m *Meta) DB(ctx context.Context, user string) (*meta, error) {
 	if err != nil {
 		return nil, err
 	}
+	go func(ctx context.Context, m *meta) {
+		time.Sleep(3 * time.Hour)
+		l := utils.Logger(ctx)
+		for {
+			err := m.Save(ctx)
+			if err != nil {
+				l.Error("saving meta", "error", err)
+				l.Warn("retrying", "in", 15*time.Minute)
+				time.Sleep(15 * time.Minute)
+			} else {
+				l.Debug("meta saved", "next", 3*time.Hour)
+				time.Sleep(3 * time.Hour)
+			}
+		}
+	}(utils.WithLogger(ctx, utils.Logger(ctx).With("submodule", "storage/meta", "user", user)), mm)
 	m.subs[user] = mm
 	return mm, nil
 }
