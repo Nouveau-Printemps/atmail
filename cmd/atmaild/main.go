@@ -100,6 +100,8 @@ func main() {
 
 	rl := auth.NewRateLimiter()
 
+	ctx = utils.WithVerbose(ctx, verbose)
+
 	bck := relay.NewBackend(
 		utils.WithLogger(ctx, slog.With("module", "smtp")),
 		cfg.Domains,

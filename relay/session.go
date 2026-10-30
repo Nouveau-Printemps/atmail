@@ -182,6 +182,7 @@ func (s *Session) Data(r io.Reader) error {
 		if err != nil {
 			return err
 		}
+		ctx.Verbose = utils.Verbose(s.context)
 		err = applyResult(s, msg, &wait, checkFilters(ctx, s.backend.Filters))
 		if err != nil {
 			return err
