@@ -71,11 +71,9 @@ user = "admin"
 # pgp_pub_key = ""
 # pgp_pub_key_file = ""
 
-# If you wanna use ATProto for the auth
-# [domains."example.org".atproto]
-# pds = "pds.example.org"
-# client_id = "mail.example.org"
-# client_secret = "my-secret"
+# If you wanna use den for the auth
+# [domains."example.org".den]
+# address = "/run/dend.sock"
 
 # If you wanna allow only specific users, maps them to their password (hashed with bcrypt)
 # [domains."example.org".static.users]

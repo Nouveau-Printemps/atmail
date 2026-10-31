@@ -82,7 +82,7 @@ AT Mail can handle multiple domains.
 There is three kind of domain:
 - static;
 - catch all;
-- ATProto (not implemented yet).
+- [den](https://github.com/Nouveau-Printemps/den).
 
 A kind defines how users are managed by the server.
 
@@ -138,13 +138,11 @@ password = "$2y$10$fZ1tRpz2mfdRfaaTbx723.Gch7tY.f7LIBuZz1of/cLwBGvU39ivG"
 ```
 With this configuration, an email to `bar@example.org` is redirected to `foo@example.org`.
 
-**ATProto** links an ATProto PDS account with an email account.
+**Den** links a den account with an email account.
 This kind is not implemented yet.
 ```toml
-[domains."example.org".atproto]
-pds = "pds.example.org"
-client_id = "mail.example.org"
-client_secret = "my-secret"
+[domains."example.org".den]
+address = "/run/dend.sock"
 ```
 
 #### Subaddressing
@@ -211,9 +209,8 @@ See [filter/README.md](./filter/README.md).
 ## Roadmap
 
 Planned features:
-- QUOTA IMAP capability
 - better PGP integration
-- ATProto integration (PDS -> email account -> OIDC provider)
+- more IMAP capabilities
 
 Features considered:
 - JMAP support
