@@ -1,6 +1,6 @@
 module nouveauprintemps.org/atmail
 
-go 1.26.9
+go 1.27.3
 
 require (
 	github.com/BurntSushi/toml v1.6.0
@@ -18,6 +18,7 @@ require (
 require (
 	cel.dev/expr v0.25.1 // indirect
 	filippo.io/edwards25519 v1.1.1 // indirect
+	github.com/Nouveau-Printemps/den v0.1.0 // indirect
 	github.com/ProtonMail/go-crypto v1.5.2 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/cloudflare/circl v1.6.5 // indirect

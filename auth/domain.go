@@ -2,12 +2,14 @@ package auth
 
 import (
 	"crypto/subtle"
+	"log/slog"
 	"net"
 	"os"
 	"slices"
 	"strings"
 	"time"
 
+	"github.com/Nouveau-Printemps/den"
 	"nouveauprintemps.org/atmail/utils"
 )
 
@@ -42,6 +44,7 @@ type Config struct {
 	ATProto                   *ATProtoConfig `toml:"atproto"`
 	Static                    *StaticConfig  `toml:"static"`
 	CatchAll                  *CatchAll      `toml:"catch_all"`
+	Den                       *Den           `toml:"den"`
 }
 
 type ATProtoConfig struct {
@@ -78,14 +81,20 @@ type CatchAll struct {
 	Crypto
 }
 
+type Den struct {
+	Address string `toml:"address"`
+	client  *den.Client
+}
+
 func (cfg *Config) VerifyUser(conn net.Conn, domain, username, password string) bool {
 	var realPass string
-	if cfg.CatchAll != nil {
+	switch {
+	case cfg.CatchAll != nil:
 		if subtle.ConstantTimeCompare([]byte(cfg.CatchAll.User+"@"+domain), []byte(username)) != 1 {
 			return false
 		}
 		realPass = cfg.CatchAll.Password
-	} else if cfg.Static != nil {
+	case cfg.Static != nil:
 		u, d, _ := strings.Cut(username, "@")
 		if d != domain {
 			return false
@@ -96,6 +105,12 @@ func (cfg *Config) VerifyUser(conn net.Conn, domain, username, password string) 
 			return ok && u.From(conn)
 		}
 		realPass = user.Password
+	case cfg.Den != nil:
+		resp, err := cfg.Den.client.Authn(username, password)
+		if err != nil {
+			slog.Error("verifying user with den", "error", err, "username", username)
+		}
+		return resp != nil
 	}
 	ok, err := detectPasswordAlgorithm(realPass).Compare(realPass, password)
 	if err != nil {
@@ -119,14 +134,14 @@ func (cfg *Config) Exists(from, username string) *UserData {
 		return &UserData{Username: username}
 	}
 	var data UserData
-	var crypto Crypto
-	if cfg.CatchAll != nil {
+	switch {
+	case cfg.CatchAll != nil:
 		data.Username = cfg.CatchAll.User
 		if cfg.CreateFolderSubaddressing && username != cfg.CatchAll.User {
 			data.Folder = username
 		}
-		crypto = cfg.CatchAll.Crypto
-	} else if cfg.Static != nil {
+		data.Key = cfg.CatchAll.Crypto.GetKey()
+	case cfg.Static != nil:
 		var subaddress string
 		if cfg.PlusSubaddressing {
 			username, subaddress, _ = strings.Cut(username, "+")
@@ -144,8 +159,23 @@ func (cfg *Config) Exists(from, username string) *UserData {
 		if cfg.CreateFolderSubaddressing && ok {
 			data.Folder = subaddress
 		}
-		crypto = u.Crypto
+		data.Key = u.Crypto.GetKey()
+	case cfg.Den != nil:
+		var subaddress string
+		if cfg.PlusSubaddressing {
+			username, subaddress, _ = strings.Cut(username, "+")
+		}
+		u, err := cfg.Den.client.Exists(username)
+		if err != nil {
+			slog.Error("checking if user exists", "user", username, "error", err)
+		}
+		if u == nil {
+			return nil
+		}
+		if cfg.CreateFolderSubaddressing {
+			data.Folder = subaddress
+		}
+		data.Key = u.Key
 	}
-	data.Key = crypto.GetKey()
 	return &data
 }
