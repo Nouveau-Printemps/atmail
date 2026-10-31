@@ -179,3 +179,16 @@ func (cfg *Config) Exists(from, username string) *UserData {
 	}
 	return &data
 }
+
+func (d *Den) Connect() (err error) {
+	network := "tcp"
+	if d.Address[0] == '/' {
+		network = "unix"
+	}
+	d.client, err = den.Dial("atmail", network, d.Address)
+	return
+}
+
+func (d *Den) Close() error {
+	return d.client.Close()
+}

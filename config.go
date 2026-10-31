@@ -188,9 +188,29 @@ func LoadConfig(p string) (*Config, []*filter.Tree, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	for _, d := range cfg.Domains {
+		if d.Den != nil {
+			err := d.Den.Connect()
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+	}
 	filters, err := cfg.ParseFilters()
 	if err != nil {
 		return nil, nil, err
 	}
 	return &cfg, filters, nil
+}
+
+func (cfg *Config) Close() error {
+	for _, d := range cfg.Domains {
+		if d.Den != nil {
+			err := d.Den.Close()
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

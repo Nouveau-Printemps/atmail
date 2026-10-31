@@ -65,6 +65,7 @@ func main() {
 		slog.Error("parsing config", "error", err)
 		os.Exit(2)
 	}
+	defer cfg.Close()
 	slog.Debug("config parsed", "path", configPath)
 	if cfg.LearnFolder != "" {
 		err = os.MkdirAll(path.Join(cfg.LearnFolder, relay.SpamFolder), 0o750)
@@ -161,8 +162,13 @@ func main() {
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, syscall.SIGHUP)
 		for {
-			<-sig
+			select {
+			case <-ctx.Done():
+				return
+			case <-sig:
+			}
 			slog.Info("reloading config")
+			cfg.Close()
 			confg, filters, err := atmail.LoadConfig(configPath)
 			if err != nil {
 				slog.Error("reloading config failed", "error", err)
