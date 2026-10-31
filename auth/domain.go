@@ -91,6 +91,7 @@ func (cfg *Config) VerifyUser(conn net.Conn, domain, username, password string) 
 	switch {
 	case cfg.CatchAll != nil:
 		if subtle.ConstantTimeCompare([]byte(cfg.CatchAll.User+"@"+domain), []byte(username)) != 1 {
+			time.Sleep(1 * time.Second)
 			return false
 		}
 		realPass = cfg.CatchAll.Password
@@ -106,9 +107,10 @@ func (cfg *Config) VerifyUser(conn net.Conn, domain, username, password string) 
 		}
 		realPass = user.Password
 	case cfg.Den != nil:
-		resp, err := cfg.Den.client.Authn(username, password)
+		u, _, _ := strings.Cut(username, "@")
+		resp, err := cfg.Den.client.Authn(u, password)
 		if err != nil {
-			slog.Error("verifying user with den", "error", err, "username", username)
+			slog.Error("verifying user with den", "error", err, "username", u)
 		}
 		return resp != nil
 	}
