@@ -71,10 +71,6 @@ user = "admin"
 # pgp_pub_key = ""
 # pgp_pub_key_file = ""
 
-# If you wanna use den for the auth
-# [domains."example.org".den]
-# address = "/run/dend.sock"
-
 # If you wanna allow only specific users, maps them to their password (hashed with bcrypt)
 # [domains."example.org".static.users]
 # foo.password = "$2y$10$wWJy64n5j4pU2CscdWRq.er5Z2.V31U5Ntz5uTopLy1fMX87GQEDG"
@@ -82,8 +78,6 @@ user = "admin"
 # You can specify their PGP public key to encrypt their message
 # foo.pgp_pub_key = ""
 # bar.pgp_pub_key_file = ""
-# If you want to only permit local connection regardless of the password
-# baz.local_only = true
 
 # If you wanna create system users
 # [domains."example.org".static.system_users]
@@ -101,6 +95,12 @@ user = "admin"
 # somegroupname.members = ["foo@example.org", "bar@example.org"]
 # users that can email the group (if unspecified, everyone can)
 # somegroupname.authorized_senders = ["foo@example.org"]
+
+# If you wanna use den for the auth
+# [domains."example.org".den]
+# address = "/run/dend.sock"
+# create groups, see static.groups
+# [domains."example.org".den.groups]
 
 # Catch every email into one address
 [domains."example.org".catch_all]

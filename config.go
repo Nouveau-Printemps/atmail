@@ -130,6 +130,10 @@ func ParseConfig(p string) (Config, error) {
 					l.Error("user is defined twice", "user", u)
 					os.Exit(2)
 				}
+				if _, ok := d.Static.Groups[u]; ok {
+					l.Error("user is defined twice", "user", u)
+					os.Exit(2)
+				}
 				if v.PGPPubKey != nil && v.PGPPubKeyFile != nil {
 					l.Error(
 						"decoding config: only one of pgp_pub_key and pgp_pub_key_file can be enabled",

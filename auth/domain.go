@@ -74,6 +74,10 @@ type Group struct {
 	AuthorizedSenders []string `toml:"authorized_senders"`
 }
 
+func (g Group) Verify(from string) bool {
+	return len(g.AuthorizedSenders) != 0 && slices.Contains(g.AuthorizedSenders, from)
+}
+
 type CatchAll struct {
 	User string `toml:"user"`
 	// bcrypt Password of user
@@ -82,7 +86,8 @@ type CatchAll struct {
 }
 
 type Den struct {
-	Address string `toml:"address"`
+	Address string           `toml:"address"`
+	Groups  map[string]Group `toml:"groups"`
 	client  *den.Client
 }
 
@@ -107,7 +112,10 @@ func (cfg *Config) VerifyUser(conn net.Conn, domain, username, password string) 
 		}
 		realPass = user.Password
 	case cfg.Den != nil:
-		u, _, _ := strings.Cut(username, "@")
+		u, d, _ := strings.Cut(username, "@")
+		if d != domain {
+			return false
+		}
 		resp, err := cfg.Den.client.Authn(u, password)
 		if err != nil {
 			slog.Error("verifying user with den", "error", err, "username", u)
@@ -151,7 +159,7 @@ func (cfg *Config) Exists(from, username string) *UserData {
 		u, ok := cfg.Static.Users[username]
 		if !ok {
 			g, ok := cfg.Static.Groups[username]
-			if !ok || (len(g.AuthorizedSenders) != 0 && slices.Contains(g.AuthorizedSenders, from)) {
+			if !ok || g.Verify(from) {
 				return nil
 			}
 			data.Group = &g
@@ -172,6 +180,11 @@ func (cfg *Config) Exists(from, username string) *UserData {
 			slog.Error("checking if user exists", "user", username, "error", err)
 		}
 		if u == nil {
+			g, ok := cfg.Den.Groups[username]
+			if ok && g.Verify(from) {
+				data.Group = &g
+				return &data
+			}
 			return nil
 		}
 		if cfg.CreateFolderSubaddressing {
