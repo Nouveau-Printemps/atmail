@@ -78,7 +78,7 @@ type CatchAll struct {
 	Crypto
 }
 
-func (cfg *Config) VerifyUser(ip net.IP, domain, username, password string) bool {
+func (cfg *Config) VerifyUser(conn net.Conn, domain, username, password string) bool {
 	var realPass string
 	if cfg.CatchAll != nil {
 		if subtle.ConstantTimeCompare([]byte(cfg.CatchAll.User+"@"+domain), []byte(username)) != 1 {
@@ -92,8 +92,8 @@ func (cfg *Config) VerifyUser(ip net.IP, domain, username, password string) bool
 		}
 		user, ok := cfg.Static.Users[u]
 		if !ok {
-			_, ok = cfg.Static.SystemUsers[u]
-			return ok
+			u, ok := cfg.Static.SystemUsers[u]
+			return ok && u.From(conn)
 		}
 		realPass = user.Password
 	}

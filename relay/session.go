@@ -38,7 +38,7 @@ func (s *Session) Auth(mech string) (sasl.Server, error) {
 	return sasl.NewPlainServer(func(identity, username, password string) error {
 		ip := s.conn.Conn().RemoteAddr().(*net.TCPAddr).IP
 		for d, cfg := range s.backend.Domains {
-			if cfg.VerifyUser(ip, d, username, password) {
+			if cfg.VerifyUser(s.conn.Conn(), d, username, password) {
 				s.username = username
 				break
 			}

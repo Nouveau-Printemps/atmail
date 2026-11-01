@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"errors"
 	"net"
 	"os"
@@ -12,10 +13,11 @@ import (
 )
 
 type ListenConfig struct {
-	ListenAddr       string `toml:"listen"`
-	UseProxyV2       bool   `toml:"use_proxy_v2"`
-	SocketGroup      any    `toml:"socket_group"`
-	SocketPermission uint   `toml:"socket_permission"`
+	ListenAddr       string   `toml:"listen"`
+	UseProxyV2       bool     `toml:"use_proxy_v2"`
+	SocketGroup      any      `toml:"socket_group"`
+	SocketPermission uint     `toml:"socket_permission"`
+	addresses        []string `toml:"-"`
 }
 
 func (cfg ListenConfig) Listen() (net.Listener, error) {
@@ -68,6 +70,21 @@ func (cfg ListenConfig) Listen() (net.Listener, error) {
 		}
 	}
 	return l, nil
+}
+
+func (cfg *ListenConfig) From(conn net.Conn) bool {
+	if len(cfg.addresses) == 0 {
+		var err error
+		cfg.addresses, err = net.DefaultResolver.LookupAddr(context.Background(), cfg.ListenAddr)
+		if err != nil {
+			return false
+		}
+	}
+	local := conn.LocalAddr().String()
+	return Any(Map(
+		cfg.addresses,
+		func(s string) bool { return s == local },
+	))
 }
 
 type MultiListener struct {

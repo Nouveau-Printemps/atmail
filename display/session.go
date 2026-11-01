@@ -38,7 +38,7 @@ type Session struct {
 func (s *Session) Login(username, password string) error {
 	ip := s.conn.NetConn().RemoteAddr().(*net.TCPAddr).IP
 	for d, cfg := range s.backend.Domains {
-		if cfg.VerifyUser(ip, d, username, password) {
+		if cfg.VerifyUser(s.conn.NetConn(), d, username, password) {
 			s.username = username
 			break
 		}
