@@ -3,6 +3,8 @@ package atmail
 import (
 	"bytes"
 	_ "embed"
+	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"path"
@@ -97,9 +99,9 @@ func ParseConfig(p string) (Config, error) {
 	}
 	for domain, d := range cfg.Domains {
 		l := slog.With("domain", domain)
+		baseErr := errors.New("decoding config " + domain)
 		if d.ATProto == nil && d.Static == nil && d.CatchAll == nil {
-			l.Error("decoding config: one auth configuration must be enabled per domain")
-			os.Exit(2)
+			return cfg, fmt.Errorf("%w: one auth configuration must be enabled", baseErr)
 		}
 		if d.Admin.User == "" {
 			l.Warn("decoding config: admin not set")
@@ -107,12 +109,10 @@ func ParseConfig(p string) (Config, error) {
 		if (d.ATProto != nil && d.Static != nil) ||
 			(d.ATProto != nil && d.CatchAll != nil) ||
 			(d.CatchAll != nil && d.Static != nil) {
-			l.Error("decoding config: only one auth configuration must be enabled per domain")
-			os.Exit(2)
+			return cfg, fmt.Errorf("%w: only one auth configuration must be enabled per domain", baseErr)
 		}
 		if d.CatchAll != nil && d.CatchAll.PGPPubKey != nil && d.CatchAll.PGPPubKeyFile != nil {
-			l.Error("decoding config: only one of pgp_pub_key and pgp_pub_key_file can be enabled")
-			os.Exit(2)
+			return cfg, fmt.Errorf("%w: only one of pgp_pub_key and pgp_pub_key_file can be enabled", baseErr)
 		}
 		if d.Static != nil {
 			if d.Static.Users == nil {
@@ -121,25 +121,21 @@ func ParseConfig(p string) (Config, error) {
 			if d.Static.SystemUsers == nil {
 				d.Static.SystemUsers = make(map[string]auth.SystemUser)
 			}
+			if d.Static.Groups == nil {
+				d.Static.Groups = make(map[string]auth.Group)
+			}
 			for u, v := range d.Static.Users {
 				if u != d.Admin.User && slices.Contains(auth.AdminEmails, u) {
-					l.Error("this username is reserved", "user", u)
-					os.Exit(2)
+					return cfg, fmt.Errorf("%w: %s is a reserved username", baseErr, u)
 				}
 				if _, ok := d.Static.SystemUsers[u]; ok {
-					l.Error("user is defined twice", "user", u)
-					os.Exit(2)
+					return cfg, fmt.Errorf("%w: %s is defined twice", baseErr, u)
 				}
 				if _, ok := d.Static.Groups[u]; ok {
-					l.Error("user is defined twice", "user", u)
-					os.Exit(2)
+					return cfg, fmt.Errorf("%w: %s is defined twice", baseErr, u)
 				}
 				if v.PGPPubKey != nil && v.PGPPubKeyFile != nil {
-					l.Error(
-						"decoding config: only one of pgp_pub_key and pgp_pub_key_file can be enabled",
-						"user", u,
-					)
-					os.Exit(2)
+					return cfg, fmt.Errorf("%w: only one of pgp_pub_key and pgp_pub_key_file can be enabled", baseErr)
 				}
 			}
 		}
