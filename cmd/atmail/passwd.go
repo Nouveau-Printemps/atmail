@@ -5,31 +5,38 @@ import (
 	"io"
 	"os"
 
-	"golang.org/x/crypto/bcrypt"
+	"nouveauprintemps.org/atmail/auth"
 )
 
 func passwd(args []string) {
 	set := flag.NewFlagSet("passwd", flag.ExitOnError)
-	cost := set.Uint("cost", uint(bcrypt.DefaultCost+2), "sets bcrypt cost")
+	algo := set.String("algo", "argon2id", "algorithm to use")
 	_ = set.Parse(args)
 	if len(set.Args()) > 0 {
 		println("Invalid passwd usage.")
-		println("passwd [-cost <cost>]")
+		println("passwd [-algo <algo>]")
 		os.Exit(1)
 	}
-	if *cost < uint(bcrypt.MinCost) || *cost > uint(bcrypt.MaxCost) {
-		println("Invalid cost. Value given:", *cost)
-		println("Min cost:", bcrypt.MinCost)
-		println("Max cost:", bcrypt.MaxCost)
+	var pass auth.Password
+	switch *algo {
+	case "argon2id", "argon2", "argon":
+		pass = auth.DefaultArgon2id
+	case "scrypt":
+		pass = auth.DefaultScrypt
+	case "bcrypt":
+		pass = auth.DefaultBcrypt
+	default:
+		println("Invalid passwd usage.")
+		println("Available algorithms: argon2id, scrypt and bcrypt.")
 		os.Exit(1)
 	}
 	b, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		panic(err)
 	}
-	b, err = bcrypt.GenerateFromPassword(b, int(*cost))
+	h, err := pass.Hash(string(b))
 	if err != nil {
 		panic(err)
 	}
-	println(string(b))
+	os.Stdout.Write([]byte(h))
 }

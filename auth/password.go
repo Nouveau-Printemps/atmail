@@ -29,29 +29,29 @@ type PasswordEncoder interface {
 	Decode(string) (hash, salt []byte, err error)
 }
 
-type BCrypt struct {
+type Bcrypt struct {
 	Cost int
 }
 
-func (bc BCrypt) Hash(pass string) (string, error) {
+func (bc Bcrypt) Hash(pass string) (string, error) {
 	b, err := bcrypt.GenerateFromPassword([]byte(pass), bc.Cost)
 	return string(b), err
 }
 
-func (BCrypt) Compare(hash, pass string) (bool, error) {
+func (Bcrypt) Compare(hash, pass string) (bool, error) {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(pass)) == nil, nil
 }
 
-type SCrypt struct {
+type Scrypt struct {
 	// N is the number of iterations.
 	N int
-	// N is the block size.
+	// R is the block size.
 	R int
 	// P is the parallelism.
 	P int
 }
 
-func (s SCrypt) Hash(pass string) (string, error) {
+func (s Scrypt) Hash(pass string) (string, error) {
 	var salt [16]byte
 	rand.Read(salt[:])
 	hash, err := scrypt.Key([]byte(pass), salt[:], s.N, s.R, s.P, 32)
@@ -61,7 +61,7 @@ func (s SCrypt) Hash(pass string) (string, error) {
 	return s.Encode(hash, salt[:]), nil
 }
 
-func (s SCrypt) Encode(hash []byte, salt []byte) string {
+func (s Scrypt) Encode(hash []byte, salt []byte) string {
 	return fmt.Sprintf(
 		"$scrypt$N=%d,r=%d,p=%d$%s$%s",
 		s.N, s.R, s.P,
@@ -72,7 +72,7 @@ func (s SCrypt) Encode(hash []byte, salt []byte) string {
 
 var scryptFormat = regexp.MustCompile(`^\$scrypt\$N=(\d+),r=(\d+),p=(\d+)\$([^$]+)\$([^$]+)$`)
 
-func (s *SCrypt) Decode(raw string) (hash []byte, salt []byte, err error) {
+func (s *Scrypt) Decode(raw string) (hash []byte, salt []byte, err error) {
 	f := scryptFormat.FindStringSubmatch(raw)
 	if len(f) != 6 || f[0] != raw {
 		return nil, nil, ErrInvalidPasswordFormat
@@ -102,7 +102,7 @@ func (s *SCrypt) Decode(raw string) (hash []byte, salt []byte, err error) {
 	return
 }
 
-func (s SCrypt) Compare(encodedHash, pass string) (bool, error) {
+func (s Scrypt) Compare(encodedHash, pass string) (bool, error) {
 	hash, salt, err := s.Decode(encodedHash)
 	if err != nil {
 		return false, err
@@ -184,3 +184,17 @@ func (a Argon2id) Compare(encodedHash, pass string) (bool, error) {
 	got := argon2.IDKey([]byte(pass), salt, a.T, a.M, a.P, 32)
 	return subtle.ConstantTimeCompare(hash, got) == 0, nil
 }
+
+var (
+	DefaultArgon2id = Argon2id{
+		M: 16 * 1024,
+		T: 5,
+		P: 2,
+	}
+	DefaultScrypt = Scrypt{
+		N: 2 << 15,
+		P: 2,
+		R: 8,
+	}
+	DefaultBcrypt = Bcrypt{Cost: 12}
+)
