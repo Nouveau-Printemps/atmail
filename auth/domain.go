@@ -38,19 +38,12 @@ type Admin struct {
 }
 
 type Config struct {
-	Admin                     Admin          `toml:"admin"`
-	PlusSubaddressing         bool           `toml:"plus_subaddressing"`
-	CreateFolderSubaddressing bool           `toml:"create_folder_subaddressing"`
-	ATProto                   *ATProtoConfig `toml:"atproto"`
-	Static                    *StaticConfig  `toml:"static"`
-	CatchAll                  *CatchAll      `toml:"catch_all"`
-	Den                       *Den           `toml:"den"`
-}
-
-type ATProtoConfig struct {
-	PDS          string `json:"pds"`
-	ClientID     string `toml:"client_id"`
-	ClientSecret string `toml:"client_secret"`
+	Admin                     Admin         `toml:"admin"`
+	PlusSubaddressing         bool          `toml:"plus_subaddressing"`
+	CreateFolderSubaddressing bool          `toml:"create_folder_subaddressing"`
+	Static                    *StaticConfig `toml:"static"`
+	CatchAll                  *CatchAll     `toml:"catch_all"`
+	Den                       *Den          `toml:"den"`
 }
 
 type StaticConfig struct {

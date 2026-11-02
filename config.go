@@ -100,14 +100,14 @@ func ParseConfig(p string) (Config, error) {
 	for domain, d := range cfg.Domains {
 		l := slog.With("domain", domain)
 		baseErr := errors.New("decoding config " + domain)
-		if d.ATProto == nil && d.Static == nil && d.CatchAll == nil {
+		if d.Den == nil && d.Static == nil && d.CatchAll == nil {
 			return cfg, fmt.Errorf("%w: one auth configuration must be enabled", baseErr)
 		}
 		if d.Admin.User == "" {
 			l.Warn("decoding config: admin not set")
 		}
-		if (d.ATProto != nil && d.Static != nil) ||
-			(d.ATProto != nil && d.CatchAll != nil) ||
+		if (d.Den != nil && d.Static != nil) ||
+			(d.Den != nil && d.CatchAll != nil) ||
 			(d.CatchAll != nil && d.Static != nil) {
 			return cfg, fmt.Errorf("%w: only one auth configuration must be enabled per domain", baseErr)
 		}
