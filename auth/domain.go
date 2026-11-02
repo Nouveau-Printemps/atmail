@@ -6,8 +6,8 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"time"
 
-	"golang.org/x/crypto/bcrypt"
 	"nouveauprintemps.org/atmail/utils"
 )
 
@@ -97,7 +97,11 @@ func (cfg *Config) VerifyUser(conn net.Conn, domain, username, password string) 
 		}
 		realPass = user.Password
 	}
-	return bcrypt.CompareHashAndPassword([]byte(realPass), []byte(password)) == nil
+	ok, err := detectPasswordAlgorithm(realPass).Compare(realPass, password)
+	if err != nil {
+		time.Sleep(1 * time.Second)
+	}
+	return ok
 }
 
 type UserData struct {

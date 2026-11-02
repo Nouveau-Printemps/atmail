@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/bcrypt"
@@ -198,3 +199,16 @@ var (
 	}
 	DefaultBcrypt = Bcrypt{Cost: 12}
 )
+
+func detectPasswordAlgorithm(pass string) Password {
+	switch {
+	case strings.HasPrefix(pass, "$argon2id"):
+		return DefaultArgon2id
+	case strings.HasPrefix(pass, "$scrypt"):
+		return DefaultScrypt
+	case strings.HasPrefix(pass, "$2y"):
+		return DefaultBcrypt
+	default:
+		panic("unsupported password algorithm: " + pass)
+	}
+}
