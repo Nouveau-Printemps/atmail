@@ -8,6 +8,8 @@ filters_folder = "/etc/atmail/filters.d/"
 
 # Address of the rspamd server
 # rspamd_address = "localhost:11332"
+# folder containing email for rspamd's learning
+# learn_folder = "/var/lib/atmail/learn"
 
 # domain broadcasted
 main_domain = "mail.example.org"

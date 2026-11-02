@@ -13,6 +13,8 @@ import (
 	"net"
 	"net/http"
 	"net/textproto"
+	"os"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -25,8 +27,9 @@ import (
 const SpamHeader = `X-Spam-Score`
 
 type RspamdClient struct {
-	Client *http.Client
-	URL    string
+	Client      *http.Client
+	URL         string
+	LearnFolder string
 }
 
 type RspamdMetadata struct {
@@ -249,29 +252,23 @@ func (spam *RspamdClient) Analyze(s *Session, email *message.Entity) (float64, t
 	return resp.Score, wait, nil
 }
 
+const (
+	SpamFolder = "spam"
+	HamFolder  = "ham"
+)
+
 func (spam *RspamdClient) LearnSpam(s *Session, email *message.Entity) error {
 	body, err := io.ReadAll(email.Body)
 	if err != nil {
 		return err
 	}
 	email.Body = bytes.NewBuffer(body)
-	req, err := http.NewRequestWithContext(
-		s.context,
-		http.MethodPost,
-		spam.URL+"/learnspam",
-		bytes.NewBuffer(body),
+	name := s.To[0].Address + email.Header.Get("Subject") + strconv.Itoa(int(time.Now().Unix()))
+	return os.WriteFile(
+		path.Join(spam.LearnFolder, SpamFolder, name),
+		body,
+		0o640,
 	)
-	if err != nil {
-		return err
-	}
-	resp, err := spam.Client.Do(req)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode > 299 {
-		return fmt.Errorf("invalid status code: %d", resp.StatusCode)
-	}
-	return nil
 }
 
 func (spam *RspamdClient) LearnHam(s *Session, email *message.Entity) error {
@@ -280,21 +277,10 @@ func (spam *RspamdClient) LearnHam(s *Session, email *message.Entity) error {
 		return err
 	}
 	email.Body = bytes.NewBuffer(body)
-	req, err := http.NewRequestWithContext(
-		s.context,
-		http.MethodPost,
-		spam.URL+"/learnham",
-		bytes.NewBuffer(body),
+	name := s.To[0].Address + email.Header.Get("Subject") + strconv.Itoa(int(time.Now().Unix()))
+	return os.WriteFile(
+		path.Join(spam.LearnFolder, HamFolder, name),
+		body,
+		0o640,
 	)
-	if err != nil {
-		return err
-	}
-	resp, err := spam.Client.Do(req)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode > 299 {
-		return fmt.Errorf("invalid status code: %d", resp.StatusCode)
-	}
-	return nil
 }

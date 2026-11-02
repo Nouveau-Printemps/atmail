@@ -16,7 +16,7 @@ import (
 
 type Backend struct {
 	Domains   map[string]auth.Config
-	rspamd    *RspamdClient
+	Rspamd    *RspamdClient
 	Queue     *Queue
 	LocalName string
 
@@ -51,7 +51,7 @@ func NewBackend(
 		relayCache:  make(map[string]relay),
 	}
 	if rspamd != nil {
-		bck.rspamd = &RspamdClient{
+		bck.Rspamd = &RspamdClient{
 			Client: http.DefaultClient,
 			URL:    *rspamd,
 		}

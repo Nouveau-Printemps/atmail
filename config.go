@@ -25,6 +25,7 @@ type Config struct {
 	AdminEmail    string                 `toml:"admin_email"`
 	DomainsFolder *string                `toml:"domains_folder"`
 	FiltersFolder string                 `toml:"filters_folder"`
+	LearnFolder   string                 `toml:"learn_folder"`
 	RspamdAddress *string                `toml:"rspamd_address"`
 	Smtp          SmtpConfig             `toml:"smtp"`
 	Imap          ImapConfig             `toml:"imap"`

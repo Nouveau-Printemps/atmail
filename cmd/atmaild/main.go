@@ -66,6 +66,18 @@ func main() {
 		os.Exit(2)
 	}
 	slog.Debug("config parsed", "path", configPath)
+	if cfg.LearnFolder != "" {
+		err = os.MkdirAll(path.Join(cfg.LearnFolder, relay.SpamFolder), 0o750)
+		if err != nil {
+			slog.Error("creating learning spam folders", "error", err, "path", cfg.LearnFolder)
+			os.Exit(2)
+		}
+		err = os.MkdirAll(path.Join(cfg.LearnFolder, relay.HamFolder), 0o750)
+		if err != nil {
+			slog.Error("creating learning ham folders", "error", err, "path", cfg.LearnFolder)
+			os.Exit(2)
+		}
+	}
 	var ls []net.Listener
 	for d, v := range cfg.Domains {
 		if v.CatchAll != nil {
@@ -119,6 +131,9 @@ func main() {
 	smtpSrv.WriteTimeout = 10 * time.Second
 	smtpSrv.EnableSMTPUTF8 = true
 	smtpSrv.EnableBINARYMIME = true
+	if cfg.LearnFolder != "" {
+		bck.Rspamd.LearnFolder = cfg.LearnFolder
+	}
 	defer smtpSrv.Close()
 
 	d := &display.Backend{
