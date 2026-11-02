@@ -14,6 +14,29 @@ filters_folder = "/etc/atmail/filters.d/"
 # domain broadcasted
 main_domain = "mail.example.org"
 
+[password]
+# default algorithm to use when hashing passwords (can be argon2id, scrypt or bcrypt)
+default = "argon2id"
+
+[password.argon2id]
+# memory used in MiB
+m = 16
+# number of iterations
+t = 5
+# number of parallel threads
+p = 2
+
+[password.scrypt]
+# 2^N number of iterations
+N = 16
+# number of parallel threads
+p = 2
+# block size
+r = 8
+
+[password.bcrypt]
+cost = 12
+
 [smtp]
 # address to listen to (tcp or unix socket)
 listen = ":2525"

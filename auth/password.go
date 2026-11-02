@@ -31,7 +31,7 @@ type PasswordEncoder interface {
 }
 
 type Bcrypt struct {
-	Cost int
+	Cost int `toml:"cost"`
 }
 
 func (bc Bcrypt) Hash(pass string) (string, error) {
@@ -45,11 +45,11 @@ func (Bcrypt) Compare(hash, pass string) (bool, error) {
 
 type Scrypt struct {
 	// N is the number of iterations.
-	N int
+	N int `toml:"N"`
 	// R is the block size.
-	R int
+	R int `toml:"r"`
 	// P is the parallelism.
-	P int
+	P int `toml:"p"`
 }
 
 func (s Scrypt) Hash(pass string) (string, error) {
@@ -117,11 +117,11 @@ func (s Scrypt) Compare(encodedHash, pass string) (bool, error) {
 
 type Argon2id struct {
 	// M is the maximum memory to use.
-	M uint32
+	M uint32 `toml:"m"`
 	// T is the number of iterations (parameter time in [argon2.IDKey]).
-	T uint32
+	T uint32 `toml:"t"`
 	// P is the number of threads.
-	P uint8
+	P uint8 `toml:"p"`
 }
 
 func (a Argon2id) Hash(pass string) (string, error) {
@@ -185,20 +185,6 @@ func (a Argon2id) Compare(encodedHash, pass string) (bool, error) {
 	got := argon2.IDKey([]byte(pass), salt, a.T, a.M, a.P, 32)
 	return subtle.ConstantTimeCompare(hash, got) == 0, nil
 }
-
-var (
-	DefaultArgon2id = Argon2id{
-		M: 16 * 1024,
-		T: 5,
-		P: 2,
-	}
-	DefaultScrypt = Scrypt{
-		N: 2 << 15,
-		P: 2,
-		R: 8,
-	}
-	DefaultBcrypt = Bcrypt{Cost: 12}
-)
 
 func detectPasswordAlgorithm(pass string) Password {
 	switch {

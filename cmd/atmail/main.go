@@ -32,24 +32,24 @@ func main() {
 		usage()
 		return
 	}
+	cfg, err := atmail.ParseConfig(configPath)
+	if err != nil {
+		panic(err)
+	}
+	err = cfg.Password.Load()
+	if err != nil {
+		panic(err)
+	}
 	switch args[0] {
 	case "passwd":
-		passwd(args[1:])
+		passwd(&cfg, args[1:])
 		return
 	case "list":
-		cfg, err := atmail.ParseConfig(configPath)
-		if err != nil {
-			panic(err)
-		}
 		if onlyDomain != "" {
 			cfg.Domains = map[string]auth.Config{onlyDomain: cfg.Domains[onlyDomain]}
 		}
 		listAccounts(&cfg, args[1:])
 		return
-	}
-	cfg, err := atmail.ParseConfig(configPath)
-	if err != nil {
-		panic(err)
 	}
 	if len(args) < 2 {
 		usage()

@@ -5,12 +5,17 @@ import (
 	"io"
 	"os"
 
+	"nouveauprintemps.org/atmail"
 	"nouveauprintemps.org/atmail/auth"
 )
 
-func passwd(args []string) {
+func passwd(cfg *atmail.Config, args []string) {
 	set := flag.NewFlagSet("passwd", flag.ExitOnError)
-	algo := set.String("algo", "argon2id", "algorithm to use")
+	def := "argon2id"
+	if cfg.Password.Default != nil {
+		def = *cfg.Password.Default
+	}
+	algo := set.String("algo", def, "algorithm to use")
 	_ = set.Parse(args)
 	if len(set.Args()) > 0 {
 		println("Invalid passwd usage.")

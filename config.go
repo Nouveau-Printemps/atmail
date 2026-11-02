@@ -29,6 +29,7 @@ type Config struct {
 	RspamdAddress *string                `toml:"rspamd_address"`
 	Smtp          SmtpConfig             `toml:"smtp"`
 	Imap          ImapConfig             `toml:"imap"`
+	Password      auth.PasswordConfig    `toml:"password"`
 	Domains       map[string]auth.Config `toml:"domains"`
 }
 
@@ -180,6 +181,10 @@ func (cfg *Config) ParseFilters() ([]*filter.Tree, error) {
 
 func LoadConfig(p string) (*Config, []*filter.Tree, error) {
 	cfg, err := ParseConfig(p)
+	if err != nil {
+		return nil, nil, err
+	}
+	err = cfg.Password.Load()
 	if err != nil {
 		return nil, nil, err
 	}
