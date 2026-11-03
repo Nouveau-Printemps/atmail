@@ -173,7 +173,9 @@ func (s *Session) Data(r io.Reader) error {
 		score = &sc
 	}
 	//TODO: better handle of multiple to
-	for i, to := range s.To {
+	iter := make([]Rcpt, len(s.To))
+	copy(iter, s.To)
+	for i, to := range iter {
 		if to.Folder != "" {
 			to.Folder = "INBOX" + string(storage.MailboxSeparator) + to.Folder
 			s.To[i] = to
