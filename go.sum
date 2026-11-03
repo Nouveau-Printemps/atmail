@@ -5,10 +5,10 @@ filippo.io/edwards25519 v1.1.1/go.mod h1:BxyFTGdWcka3PhytdK4V28tE5sGfRvvvRV7EaN4
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=
 github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
-github.com/Nouveau-Printemps/den v0.3.0 h1:Y6cOntVz3qefz2wc06w1UuaxU/yMJQplQ9ySvWh788s=
-github.com/Nouveau-Printemps/den v0.3.0/go.mod h1:2ArpMC4gNeTES0PJSW9drz1XkUDEfJSAyCLMrB5tQOw=
-github.com/Nouveau-Printemps/den/pkg/server v0.0.0-20261103101905-8a2a504242b4 h1:GNRNuYJXbZGjZklEIJ+B31Xp7nHN9ybZ64vHvJZ/7yU=
-github.com/Nouveau-Printemps/den/pkg/server v0.0.0-20261103101905-8a2a504242b4/go.mod h1:PA/KgSi/uvMM3sUVpxkW6ayBPxjDzr3evzLQ1cycDUg=
+github.com/Nouveau-Printemps/den v0.3.2 h1:+7dQEB0Z6GuHbz94o4V1N2nTZds6pwR4pCM/vlrFNns=
+github.com/Nouveau-Printemps/den v0.3.2/go.mod h1:2ArpMC4gNeTES0PJSW9drz1XkUDEfJSAyCLMrB5tQOw=
+github.com/Nouveau-Printemps/den/pkg/server v0.0.0-20261103215816-dc553fb49c96 h1:k6kahEXCnRk+rxNjA/wQJLxfN3wOJPmfYBqmIGCH/BQ=
+github.com/Nouveau-Printemps/den/pkg/server v0.0.0-20261103215816-dc553fb49c96/go.mod h1:PA/KgSi/uvMM3sUVpxkW6ayBPxjDzr3evzLQ1cycDUg=
 github.com/ProtonMail/go-crypto v1.5.2 h1:cucYnvqcY7UOXVD//mSyjeaPY0SSN3v5cDkYPxumINk=
 github.com/ProtonMail/go-crypto v1.5.2/go.mod h1:/RaSu30DaKO4RY+XdV/ACcCcZkGr7AhUIduq5sjzzCo=
 github.com/ProtonMail/gopenpgp/v3 v3.5.2 h1:XZ+sUVQbwFuXKW/dMyjvg8l3soRx/+HQ1XEzbBpsMxg=

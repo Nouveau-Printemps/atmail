@@ -4,8 +4,8 @@ go 1.27.3
 
 require (
 	github.com/BurntSushi/toml v1.6.0
-	github.com/Nouveau-Printemps/den v0.3.0
-	github.com/Nouveau-Printemps/den/pkg/server v0.0.0-20261103101905-8a2a504242b4
+	github.com/Nouveau-Printemps/den v0.3.2
+	github.com/Nouveau-Printemps/den/pkg/server v0.0.0-20261103215816-dc553fb49c96
 	github.com/ProtonMail/gopenpgp/v3 v3.5.2
 	github.com/emersion/go-imap/v2 v2.0.0-beta.8
 	github.com/emersion/go-message v0.18.2

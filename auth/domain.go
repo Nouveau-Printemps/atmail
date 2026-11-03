@@ -118,6 +118,7 @@ func (cfg *Config) VerifyUser(conn net.Conn, domain, username, password string) 
 	}
 	ok, err := auth.PasswordAlgorithm(realPass).Compare(realPass, password)
 	if err != nil {
+		slog.Error("verifying password", "error", err, "username", username)
 		time.Sleep(1 * time.Second)
 	}
 	return ok
