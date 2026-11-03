@@ -26,7 +26,7 @@ type Backend struct {
 	OnReceive   func(user, mailbox string, id int64)
 	rateLimiter *auth.RateLimiter
 
-	Filters []*filter.Tree
+	Filters map[string]*filter.Tree
 
 	relayCache map[string]relay
 	muCache    sync.RWMutex
@@ -38,7 +38,7 @@ func NewBackend(
 	rspamd *string,
 	localName string,
 	rl *auth.RateLimiter,
-	filters []*filter.Tree,
+	filters map[string]*filter.Tree,
 	concurrentSenders uint8,
 ) *Backend {
 	bck := &Backend{

@@ -155,12 +155,12 @@ func ParseConfig(p string) (Config, error) {
 	return cfg, nil
 }
 
-func (cfg *Config) ParseFilters() ([]*filter.Tree, error) {
+func (cfg *Config) ParseFilters() (map[string]*filter.Tree, error) {
 	entries, err := os.ReadDir(cfg.FiltersFolder)
 	if err != nil {
 		return nil, err
 	}
-	acc := make([]*filter.Tree, 0, len(entries))
+	acc := make(map[string]*filter.Tree, len(entries))
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
@@ -173,13 +173,13 @@ func (cfg *Config) ParseFilters() ([]*filter.Tree, error) {
 		if err != nil {
 			return nil, err
 		}
-		acc = append(acc, tree)
+		acc[entry.Name()] = tree
 	}
 	slog.Debug("filters parsed")
 	return acc, nil
 }
 
-func LoadConfig(p string) (*Config, []*filter.Tree, error) {
+func LoadConfig(p string) (*Config, map[string]*filter.Tree, error) {
 	cfg, err := ParseConfig(p)
 	if err != nil {
 		return nil, nil, err

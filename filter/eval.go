@@ -51,6 +51,7 @@ func (ctx *EvaluationContext) Clone() *EvaluationContext {
 		Actions:   maps.Clone(ctx.Actions),
 		Result:    ctx.Result,
 		Verbose:   ctx.Verbose,
+		LoggerKey: ctx.LoggerKey,
 	}
 }
 
@@ -125,7 +126,7 @@ func InitEvalulationContext(name string, from, to Rcpt, header message.Header, b
 			"from":   rcptVariable(from),
 			"to":     rcptVariable(to),
 			"header": headerVariable(header),
-			"body": &EvaluationVariable{
+			"body": {
 				Type:  TypeString,
 				Value: body,
 			},

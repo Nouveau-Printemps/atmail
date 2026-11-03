@@ -10,8 +10,9 @@ import (
 	"nouveauprintemps.org/atmail/filter"
 )
 
-func checkFilters(ctx *filter.EvaluationContext, filters []*filter.Tree) *filter.Result {
-	for _, f := range filters {
+func checkFilters(ctx *filter.EvaluationContext, filters map[string]*filter.Tree) *filter.Result {
+	for name, f := range filters {
+		ctx.LoggerKey = name
 		res, ok := f.Eval(ctx.Clone())
 		if ok {
 			return res
