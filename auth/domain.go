@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Nouveau-Printemps/den"
+	"github.com/Nouveau-Printemps/den/pkg/server/auth"
 	"nouveauprintemps.org/atmail/utils"
 )
 
@@ -115,7 +116,7 @@ func (cfg *Config) VerifyUser(conn net.Conn, domain, username, password string) 
 		}
 		return resp != nil
 	}
-	ok, err := detectPasswordAlgorithm(realPass).Compare(realPass, password)
+	ok, err := auth.PasswordAlgorithm(realPass).Compare(realPass, password)
 	if err != nil {
 		time.Sleep(1 * time.Second)
 	}

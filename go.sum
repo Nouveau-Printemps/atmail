@@ -7,6 +7,8 @@ github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk
 github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
 github.com/Nouveau-Printemps/den v0.2.0 h1:8mOzRLoxMGWKdm9mkr7aFK7+3kYNv57gdJqfpeul1IU=
 github.com/Nouveau-Printemps/den v0.2.0/go.mod h1:2ArpMC4gNeTES0PJSW9drz1XkUDEfJSAyCLMrB5tQOw=
+github.com/Nouveau-Printemps/den/pkg/server v0.0.0-20261103101905-8a2a504242b4 h1:GNRNuYJXbZGjZklEIJ+B31Xp7nHN9ybZ64vHvJZ/7yU=
+github.com/Nouveau-Printemps/den/pkg/server v0.0.0-20261103101905-8a2a504242b4/go.mod h1:PA/KgSi/uvMM3sUVpxkW6ayBPxjDzr3evzLQ1cycDUg=
 github.com/ProtonMail/go-crypto v1.5.2 h1:cucYnvqcY7UOXVD//mSyjeaPY0SSN3v5cDkYPxumINk=
 github.com/ProtonMail/go-crypto v1.5.2/go.mod h1:/RaSu30DaKO4RY+XdV/ACcCcZkGr7AhUIduq5sjzzCo=
 github.com/ProtonMail/gopenpgp/v3 v3.5.2 h1:XZ+sUVQbwFuXKW/dMyjvg8l3soRx/+HQ1XEzbBpsMxg=

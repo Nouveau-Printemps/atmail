@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 
+	denauth "github.com/Nouveau-Printemps/den/pkg/server/auth"
 	"nouveauprintemps.org/atmail"
 	"nouveauprintemps.org/atmail/auth"
 )
@@ -22,7 +23,7 @@ func passwd(cfg *atmail.Config, args []string) {
 		println("passwd [-algo <algo>]")
 		os.Exit(1)
 	}
-	var pass auth.Password
+	var pass denauth.Password
 	switch *algo {
 	case "argon2id", "argon2", "argon":
 		pass = auth.DefaultArgon2id

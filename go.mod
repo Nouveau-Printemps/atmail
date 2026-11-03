@@ -19,6 +19,7 @@ require (
 require (
 	cel.dev/expr v0.25.1 // indirect
 	filippo.io/edwards25519 v1.1.1 // indirect
+	github.com/Nouveau-Printemps/den/pkg/server v0.0.0-20261103101905-8a2a504242b4 // indirect
 	github.com/ProtonMail/go-crypto v1.5.2 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/cloudflare/circl v1.6.5 // indirect
