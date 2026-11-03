@@ -258,29 +258,33 @@ const (
 )
 
 func (spam *RspamdClient) LearnSpam(s *Session, email *message.Entity) error {
-	body, err := io.ReadAll(email.Body)
-	if err != nil {
-		return err
-	}
-	email.Body = bytes.NewBuffer(body)
-	name := s.To[0].Address + email.Header.Get("Subject") + strconv.Itoa(int(time.Now().Unix()))
-	return os.WriteFile(
-		path.Join(spam.LearnFolder, SpamFolder, name),
-		body,
-		0o640,
-	)
+	return spam.learn(s, email, SpamFolder)
 }
 
 func (spam *RspamdClient) LearnHam(s *Session, email *message.Entity) error {
+	return spam.learn(s, email, HamFolder)
+}
+
+func (spam *RspamdClient) learn(s *Session, email *message.Entity, folder string) error {
 	body, err := io.ReadAll(email.Body)
 	if err != nil {
 		return err
 	}
 	email.Body = bytes.NewBuffer(body)
-	name := s.To[0].Address + email.Header.Get("Subject") + strconv.Itoa(int(time.Now().Unix()))
+	var buf bytes.Buffer
+	err = email.WriteTo(&buf)
+	if err != nil {
+		return err
+	}
+	email.Body = bytes.NewBuffer(body)
+	sub, err := new(mime.WordDecoder).DecodeHeader(email.Header.Get("Subject"))
+	if err != nil {
+		return err
+	}
+	name := s.To[0].Address + sub + strconv.Itoa(int(time.Now().Unix()))
 	return os.WriteFile(
-		path.Join(spam.LearnFolder, HamFolder, name),
-		body,
+		path.Join(spam.LearnFolder, folder, name),
+		buf.Bytes(),
 		0o640,
 	)
 }
