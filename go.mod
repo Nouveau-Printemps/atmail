@@ -4,7 +4,8 @@ go 1.27.3
 
 require (
 	github.com/BurntSushi/toml v1.6.0
-	github.com/Nouveau-Printemps/den v0.2.0
+	github.com/Nouveau-Printemps/den v0.3.0
+	github.com/Nouveau-Printemps/den/pkg/server v0.0.0-20261103101905-8a2a504242b4
 	github.com/ProtonMail/gopenpgp/v3 v3.5.2
 	github.com/emersion/go-imap/v2 v2.0.0-beta.8
 	github.com/emersion/go-message v0.18.2
@@ -13,13 +14,11 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.52
 	github.com/nyttikord/logos v0.2.1
 	github.com/pires/go-proxyproto v0.16.0
-	golang.org/x/crypto v0.58.0
 )
 
 require (
 	cel.dev/expr v0.25.1 // indirect
 	filippo.io/edwards25519 v1.1.1 // indirect
-	github.com/Nouveau-Printemps/den/pkg/server v0.0.0-20261103101905-8a2a504242b4 // indirect
 	github.com/ProtonMail/go-crypto v1.5.2 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/cloudflare/circl v1.6.5 // indirect
@@ -53,6 +52,7 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
+	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
 	golang.org/x/net v0.61.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
