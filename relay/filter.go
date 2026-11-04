@@ -15,6 +15,9 @@ func checkFilters(ctx *filter.EvaluationContext, filters map[string]*filter.Tree
 		ctx.LoggerKey = name
 		res, ok := f.Eval(ctx.Clone())
 		if ok {
+			if ctx.Verbose {
+				ctx.Logger().Debug("result obtained", "res", res.Action)
+			}
 			return res
 		}
 	}
