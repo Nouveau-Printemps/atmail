@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"io"
 	"os"
@@ -40,9 +41,9 @@ func passwd(cfg *atmail.Config, args []string) {
 	if err != nil {
 		panic(err)
 	}
-	h, err := pass.Hash(string(b))
+	h, err := pass.Hash(string(bytes.TrimSuffix(b, []byte("\n"))))
 	if err != nil {
 		panic(err)
 	}
-	os.Stdout.Write([]byte(h))
+	os.Stdout.Write([]byte(h + "\n"))
 }
