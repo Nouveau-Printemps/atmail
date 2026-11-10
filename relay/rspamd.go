@@ -15,6 +15,7 @@ import (
 	"net/textproto"
 	"os"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -187,9 +188,12 @@ func (spam *RspamdClient) Verify(ctx context.Context, metadata *RspamdMetadata, 
 
 func (spam *RspamdClient) Analyze(s *Session, email *message.Entity) (float64, time.Duration, error) {
 	metadata := RspamdMetadata{
-		IP:    s.conn.Conn().RemoteAddr().(*net.TCPAddr).IP.String(),
-		From:  s.From.Address,
-		Rcpt:  utils.Map(s.To, func(rcpt Rcpt) string { return rcpt.Address }),
+		IP:   s.conn.Conn().RemoteAddr().(*net.TCPAddr).IP.String(),
+		From: s.From.Address,
+		Rcpt: utils.Map(
+			slices.Collect(utils.SetValues(s.To)),
+			func(rcpt Rcpt) string { return rcpt.Address },
+		),
 		Flags: []string{"body_block", "milter"},
 	}
 	l := utils.Logger(s.context).With("module", "rspamd")
@@ -281,7 +285,7 @@ func (spam *RspamdClient) learn(s *Session, email *message.Entity, folder string
 	if err != nil {
 		return err
 	}
-	name := s.To[0].Address + sub + strconv.Itoa(int(time.Now().Unix()))
+	name := sub + strconv.Itoa(int(time.Now().Unix()))
 	return os.WriteFile(
 		path.Join(spam.LearnFolder, folder, name),
 		buf.Bytes(),

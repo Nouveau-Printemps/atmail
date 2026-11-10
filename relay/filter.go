@@ -2,12 +2,13 @@ package relay
 
 import (
 	"bytes"
-	"slices"
+	"maps"
 	"time"
 
 	"github.com/emersion/go-message"
 	"github.com/emersion/go-smtp"
 	"nouveauprintemps.org/atmail/filter"
+	"nouveauprintemps.org/atmail/utils"
 )
 
 func checkFilters(ctx *filter.EvaluationContext, filters map[string]*filter.Tree) *filter.Result {
@@ -57,22 +58,24 @@ func applyResult(s *Session, msg *message.Entity, wait *time.Duration, res *filt
 			return err
 		}
 	}
-	s.To = slices.DeleteFunc(s.To, func(to Rcpt) bool {
-		return slices.Contains(res.RemoveRecipient, to.Address)
-	})
-	for _, to := range res.AddRecipient {
+	for rcpt := range res.RemoveRecipient {
+		maps.DeleteFunc(s.To, func(k Rcpt, v struct{}) bool {
+			return k.Address == rcpt
+		})
+	}
+	for to := range res.AddRecipient {
 		parsed := ParseAddress(to)
-		s.To = append(s.To, Rcpt{
+		utils.SetInsert(s.To, Rcpt{
 			User:    parsed[0],
 			Domain:  parsed[1],
 			Address: to,
 		})
 	}
 	if res.Mailbox != nil {
-		for i, to := range s.To {
+		s.To = utils.SetMap(s.To, func(to Rcpt) Rcpt {
 			to.Folder = *res.Mailbox
-			s.To[i] = to
-		}
+			return to
+		})
 	}
 	for k, v := range res.ModifyHeader {
 		msg.Header.Set(k, v)

@@ -15,6 +15,7 @@ import (
 	"github.com/emersion/go-smtp"
 	"github.com/nyttikord/logos"
 	"nouveauprintemps.org/atmail/auth"
+	"nouveauprintemps.org/atmail/filter"
 	"nouveauprintemps.org/atmail/storage"
 	"nouveauprintemps.org/atmail/utils"
 )
@@ -27,7 +28,7 @@ type Session struct {
 	context context.Context
 
 	From Rcpt
-	To   []Rcpt
+	To   utils.Set[Rcpt]
 }
 
 func (s *Session) AuthMechanisms() []string {
@@ -136,7 +137,7 @@ func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 	if err != nil {
 		return err
 	}
-	s.To = append(s.To, rcpt)
+	utils.SetInsert(s.To, rcpt)
 	return nil
 }
 
@@ -148,8 +149,11 @@ var errInternal = &smtp.SMTPError{
 func (s *Session) Data(r io.Reader) error {
 	l := utils.Logger(s.context).With(
 		"from", s.From.Address,
-		"to", strings.Join(
-			utils.Map(s.To, func(r Rcpt) string { return r.Address }),
+		"to", strings.Join(slices.Collect(utils.SetValues(
+			utils.SetMap(
+				s.To,
+				func(r Rcpt) string { return r.Address },
+			))),
 			",",
 		),
 	)
@@ -172,29 +176,40 @@ func (s *Session) Data(r io.Reader) error {
 		}
 		score = &sc
 	}
-	//TODO: better handle of multiple to
-	iter := make([]Rcpt, len(s.To))
-	copy(iter, s.To)
-	for i, to := range iter {
+	s.To = utils.SetMap(s.To, func(to Rcpt) Rcpt {
 		if to.Folder != "" {
 			to.Folder = "INBOX" + string(storage.MailboxSeparator) + to.Folder
-			s.To[i] = to
 		}
-		ctx, err := s.backend.NewContext(s.From, to, msg)
+		var e error
+		defer func() {
+			if e != nil {
+				if err != nil {
+					err = errors.Join(err, e)
+				} else {
+					err = e
+				}
+			}
+		}()
+		var ctx *filter.EvaluationContext
+		ctx, e = s.backend.NewContext(s.From, to, msg)
 		if err != nil {
-			return err
+			return Rcpt{}
 		}
 		ctx.Verbose = utils.Verbose(s.context)
-		err = applyResult(s, msg, &wait, checkFilters(ctx, s.backend.Filters))
-		if err != nil {
-			return err
+		e = applyResult(s, msg, &wait, checkFilters(ctx, s.backend.Filters))
+		if e != nil {
+			return Rcpt{}
 		}
+		return to
+	})
+	if err != nil {
+		return err
 	}
-	go func(ctx context.Context, from string, to []Rcpt) {
+	go func(ctx context.Context, from string, to utils.Set[Rcpt]) {
 		if wait != 0 {
 			time.Sleep(wait)
 		}
-		s.send(ctx, from, to, msg, score)
+		s.send(ctx, from, utils.SetValues(to), msg, score)
 	}(s.context, s.From.Address, s.To)
 	return nil
 }

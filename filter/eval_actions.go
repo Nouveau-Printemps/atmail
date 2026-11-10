@@ -2,6 +2,8 @@ package filter
 
 import (
 	"fmt"
+
+	"nouveauprintemps.org/atmail/utils"
 )
 
 var actions = map[string]EvaluationAction{
@@ -14,7 +16,7 @@ var actions = map[string]EvaluationAction{
 		if len(params) != 1 || params[0].Type != TypeString {
 			return fmt.Errorf("expected one string as argument, not %#v", params)
 		}
-		ctx.Result.AddRecipient = append(ctx.Result.AddRecipient, params[0].Value.(string))
+		utils.SetInsert(ctx.Result.AddRecipient, params[0].Value.(string))
 		return nil
 	},
 	"mailbox": func(ctx *EvaluationContext, params []*EvaluationVariable) error {

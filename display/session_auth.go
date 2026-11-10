@@ -126,10 +126,7 @@ func (s *Session) List(w *imapserver.ListWriter, ref string, patterns []string, 
 		boxes = slices.Collect(maps.Keys(s.mailboxes.mp))
 		s.mailboxes.mu.RUnlock()
 	}
-	for p, box := range utils.Zip(
-		slices.Values(patterns),
-		slices.Values(boxes),
-	) {
+	for p, box := range utils.Zip(patterns, boxes) {
 		if !imapserver.MatchList(box, storage.MailboxSeparator, ref, p) {
 			continue
 		}

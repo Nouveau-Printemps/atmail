@@ -1,6 +1,8 @@
 package utils
 
-import "iter"
+import (
+	"iter"
+)
 
 func Map[T, V any](in []T, fn func(T) V) []V {
 	out := make([]V, 0, len(in))
@@ -21,10 +23,10 @@ func MapFilter[T, V any](in []T, fn func(T) *V) []V {
 	return out
 }
 
-func Zip[A, B any](as iter.Seq[A], bs iter.Seq[B]) iter.Seq2[A, B] {
+func Zip[A, B any](as []A, bs []B) iter.Seq2[A, B] {
 	return func(yield func(A, B) bool) {
-		for a := range as {
-			for b := range bs {
+		for _, a := range as {
+			for _, b := range bs {
 				if !yield(a, b) {
 					return
 				}
@@ -33,9 +35,9 @@ func Zip[A, B any](as iter.Seq[A], bs iter.Seq[B]) iter.Seq2[A, B] {
 	}
 }
 
-func GroupBy[A any, B comparable](in []A, fn func(A) B) map[B][]A {
+func GroupBy[A any, B comparable](in iter.Seq[A], fn func(A) B) map[B][]A {
 	mp := make(map[B][]A)
-	for _, a := range in {
+	for a := range in {
 		key := fn(a)
 		arr, ok := mp[key]
 		if !ok {

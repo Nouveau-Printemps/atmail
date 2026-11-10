@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/emersion/go-message"
+	"nouveauprintemps.org/atmail/utils"
 )
 
 func testResult(t *testing.T, input string) *Result {
@@ -46,7 +47,7 @@ func TestResult_Action(t *testing.T) {
 
 func TestResult_Forward(t *testing.T) {
 	res := testResult(t, `do forward("send@here")`)
-	if len(res.AddRecipient) != 1 || res.AddRecipient[0] != "send@here" {
+	if len(res.AddRecipient) != 1 || !utils.SetContains(res.AddRecipient, "send@here") {
 		t.Errorf("invalid forward: %#v wanted send@here", res.AddRecipient)
 	}
 	if res.Action != ActionContinue {
@@ -55,7 +56,7 @@ func TestResult_Forward(t *testing.T) {
 	}
 	res = testResult(t, `do forward("send@here")
 do accept()`)
-	if len(res.AddRecipient) != 1 || res.AddRecipient[0] != "send@here" {
+	if len(res.AddRecipient) != 1 || !utils.SetContains(res.AddRecipient, "send@here") {
 		t.Errorf("invalid forward: %#v wanted send@here", res.AddRecipient)
 	}
 	if res.Action != ActionAccept {

@@ -19,7 +19,7 @@ import (
 	"nouveauprintemps.org/atmail/utils"
 )
 
-func (s *Session) send(ctx context.Context, from string, to []Rcpt, email *message.Entity, spam *float64) error {
+func (s *Session) send(ctx context.Context, from string, to iter.Seq[Rcpt], email *message.Entity, spam *float64) error {
 	body, err := io.ReadAll(email.Body)
 	if err != nil {
 		return err
@@ -60,7 +60,13 @@ func (s *Session) relayInside(ctx context.Context, rcpt Rcpt, email *message.Ent
 			}
 			return &rcpt
 		})
-		s.send(utils.WithLogger(ctx, l), rcpt.Address, rcpts, email, spam)
+		s.send(
+			utils.WithLogger(ctx, l),
+			rcpt.Address,
+			slices.Values(rcpts),
+			email,
+			spam,
+		)
 		return
 	}
 	var score sql.NullFloat64
@@ -202,7 +208,10 @@ func relaysOf(domain string) (iter.Seq2[relay, error], error) {
 					return int(b.Weight) - int(a.Weight)
 				})
 			}
-			groups := utils.GroupBy(srvs, func(srv *net.SRV) string { return srv.Target })
+			groups := utils.GroupBy(
+				slices.Values(srvs),
+				func(srv *net.SRV) string { return srv.Target },
+			)
 			for target, srvs := range groups {
 				for _, srv := range srvs {
 					if !yield(relay{

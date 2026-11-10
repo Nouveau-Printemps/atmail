@@ -62,7 +62,12 @@ func NewBackend(
 func (bck *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
 	l := utils.Logger(bck.context).With("addr", c.Conn().RemoteAddr())
 	l.Debug("new session")
-	return &Session{backend: bck, conn: c, context: utils.WithLogger(bck.context, l)}, nil
+	return &Session{
+		backend: bck,
+		conn:    c,
+		context: utils.WithLogger(bck.context, l),
+		To:      utils.NewSet[Rcpt](),
+	}, nil
 }
 
 func (bck *Backend) NewContext(from, to Rcpt, mail *message.Entity) (*filter.EvaluationContext, error) {

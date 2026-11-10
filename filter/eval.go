@@ -7,6 +7,7 @@ import (
 	"reflect"
 
 	"github.com/emersion/go-message"
+	"nouveauprintemps.org/atmail/utils"
 )
 
 type EvaluationContext struct {
@@ -119,7 +120,11 @@ func headerVariable(header message.Header) *EvaluationVariable {
 
 func InitEvalulationContext(name string, from, to Rcpt, header message.Header, body string) *EvaluationContext {
 	return &EvaluationContext{
-		Result: Result{ModifyHeader: make(map[string]string)},
+		Result: Result{
+			ModifyHeader:    make(map[string]string),
+			AddRecipient:    utils.NewSet[string](),
+			RemoveRecipient: utils.NewSet[string](),
+		},
 		Variables: map[string]*EvaluationVariable{
 			"true":   newBool(true),
 			"false":  newBool(false),
@@ -151,8 +156,8 @@ const (
 
 type Result struct {
 	Action          ResultAction
-	AddRecipient    []string
-	RemoveRecipient []string
+	AddRecipient    utils.Set[string]
+	RemoveRecipient utils.Set[string]
 	SenderAddress   *Rcpt
 	Mailbox         *string
 	Body            *string
