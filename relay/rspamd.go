@@ -261,15 +261,19 @@ const (
 	HamFolder  = "ham"
 )
 
-func (spam *RspamdClient) LearnSpam(s *Session, email *message.Entity) error {
-	return spam.learn(s, email, SpamFolder)
+func (spam *RspamdClient) LearnSpam(email *message.Entity) error {
+	return spam.learn(email, SpamFolder)
 }
 
-func (spam *RspamdClient) LearnHam(s *Session, email *message.Entity) error {
-	return spam.learn(s, email, HamFolder)
+func (spam *RspamdClient) LearnHam(email *message.Entity) error {
+	return spam.learn(email, HamFolder)
 }
 
-func (spam *RspamdClient) learn(s *Session, email *message.Entity, folder string) error {
+func (spam *RspamdClient) learn(email *message.Entity, folder string) error {
+	// do nothing if rspamd is not set up
+	if spam == nil {
+		return nil
+	}
 	body, err := io.ReadAll(email.Body)
 	if err != nil {
 		return err
