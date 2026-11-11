@@ -115,5 +115,5 @@ func usage() {
 	println("- <account> delete <mail>")
 	println("- <account> edit [-editor <editor>] <mailbox>")
 	println("- [account] list [mailbox]")
-	println("- passwd [-cost <cost>]")
+	println("- passwd [-algo <algo>]")
 }
