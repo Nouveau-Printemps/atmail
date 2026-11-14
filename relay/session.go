@@ -179,6 +179,8 @@ func (s *Session) Data(r io.Reader) error {
 	s.To = utils.SetMap(s.To, func(to Rcpt) Rcpt {
 		if to.Folder != "" {
 			to.Folder = "INBOX" + string(storage.MailboxSeparator) + to.Folder
+		} else {
+			to.Folder = "INBOX"
 		}
 		var e error
 		defer func() {

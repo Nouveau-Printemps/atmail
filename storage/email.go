@@ -93,7 +93,7 @@ func StoreEmailInbox(
 	err = StoreEmail(ctx, from, to, user, spamScore, b, encrypted, func(ctx context.Context, in *DB, id int64) error {
 		uid = id
 		boxID := InboxMailbox
-		if folder != "" {
+		if folder != "INBOX" {
 			box, err := in.GetOrCreateMailbox(ctx, folder)
 			if err != nil {
 				return err
