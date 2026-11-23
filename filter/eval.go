@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"maps"
 	"reflect"
+	"strings"
 
 	"github.com/emersion/go-message"
 	"nouveauprintemps.org/atmail/utils"
@@ -119,6 +120,14 @@ func headerVariable(header message.Header) *EvaluationVariable {
 }
 
 func InitEvalulationContext(name string, from, to Rcpt, header message.Header, body string) *EvaluationContext {
+	fromVar := rcptVariable(from)
+	if header.Has("From") {
+		f := header.Get("From")
+		display, _, ok := strings.Cut(f, " <")
+		if ok {
+			fromVar.Fields["display"] = newString(display)
+		}
+	}
 	return &EvaluationContext{
 		Result: Result{
 			ModifyHeader:    make(map[string]string),
@@ -128,7 +137,7 @@ func InitEvalulationContext(name string, from, to Rcpt, header message.Header, b
 		Variables: map[string]*EvaluationVariable{
 			"true":   newBool(true),
 			"false":  newBool(false),
-			"from":   rcptVariable(from),
+			"from":   fromVar,
 			"to":     rcptVariable(to),
 			"header": headerVariable(header),
 			"body": {
